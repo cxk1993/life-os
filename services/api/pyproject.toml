@@ -56,7 +56,7 @@ build-backend = "setuptools.build_meta"
 #     packages = ["core"]
 #   或改用 find 自动发现。这一步属于 T03 的权限范围。
 py-modules = ["main"]
-packages = ["core"]
+packages = ["core", "db"]
 
 # ────────────────────────────── ruff ──────────────────────────────
 [tool.ruff]
