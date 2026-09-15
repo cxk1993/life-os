@@ -176,7 +176,30 @@ def test_login_wrong_password_returns_rfc7807() -> None:
     assert r.headers.get("x-trace-id") == body["trace_id"]
 
 
-# ─────────────────────── 5. 幂等 ───────────────────────
+# ────────── 4.5 SSE 订阅端点（防回归：曾经这里返回 422） ──────────
+def test_events_subscribe_needs_no_required_query_params() -> None:
+    """卡片要求的命令是 `curl -N /api/v1/events/subscribe`（**不带参数**）。
+
+    这里钉住一个真实踩过的坑：端点上 `request` 参数曾被标注为 `Any`，
+    FastAPI 认不出它是请求对象，就把它当成了**必填查询参数** ——
+    于是不带 `?request=...` 一律 422，卡片那条命令直接不可用。
+
+    断言方式刻意用 OpenAPI 生成结果，而不是真去读一个永不结束的 SSE 流：
+    `TestClient.stream()` 碰上无限流会在退出上下文时死等，把整个 pytest 挂住
+    （这个坑也真踩过一次）。真实的事件推送验证放在
+    `_tools/t03_sse_e2e.py`（起真服务 + 真读流）。
+    """
+    client = TestClient(create_app())
+
+    op = client.get("/api/docs").json()["paths"]["/api/v1/events/subscribe"]["get"]
+    params = {p["name"]: p for p in op.get("parameters", [])}
+
+    assert "request" not in params, "request 被错当成查询参数了（会要求 ?request=...）"
+    assert set(params) <= {"topics"}, f"出现了未预期的参数：{set(params)}"
+    assert not any(p.get("required") for p in params.values()), "订阅端点不该有必填查询参数"
+
+
+# ─────────────────── 5. 幂等 ───────────────────
 def test_idempotency_key_makes_repeat_request_identical() -> None:
     client = TestClient(create_app())
     payload = {"password": "wrong", "totp": "000000"}

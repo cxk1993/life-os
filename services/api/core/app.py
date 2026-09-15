@@ -9,9 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, Query
+from fastapi import APIRouter, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from core.config import get_settings, settings_as_dict
@@ -107,12 +108,15 @@ def create_app(
 
     @events_router.get("/events/subscribe")
     async def subscribe_events(
-        request: Any,
+        # ★ 必须标注为 Request。写成 `Any` 时 FastAPI 认不出这是请求对象，
+        #   会把它当成**必填查询参数**，于是不带 ?request=... 就一律 422。
+        #   卡片要求的命令是不带参数直接订阅，所以这里不能图省事写 Any。
+        request: Request,
         topics: str | None = Query(
             default=None,
             description="逗号分隔的 topic 模式，如 calendar.*,todo.*；留空收全部",
         ),
-    ) -> Any:
+    ) -> StreamingResponse:
         patterns = [t.strip() for t in (topics or "").split(",") if t.strip()]
         return event_bus.sse_response(request, patterns)
 
