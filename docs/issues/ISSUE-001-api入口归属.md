@@ -2,7 +2,7 @@
 
 - **提出者**：T01（工程骨架）
 - **影响谁**：**T03**（后端内核 · API 服务器）
-- **状态**：open
+- **状态**：**fixed**（T03 已按本卡建议方案接管，2026-09-15）
 - **优先级**：normal（不阻塞开工，但交付前必须拍板）
 - **日期**：2026-09-15
 
@@ -64,10 +64,17 @@ app = create_app()
 
 ## 需要你做的
 
-- [ ] 交付 `core/app.py` 的 `create_app()`
-- [ ] 接管 `services/api/main.py`，改成上面那两行调用
-- [ ] 验证：`python tools/task.py dev` 起的是真内核（`/docs` 里能看到 auth 模块）
-- [ ] 把本卡状态改为 `fixed`
+- [x] 交付 `core/app.py` 的 `create_app()`
+- [x] 接管 `services/api/main.py`，改成上面那两行调用
+      —— 实装内容：`from core.app import create_app` + `app = create_app()`，并注明"刻意不写回退兜底"
+- [x] 验证：`python tools/task.py dev` 起的是真内核
+      —— 证据：真实启动探测 3/3（`/healthz` 200、`/docs` 200）；
+      且 `/readyz` 的 `modules` 字段已列出 `auth`，`/api/v1/modules` 返回完整 manifest，
+      证明 `create_app()` 与模块发现链路生效（不再是 T01 的空壳）
+- [x] 把本卡状态改为 `fixed`
+
+> 补充：T03 一并把入口与 `tools/task.py`、两份 docker-compose 的 `main:app` 约定保持一致，
+> 未修改那三处配置（符合本卡建议）。
 
 ## 附：T01 阶段的其他交接事项
 

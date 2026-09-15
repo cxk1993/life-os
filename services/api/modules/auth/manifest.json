@@ -1,0 +1,28 @@
+{
+  "id": "auth",
+  "name": "账户与鉴权",
+  "version": "0.1.0",
+  "kind": "core",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "shield",
+  "description": "单用户登录、TOTP 二步验证、JWT 签发与刷新",
+  "author": "yunxi",
+  "api": {
+    "base": "/api/v1/auth",
+    "openapi": "/api/v1/auth/openapi.json",
+    "health": "/api/v1/auth/health"
+  },
+  "provides": ["auth.session"],
+  "requires": [],
+  "slots": [],
+  "emits": ["auth.login", "auth.logout"],
+  "consumes": [],
+  "permissions": ["db:own"],
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}
