@@ -1,0 +1,33 @@
+# ── 密钥与本地配置（★ 最重要的一条：.env 绝不进仓库）──
+.env
+.env.*
+!.env.example
+
+# ── 数据（迁移 = 复制这个目录）──
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# ── 前端 ──
+node_modules/
+dist/
+.vite/
+*.local
+
+# ── Python ──
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ── 日志与临时文件 ──
+*.log
+logs/
+tmp/
+.DS_Store
+Thumbs.db

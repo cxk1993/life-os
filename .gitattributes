@@ -1,0 +1,55 @@
+# ════════════════════════════════════════════════════════════════
+# 行尾与编码的统一约定（比 .editorconfig 更硬 —— 这个会真的写进仓库）
+#
+# 为什么必须有这个文件：
+#   本机是 Windows，git 全局可能开着 core.autocrlf=true，
+#   会把所有文本文件在检出时转成 CRLF。
+#   而本项目要跑在 Linux 容器里 —— deploy/ 下的 shell 脚本一旦带 CRLF，
+#   就会报 `$'\r': command not found`（总纲 §4 雷区 #1 的反向版本）。
+#
+#   所以这里显式声明：默认一律 LF，只有"给 Windows 跑的脚本"才 CRLF。
+#   本文件优先级高于本机的 core.autocrlf 设置。
+# ════════════════════════════════════════════════════════════════
+
+# 默认：仓库里存 LF，检出也 LF（Docker / Linux 安全）
+* text=auto eol=lf
+
+# 文本类文件明确归类
+*.md      text
+*.json    text
+*.yml     text
+*.yaml    text
+*.toml    text
+*.css     text
+*.html    text
+*.sql     text
+Makefile  text
+
+# 编程语言
+*.py      text
+*.ts      text
+*.tsx     text
+*.js      text
+*.jsx     text
+# ★ shell 脚本必须 LF，否则 Linux 上跑不了（.gitattributes 的行尾不能跟注释）
+*.sh      text eol=lf
+
+# ★ 给 Windows 跑的脚本：CRLF，且内容只用纯 ASCII（见 .editorconfig）
+*.ps1     text eol=crlf
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+# 二进制（别让 git 去猜）
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.webp    binary
+*.pdf     binary
+*.db      binary
+*.woff    binary
+*.woff2   binary
+
+# 锁文件不参与语言统计与 diff 噪音
+package-lock.json  -diff linguist-generated

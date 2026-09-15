@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 这里刻意保持极简。
+ * 设计令牌（颜色 / 圆角 / 阴影 / 间距）由 T02 在 src/shared/styles/tokens.css 里定义，
+ * 按总纲约定：所有模块只许用 var(--accent) 这类令牌，不许写死颜色。
+ */

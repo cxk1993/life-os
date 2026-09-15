@@ -1,0 +1,45 @@
+# ════════════════════════════════════════════════════════════════
+# Life-OS · 开发编排（可选）
+#
+#   只在"服务器上也想边改边看"时用。本机开发请用：
+#       python tools/task.py dev
+#
+#   与生产版的区别只有一个：源码以卷挂载进来 + 后端开 --reload，
+#   改完存盘即生效，不用重建镜像。
+#
+#   用法（服务器上）：
+#       docker compose -f docker-compose.dev.yml up
+# ════════════════════════════════════════════════════════════════
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      APP_ENV: development
+    volumes:
+      # 源码挂进来实现热重载；data/ 仍然持久化
+      - ./services/api:/app
+      - ./data:/app/data
+    command:
+      ["python", "-m", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    restart: unless-stopped
+    volumes:
+      - ./apps/web:/app
+      - web_node_modules:/app/node_modules
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on: [api]
+
+volumes:
+  web_node_modules:

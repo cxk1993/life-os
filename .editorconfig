@@ -1,0 +1,33 @@
+# Life-OS · 编辑器统一约定
+# 目的：让不同 agent / 不同编辑器产出的文件格式一致，避免"中文乱码"和"CRLF 差异"。
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Python：4 空格
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+# 前端源码
+[*.{ts,tsx,js,jsx,mjs,cjs,css,scss,html,json,yaml,yml}]
+indent_size = 2
+
+# ★ 总纲 §4 雷区 #1：交给 Windows 跑的脚本必须是 CRLF，且内容只用纯 ASCII
+[*.{ps1,bat,cmd}]
+end_of_line = crlf
+charset = utf-8
+
+# Markdown / SQL / 配置
+[*.{md,sql,toml}]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

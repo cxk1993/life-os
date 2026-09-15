@@ -1,0 +1,87 @@
+# ════════════════════════════════════════════════════════════════
+# Life-OS 后端（服务端内核）
+#
+#   版本锁定在总纲 §1.1「技术栈」：
+#     Python 3.11 + FastAPI + SQLModel + SQLite(WAL)
+#
+#   ★ 安装方式：不要手敲 pip，用项目入口
+#         python tools/task.py setup
+#     它会读取本文件的 dependencies + optional-dependencies.dev，
+#     在 services/api/.venv 里装好。改依赖只改这里一处。
+# ════════════════════════════════════════════════════════════════
+
+[project]
+name = "lifeos-api"
+version = "0.1.0"
+description = "Life-OS 后端宿主（内核）"
+requires-python = ">=3.11,<3.13"
+
+dependencies = [
+  # ── Web 框架（总纲 §1.1）──
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "pydantic-settings==2.7.0",
+
+  # ── 数据层（总纲 §1.1：SQLModel + SQLite WAL；迁移用 alembic）──
+  "sqlmodel==0.0.22",
+  "alembic==1.14.0",
+
+  # ── 进程内定时（总纲 §1.1：备份/抓取/日报）──
+  "apscheduler==3.11.0",
+
+  # ── HTTP 客户端（TestClient 与后续抓取都要用）──
+  "httpx==0.28.1",
+
+  # ── 鉴权（总纲 §1.6 明确要求：argon2 密码 + TOTP 二步 + JWT）──
+  #    T01 一并锁好，避免 T03 回头改本文件。
+  "argon2-cffi==23.1.0",
+  "pyjwt==2.10.1",
+  "pyotp==2.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff==0.8.6",
+  "mypy==1.14.1",
+  "pytest==8.3.4",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# 目前后端只有一个入口模块。
+# ★ T03 加入 core/ 之后，把下面这行改成：
+#     packages = ["core"]
+#   或改用 find 自动发现。这一步属于 T03 的权限范围。
+py-modules = ["main"]
+packages = []
+
+# ────────────────────────────── ruff ──────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".venv", "__pycache__", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+# ────────────────────────────── mypy ──────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
+# 刻意不开 strict=true：它包含 disallow_untyped_decorators 等条目，
+# 会和 FastAPI/starlette 的路由装饰器产生噪音。上面的组合已经够严。
+
+# ───────────────────────────── pytest ─────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

@@ -1,0 +1,42 @@
+# ════════════════════════════════════════════════════════════════
+# Life-OS · 生产编排（两个服务，db 用卷不用容器）
+#
+#   ★ 本机开发**不要**用这个文件。本机直接用：
+#         python tools/task.py dev
+#     本机通常是 Win11，没有 docker；硬上容器只会拖慢热重载。
+#
+#   ★ 两个 Dockerfile 由 T13（部署与验收）提供：
+#         deploy/Dockerfile.api
+#         deploy/Dockerfile.web
+#     在 T13 交付之前，`docker compose build` 会因为找不到 Dockerfile 而失败 —— 这是预期的。
+#
+#   ★ 生产层的 nginx / 证书 / 端口模式由 T13 在此文件上扩展，不由 T01 预置。
+# ════════════════════════════════════════════════════════════════
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    env_file: [.env]
+    volumes:
+      # ★ 所有数据都在这一个目录里 —— 迁移 = 复制 data/ 就够了
+      - ./data:/app/data
+    ports:
+      # 只对本机开放，对外一律由 nginx 转发
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "127.0.0.1:8080:80"
