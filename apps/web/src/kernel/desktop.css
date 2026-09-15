@@ -1,0 +1,453 @@
+/*
+ * 桌面 / 窗口 / 坞 / 顶栏 布局样式（kernel）。
+ * 全部走设计令牌 var(--xxx)；本文件不得出现任何 #xxxxxx（验收 grep 只应命中 tokens.css）。
+ */
+
+.desktop {
+  position: fixed;
+  inset: 0;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--txt);
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+/* —— 顶栏 —— */
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  z-index: 90000;
+}
+.topbar__brand {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--txt);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.topbar__search {
+  flex: 1;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--txt-dim);
+  font-size: 13px;
+  cursor: text;
+}
+.topbar__search kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--txt-faint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 0 6px;
+}
+.topbar__spacer {
+  flex: 1;
+}
+.topbar__clock {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--txt-dim);
+  white-space: nowrap;
+}
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: var(--surface-3);
+}
+.icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* —— 窗口层 —— */
+.windows {
+  position: absolute;
+  top: var(--topbar-h);
+  left: 0;
+  right: 0;
+  bottom: var(--dock-h);
+}
+
+/* —— 坞 —— */
+.dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--dock-h);
+  display: flex;
+  align-items: center;
+  gap: var(--dock-pad);
+  padding: 0 var(--dock-pad);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  z-index: 90000;
+  overflow-x: auto;
+}
+.dock__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 56px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--txt-dim);
+  font: inherit;
+  cursor: pointer;
+}
+.dock__item:hover .dock__icon {
+  background: var(--surface-3);
+}
+.dock__item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--r-md);
+}
+.dock__icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  font-size: 15px;
+  font-weight: 600;
+}
+.dock__item--open .dock__icon {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.dock__label {
+  font-size: 10px;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock__dot {
+  position: absolute;
+  top: 10px;
+  right: calc(50% - 22px);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.dock__item--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* —— 窗口 —— */
+.win {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+.win--inactive {
+  border-color: var(--line);
+  box-shadow: var(--shadow-1);
+}
+.win--inactive .win__bar {
+  color: var(--txt-faint);
+}
+.win--max {
+  border-radius: 0;
+}
+.win__bar {
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  cursor: move;
+  user-select: none;
+  color: var(--txt);
+  font-size: 13px;
+}
+.win__bar:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+.win__title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.win__controls {
+  display: flex;
+  gap: 4px;
+}
+.win__btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--txt-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.win__btn:hover {
+  background: var(--surface-3);
+  color: var(--txt);
+}
+.win__btn--close:hover {
+  background: var(--danger);
+  color: var(--danger-fg);
+}
+.win__body {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background: var(--surface);
+}
+.win__loading {
+  padding: var(--sp-4);
+}
+.win__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 100%;
+  padding: var(--sp-5);
+  text-align: center;
+  color: var(--txt-dim);
+}
+.win__placeholder-icon {
+  font-size: 28px;
+  color: var(--warn);
+}
+.win__placeholder-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--txt);
+}
+.win__placeholder-text {
+  font-size: 13px;
+  color: var(--txt-dim);
+}
+.win__placeholder-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--txt-faint);
+}
+
+/* —— 八向缩放手柄 —— */
+.win__rz {
+  position: absolute;
+  z-index: 2;
+}
+.win__rz--n {
+  top: -3px;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.win__rz--s {
+  bottom: -3px;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.win__rz--e {
+  right: -3px;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.win__rz--w {
+  left: -3px;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.win__rz--ne {
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+.win__rz--nw {
+  top: -4px;
+  left: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+.win__rz--se {
+  bottom: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+.win__rz--sw {
+  bottom: -4px;
+  left: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+
+/* —— 全局搜索（命令面板） —— */
+.search-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+}
+.search {
+  position: fixed;
+  top: calc(var(--topbar-h) + var(--sp-4));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 92vw);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  z-index: 100000;
+  overflow: hidden;
+}
+.search__input {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--sp-4);
+  background: var(--surface-2);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--txt);
+  font: inherit;
+  font-size: 14px;
+}
+.search__input:focus {
+  outline: none;
+}
+.search__list {
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--sp-2);
+}
+.search__item {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  color: var(--txt-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+.search__item--active,
+.search__item:hover {
+  background: var(--accent-soft);
+  color: var(--txt);
+}
+.search__empty {
+  padding: var(--sp-4);
+  color: var(--txt-faint);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* mock 模块内容（仅演示用，不进内核业务） */
+.mock-app {
+  padding: var(--sp-5);
+  color: var(--txt);
+  font-size: 13px;
+}
+.mock-app h2 {
+  font-size: 16px;
+  margin: 0 0 var(--sp-3);
+  color: var(--txt);
+}
+.mock-app p {
+  color: var(--txt-dim);
+  line-height: 1.6;
+}
+.mock-app .mock-app__tag {
+  display: inline-block;
+  margin-top: var(--sp-3);
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+/* —— 响应式：窄屏窗口全屏、坞横向滚动 —— */
+@media (max-width: 768px) {
+  .win {
+    left: 0 !important;
+    top: var(--topbar-h) !important;
+    width: 100vw !important;
+    height: calc(100vh - var(--topbar-h) - var(--dock-h)) !important;
+    border-radius: 0;
+  }
+  .topbar__search {
+    display: none;
+  }
+}

@@ -1,0 +1,106 @@
+/*
+ * 设计令牌（Design Tokens）
+ * ---------------------------------------------------------------
+ * 这是本系统唯一的「颜色来源」。规则（总纲 §1.3 / 验收清单）：
+ *   - 暗色为默认主题，挂在 :root / [data-theme="dark"]。
+ *   - 亮色挂在 [data-theme="light"]，只覆盖需要变化的变量。
+ *   - 任何组件都不得写死 #xxxxxx，只能用 var(--xxx)。
+ *   - 验收用的 grep -nE '#[0-9a-fA-F]{6}' 只允许命中本文件。
+ *
+ * 注意：这里的十六进制色值是「令牌定义」，不是硬编码业务色。
+ */
+
+:root,
+[data-theme="dark"] {
+  /* —— 表面 / 背景 —— */
+  --bg: #0e1116;
+  --bg-grid: #1b2130;
+  --surface: #171c26;
+  --surface-2: #1f2632;
+  --surface-3: #283042;
+  --overlay: #0b0e13cc;
+
+  /* —— 文字 —— */
+  --txt: #e7ecf3;
+  --txt-dim: #a3adb9;
+  --txt-faint: #6b7785;
+
+  /* —— 线条 / 边框 —— */
+  --line: #2a3342;
+  --line-strong: #3a4658;
+
+  /* —— 主题强调色（插件只能用这个，不许另起炉灶）—— */
+  --accent: #5b8cff;
+  --accent-fg: #ffffff;
+  --accent-soft: #5b8cff26;
+
+  /* —— 语义色 —— */
+  --ok: #3fb950;
+  --ok-fg: #ffffff;
+  --warn: #d29922;
+  --warn-fg: #1a1300;
+  --danger: #f0556b;
+  --danger-fg: #ffffff;
+
+  /* —— 阴影 —— */
+  --shadow-1: 0 1px 2px #00000080;
+  --shadow-2: 0 12px 40px #00000099;
+
+  /* —— 圆角 —— */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  /* —— 间距（4 的倍数）—— */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* —— 字体 —— */
+  --font-sans:
+    "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* —— 布局尺寸（非颜色，但也集中在此）—— */
+  --topbar-h: 48px;
+  --dock-h: 64px;
+  --dock-pad: 10px;
+  --focus-ring: 0 0 0 2px var(--accent-soft), 0 0 0 1px var(--accent);
+  --win-min-w: 360px;
+  --win-min-h: 240px;
+}
+
+[data-theme="light"] {
+  --bg: #eef1f6;
+  --bg-grid: #dde3ec;
+  --surface: #ffffff;
+  --surface-2: #f3f5f9;
+  --surface-3: #e7ebf2;
+  --overlay: #1a2233cc;
+
+  --txt: #1b2330;
+  --txt-dim: #5b6675;
+  --txt-faint: #8b95a4;
+
+  --line: #d8dee8;
+  --line-strong: #c2cad6;
+
+  --accent: #2f6bff;
+  --accent-fg: #ffffff;
+  --accent-soft: #2f6bff1f;
+
+  --ok: #1a9e4b;
+  --ok-fg: #ffffff;
+  --warn: #b07c00;
+  --warn-fg: #ffffff;
+  --danger: #d83a52;
+  --danger-fg: #ffffff;
+
+  --shadow-1: 0 1px 2px #1a22331f;
+  --shadow-2: 0 12px 40px #1a22333d;
+}

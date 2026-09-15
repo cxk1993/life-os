@@ -1,0 +1,227 @@
+/*
+ * 通用组件样式（shared/components）。
+ * 只用设计令牌 var(--xxx)，不写死任何颜色（验收 grep 只应命中 tokens.css）。
+ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+.btn:hover {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+.btn--primary:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.btn--danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn--danger:hover {
+  background: var(--danger);
+  color: var(--danger-fg);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.card__title {
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+  border-bottom: 1px solid var(--line);
+}
+.card__body {
+  padding: var(--sp-4);
+  color: var(--txt-dim);
+  font-size: 13px;
+}
+
+.modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+}
+.modal__panel {
+  min-width: 320px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+.modal__title {
+  padding: var(--sp-4);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--txt);
+  border-bottom: 1px solid var(--line);
+}
+.modal__body {
+  padding: var(--sp-4);
+  color: var(--txt-dim);
+  font-size: 13px;
+}
+.modal__foot {
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  border-top: 1px solid var(--line);
+}
+
+.toast-stack {
+  position: fixed;
+  top: calc(var(--topbar-h) + var(--sp-3));
+  right: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  z-index: 100001;
+  pointer-events: none;
+}
+.toast {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--txt);
+  font-size: 13px;
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-1);
+}
+.toast--ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.toast--warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.toast--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-3) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+  border-radius: var(--r-xs);
+}
+.skeleton--round {
+  border-radius: var(--r-pill);
+}
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-6);
+  color: var(--txt-faint);
+  text-align: center;
+}
+.empty__icon {
+  font-size: 28px;
+  line-height: 1;
+  opacity: 0.7;
+}
+.empty__text {
+  font-size: 13px;
+  color: var(--txt-dim);
+}
+.empty__hint {
+  font-size: 12px;
+  color: var(--txt-faint);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--txt-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tab:hover {
+  color: var(--txt);
+}
+.tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--txt-dim);
+}
+.tbl th,
+.tbl td {
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+.tbl th {
+  color: var(--txt-faint);
+  font-weight: 600;
+}

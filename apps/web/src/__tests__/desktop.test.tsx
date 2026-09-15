@@ -1,0 +1,80 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
+
+import App from "../App";
+import { registerModules } from "@/kernel/ModuleRegistry";
+import { useDesktopStore, type DesktopState } from "@/kernel/store";
+import type { ModuleManifest } from "@/kernel/types";
+
+const mods: ModuleManifest[] = [
+  {
+    id: "mod-alpha",
+    name: "演示模块 · 甲",
+    version: "0.1.0",
+    kind: "builtin",
+    entry: "@mocks/alpha",
+    window: { w: 600, h: 400 },
+  },
+  {
+    id: "mod-beta",
+    name: "演示模块 · 乙",
+    version: "0.1.0",
+    kind: "builtin",
+    entry: "@mocks/beta",
+    window: { w: 600, h: 400 },
+  },
+  {
+    id: "mod-gamma",
+    name: "演示模块 · 丙",
+    version: "0.1.0",
+    kind: "builtin",
+    entry: "@mocks/gamma",
+    window: { w: 600, h: 400 },
+  },
+  {
+    id: "mod-delta",
+    name: "演示模块 · 丁",
+    version: "0.1.0",
+    kind: "builtin",
+    entry: "@mocks/delta",
+    window: { w: 600, h: 400, singleton: true },
+  },
+];
+
+beforeEach(() => {
+  localStorage.clear();
+  useDesktopStore.setState({
+    modules: {},
+    windows: [],
+    topZ: 10,
+    seq: 0,
+  } satisfies Partial<DesktopState> as unknown as DesktopState);
+});
+
+describe("桌面集成（mock 模块）", () => {
+  it("坞上渲染 4 个模块图标", () => {
+    registerModules(mods);
+    render(<App />);
+    expect(screen.getByLabelText("演示模块 · 甲")).toBeTruthy();
+    expect(screen.getByLabelText("演示模块 · 乙")).toBeTruthy();
+    expect(screen.getByLabelText("演示模块 · 丙")).toBeTruthy();
+    expect(screen.getByLabelText("演示模块 · 丁")).toBeTruthy();
+  });
+
+  it("点击坞图标开一扇窗", () => {
+    registerModules(mods);
+    render(<App />);
+    fireEvent.click(screen.getByLabelText("演示模块 · 甲"));
+    expect(useDesktopStore.getState().windows).toHaveLength(1);
+    expect(useDesktopStore.getState().windows[0].moduleId).toBe("mod-alpha");
+  });
+
+  it("单例模块重复点击不重复开窗（只聚焦）", () => {
+    registerModules(mods);
+    render(<App />);
+    fireEvent.click(screen.getByLabelText("演示模块 · 丁"));
+    fireEvent.click(screen.getByLabelText("演示模块 · 丁"));
+    const opened = useDesktopStore.getState().windows.filter((w) => w.moduleId === "mod-delta");
+    expect(opened).toHaveLength(1);
+  });
+});

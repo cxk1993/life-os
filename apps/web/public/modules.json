@@ -1,0 +1,62 @@
+[
+  {
+    "id": "mod-alpha",
+    "name": "演示模块 · 甲",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "甲",
+    "description": "占位演示模块，用于验证窗口系统的开窗 / 拖拽 / 缩放 / 聚焦 / 关闭。",
+    "entry": "@mocks/alpha",
+    "window": { "w": 720, "h": 460, "minW": 420, "minH": 300 }
+  },
+  {
+    "id": "mod-beta",
+    "name": "演示模块 · 乙",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "乙",
+    "description": "占位演示模块，用于验证多窗聚焦置顶。",
+    "entry": "@mocks/beta",
+    "window": { "w": 640, "h": 420, "minW": 400, "minH": 280 }
+  },
+  {
+    "id": "mod-gamma",
+    "name": "演示模块 · 丙",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "丙",
+    "description": "占位演示模块，用于验证几何持久化（刷新恢复）。",
+    "entry": "@mocks/gamma",
+    "window": { "w": 560, "h": 380, "minW": 360, "minH": 260 }
+  },
+  {
+    "id": "mod-delta",
+    "name": "演示模块 · 丁",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "丁",
+    "description": "单例演示模块，重复点击坞图标应聚焦而非重复开窗。",
+    "entry": "@mocks/delta",
+    "window": { "w": 800, "h": 520, "minW": 480, "minH": 320, "singleton": true }
+  },
+  {
+    "id": "mod-broken",
+    "name": "故障模块",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "!",
+    "description": "入口在求值阶段抛异常，用于验证「只该窗口占位、桌面不白屏」。",
+    "entry": "@mocks/broken",
+    "window": { "w": 480, "h": 300, "minW": 360, "minH": 240 }
+  },
+  {
+    "id": "mod-ghost",
+    "name": "缺失模块",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "?",
+    "description": "entry 指向不存在的文件，用于验证「模块缺失」时的容错占位。",
+    "entry": "@mocks/ghost",
+    "window": { "w": 480, "h": 300, "minW": 360, "minH": 240 }
+  }
+]
