@@ -16,14 +16,16 @@
 | `make` | 可选 | **没有也能用**，见下方说明 |
 | `docker` | 可选 | 只在服务器部署时需要，本机开发不需要 |
 
-> **没有 `make` 怎么办？** 完全没问题。本机的 Win11 就没有 make，
-> 所以项目入口的真实实现是跨平台脚本 `tools/task.py`，
-> 根目录 `Makefile` 只是它的薄壳。两条路等价：
+> **没有 `make` 也能用。** 项目入口的真实实现是跨平台脚本 `tools/task.py`，
+> 根目录 `Makefile` 只是它的薄壳。两条路**行为完全一致**：
 >
 > ```bash
-> make dev            # 有 make 的机器
-> python tools/task.py dev     # 没有 make 也能跑（推荐）
+> make dev                     # 有 make 的机器（本机已装 GNU Make 4.4.1）
+> python tools/task.py dev     # 任何机器都能跑（推荐，含 Windows 无 make 的情况）
 > ```
+>
+> 之所以这样设计：总纲 §4 雷区 #1/#2 不许假设目标机器有 `make` / `grep` / `wmic`，
+> 而真正要跑这个项目的不止一台机器（本机 Win11 / 服务器 Linux / 各个 agent 的会话）。
 
 ### 三条命令跑起来
 
