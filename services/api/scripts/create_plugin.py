@@ -214,8 +214,15 @@ _README = """# {name}（插件 id：`{plugin_id}`）
 
 
 def _write(path: Path, content: str) -> None:
+    """写文件。
+
+    ★ `newline="\\n"` 不是可有可无的：Windows 上 `Path.write_text()` 会把 `\\n`
+    翻译成 CRLF，而本仓库用 `.gitattributes` 强制 LF（`* text=auto eol=lf`），
+    prettier 也是 `endOfLine: lf`。少了这个参数，生成出来的每个文件都会让
+    `make lint` 的 `prettier --check` 报错 —— 即"按官方入口建插件，verify 必红"。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    path.write_text(content, encoding="utf-8", newline="\n")
 
 
 def create(plugin_id: str, name: str, kind: str, force: bool) -> int:
@@ -247,6 +254,7 @@ def create(plugin_id: str, name: str, kind: str, force: bool) -> int:
     (target / "manifest.json").write_text(
         json.dumps(_manifest(plugin_id, name, kind), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
     _write(target / "README.md", _README.format(**fmt))
 

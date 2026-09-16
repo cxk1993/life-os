@@ -346,7 +346,12 @@ def cmd_new_plugin(args: argparse.Namespace) -> None:
             "services/api/scripts/create_plugin.py 还不存在 —— 它是 T14（插件框架）的交付物。\n"
             "  T14 交付后本命令自动可用。"
         )
-    run([str(venv_python()), str(script), args.id, args.name], cwd=API)
+    # ★ 必须转发 --kind：create_plugin.py 的默认是 third-party
+    #   （落 `plugins/<id>/`，带 api/ 子目录），而内置业务插件要的是 builtin
+    #   （落 `services/api/modules/<id>/` + `apps/web/src/apps/<id>/`）。
+    #   早期版本漏了这个参数，于是内置卡的骨架全被生成成第三方布局：
+    #   多出 api/ 层、迁移落错位置、web 入口根本没生成。
+    run([str(venv_python()), str(script), args.id, args.name, "--kind", args.kind], cwd=API)
 
 
 def cmd_help(_: argparse.Namespace) -> None:
@@ -387,6 +392,12 @@ def main() -> None:
     p_np = sub.add_parser("new-plugin", help="生成新插件骨架")
     p_np.add_argument("--id", required=True, help="插件 id（小写英文，等于目录名）")
     p_np.add_argument("--name", required=True, help="插件中文名")
+    p_np.add_argument(
+        "--kind",
+        choices=["builtin", "third-party"],
+        default="builtin",
+        help="插件类型，默认 builtin（内置插件的骨架分落两处）",
+    )
     p_np.set_defaults(func=cmd_new_plugin)
 
     args = parser.parse_args()
