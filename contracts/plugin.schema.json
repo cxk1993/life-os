@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lifeos/contracts/plugin.schema.json",
+  "title": "Life-OS 插件清单（manifest）契约",
+  "description": "总纲 §1.3.1 插件清单全部字段。任何插件（core / builtin / third-party）都必须满足本契约。内核用本文件强校验，错误精确到字段。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "version",
+    "kind",
+    "kernelApi",
+    "api",
+    "provides",
+    "requires",
+    "slots",
+    "emits",
+    "consumes",
+    "permissions"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "全局唯一，小写英文，等于目录名、等于 URL 前缀。"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "界面显示的中文名。"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "三段式语义化版本。"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["core", "builtin", "third-party"],
+      "description": "core 不可禁用不可卸载；builtin 可禁用不可卸载；third-party 可禁用可卸载。"
+    },
+    "minKernel": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "要求的最低内核版本。"
+    },
+    "kernelApi": {
+      "type": "string",
+      "pattern": "^\\^?\\d+(\\.\\d+)?(\\.\\d+)?$",
+      "description": "要求的内核接口版本（如 ^1）。不兼容时明确拒绝加载，不许静默失败。"
+    },
+    "icon": {
+      "type": "string",
+      "description": "从内核图标表挑选的图标名。"
+    },
+    "description": {
+      "type": "string",
+      "description": "一句话描述（20 字内）。"
+    },
+    "author": {
+      "type": "string"
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["w", "h"],
+      "properties": {
+        "w": { "type": "integer", "minimum": 240 },
+        "h": { "type": "integer", "minimum": 200 },
+        "minW": { "type": "integer", "minimum": 240 },
+        "minH": { "type": "integer", "minimum": 200 },
+        "singleton": { "type": "boolean" },
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      }
+    },
+    "entry": {
+      "type": "string",
+      "description": "前端入口（内置插件约定 @apps/<id>；内核按此动态加载窗口组件）。"
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base"],
+      "properties": {
+        "base": {
+          "type": "string",
+          "pattern": "^/api/v1/[a-z][a-z0-9-]*$",
+          "description": "路由前缀，必须等于 /api/v1/<id>。"
+        },
+        "openapi": { "type": "string" },
+        "health": { "type": "string" }
+      }
+    },
+    "provides": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$" },
+      "description": "本插件对外提供的能力，格式 <id>.<名词>.<动作>（至少一段点分）。"
+    },
+    "requires": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$" },
+      "description": "本插件需要别人提供的能力；没写的能力调用会被拒。"
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "desktop.dock",
+          "desktop.widget",
+          "dashboard.card",
+          "topbar.action",
+          "calendar.block.renderer",
+          "calendar.overlay",
+          "inspector.panel",
+          "settings.page",
+          "search.provider",
+          "ai.tool",
+          "notification.channel",
+          "command.palette"
+        ]
+      },
+      "description": "本插件要挂到的扩展点（只能从已知 12 个里挑）。"
+    },
+    "emits": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "本插件会发出的事件，格式 <id>.<名词>.<过去式>。"
+    },
+    "consumes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "本插件会监听的事件。"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(db:own|db:read:[a-z][a-z0-9-]*|bridge:read|net:out:[a-z0-9.-]+|fs:plugin|notify:send)$"
+      },
+      "description": "声明式权限：db:own / db:read:<id> / bridge:read / net:out:<host> / fs:plugin / notify:send。"
+    },
+    "migrations": {
+      "type": ["string", "null"],
+      "description": "自带迁移目录（相对插件根）。无表则写 null。"
+    },
+    "settingsSchema": {
+      "type": ["string", "null"],
+      "description": "设置 JSON Schema 路径；无设置则写 null。"
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "onInstall": { "type": ["string", "null"] },
+        "onEnable": { "type": ["string", "null"] },
+        "onDisable": { "type": ["string", "null"] },
+        "onUninstall": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

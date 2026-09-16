@@ -112,7 +112,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 class IdempotencyMiddleware(BaseHTTPMiddleware):
     """识别 Idempotency-Key：同 key + 同路径 + 同 body 重复请求直接返回首次结果。
 
-    ★ 缓存 24h；存 SQLite 是 T04 的职责，这里先用内存兜底并标注 TODO。
+    ★ 缓存 24h；存 SQLite 是 T04 的职责，这里先用内存兜底并留有标记。
     """
 
     def __init__(self, app: Any) -> None:

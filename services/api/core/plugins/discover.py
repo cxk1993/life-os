@@ -1,0 +1,177 @@
+"""插件发现：扫描内置(services/api/modules/*) + 第三方(plugins/*) 的 manifest（总纲 §1.3）。
+
+★ 加载器对两者一视同仁——除了 uninstall 只对 third-party 开放（见 manager）。
+本模块只负责"找到 + 校验 + 标记来源"，不负责挂载（挂载归 ModuleRegistry）。
+
+校验三层：
+  1. JSON 合法；
+  2. 对照 contracts/plugin.schema.json 强校验（精确到字段）；
+  3. kernelApi 与当前内核接口版本兼容（不兼容明确拒绝，不许静默）。
+"""
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from core.errors import ManifestError
+from core.plugins.validate import validate_manifest
+from core.plugins.version import check_compatibility
+
+_API_ROOT = Path(__file__).resolve().parents[2]  # services/api/
+_DEFAULT_MODULES_DIR = _API_ROOT / "modules"
+_DEFAULT_PLUGINS_DIR = _API_ROOT.parent.parent / "plugins"  # 项目根/plugins
+
+
+@dataclass(frozen=True)
+class PluginInfo:
+    """一个被发现、且通过校验的插件。"""
+
+    id: str
+    kind: str  # core | builtin | third-party
+    source: str  # "builtin"(modules/) | "third-party"(plugins/)
+    manifest: dict[str, Any]
+    directory: Path
+
+
+@dataclass(frozen=True)
+class PluginError:
+    """一个被发现、但校验失败的插件（id 可能拿不到）。"""
+
+    directory: Path
+    source: str
+    message: str
+
+
+class DiscoveryResult:
+    def __init__(
+        self, plugins: list[PluginInfo], errors: list[PluginError]
+    ) -> None:
+        self.plugins = plugins
+        self.errors = errors
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+
+def _read_manifest(manifest_path: Path, source: str) -> tuple[dict[str, Any], PluginError | None]:
+    try:
+        raw_text = manifest_path.read_text(encoding="utf-8")
+        raw = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        return {}, PluginError(manifest_path.parent, source, f"manifest 不是合法 JSON：{exc}")
+    except OSError as exc:
+        return {}, PluginError(manifest_path.parent, source, f"读取 manifest 失败：{exc}")
+
+    if not isinstance(raw, dict):
+        return {}, PluginError(manifest_path.parent, source, "manifest 根必须是对象")
+
+    try:
+        validate_manifest(raw)
+    except Exception as exc:  # validate_manifest 抛 ManifestError；也兜底其它
+        return raw, PluginError(
+            manifest_path.parent, source, f"契约校验失败：{exc}"
+        )
+
+    pid = raw["id"]
+    dir_name = manifest_path.parent.name
+    if pid != dir_name:
+        return raw, PluginError(
+            manifest_path.parent,
+            source,
+            f"manifest.id={pid!r} 必须等于目录名 {dir_name!r}",
+        )
+
+    try:
+        check_compatibility(raw["kernelApi"])
+    except Exception as exc:
+        return raw, PluginError(manifest_path.parent, source, f"内核接口不兼容：{exc}")
+
+    return raw, None
+
+
+def _scan(root: Path, source: str) -> tuple[list[PluginInfo], list[PluginError]]:
+    plugins: list[PluginInfo] = []
+    errors: list[PluginError] = []
+    if not root.is_dir():
+        return plugins, errors
+    for sub in sorted(p for p in root.iterdir() if p.is_dir()):
+        manifest_path = sub / "manifest.json"
+        if not manifest_path.is_file():
+            continue
+        raw, err = _read_manifest(manifest_path, source)
+        if err is not None:
+            errors.append(err)
+            continue
+        plugins.append(
+            PluginInfo(
+                id=raw["id"],
+                kind=raw["kind"],
+                source=source,
+                manifest=raw,
+                directory=sub,
+            )
+        )
+    return plugins, errors
+
+
+def discover_plugins(
+    modules_dir: Path | None = None,
+    plugins_dir: Path | None = None,
+) -> DiscoveryResult:
+    """扫描内置与第三方插件，返回通过校验的插件列表 + 失败清单。"""
+    root = Path(modules_dir) if modules_dir else _DEFAULT_MODULES_DIR
+    plug = Path(plugins_dir) if plugins_dir else _DEFAULT_PLUGINS_DIR
+    builtins, b_errs = _scan(root, "builtin")
+    third_party, t_errs = _scan(plug, "third-party")
+    return DiscoveryResult(
+        plugins=builtins + third_party,
+        errors=b_errs + t_errs,
+    )
+
+
+def load_python_module_from_file(path: Path, module_name: str) -> Any:
+    """按文件路径加载一个 .py 模块（用于第三方插件的 router / models，不走包 import）。"""
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"无法加载插件模块：{path}")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def load_plugin_router(info: PluginInfo) -> Any:
+    """加载某插件的 APIRouter。
+
+    builtin/core：走内核的包 import（modules.<id>.router）。
+    third-party：按文件路径加载（plugins/<id>/api/router.py）。
+    """
+    if info.source == "third-party":
+        router_path = info.directory / "api" / "router.py"
+        if not router_path.is_file():
+            raise ManifestError(f"插件「{info.id}」缺少 api/router.py")
+        mod = load_python_module_from_file(
+            router_path, f"plugin_thirdparty_{info.id}_router"
+        )
+        router = getattr(mod, "router", None)
+        if router is None:
+            raise ManifestError(f"插件「{info.id}」router.py 未定义 router = APIRouter()")
+        return router
+    # builtin / core：复用内核的包 import 逻辑
+    import importlib
+
+    try:
+        mod = importlib.import_module(f"modules.{info.id}.router")
+    except ModuleNotFoundError as exc:
+        raise ManifestError(
+            f"插件「{info.id}」缺少 router.py（无法 import modules.{info.id}.router）：{exc}"
+        ) from exc
+    router = getattr(mod, "router", None)
+    if router is None:
+        raise ManifestError(f"插件「{info.id}」router.py 未定义 router = APIRouter()")
+    return router

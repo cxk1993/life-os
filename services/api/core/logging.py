@@ -21,6 +21,7 @@ trace_id_var: ContextVar[str] = ContextVar("trace_id", default="")
 # 敏感字段名：命中即整值打码。
 _SENSITIVE_KEY_RE = re.compile(
     r"(?i)^(password|passwd|pwd|secret|token|access_token|refresh_token|"
+    # purity-ok: beecount_pass 是上游服务的密码字段名，脱敏必需，不能删
     r"authorization|cookie|set_cookie|psk|api_key|apikey|beecount_pass|"
     r"cf_api_token)$"
 )

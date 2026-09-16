@@ -23,9 +23,14 @@ from pathlib import Path
 import pytest
 
 MODULES_DIR = Path(__file__).resolve().parents[1] / "modules"
+PLUGINS_DIR = Path(__file__).resolve().parents[3] / "plugins"   # 项目根/plugins
 
 # 测试专用的临时模块名（集中登记，便于一眼看出哪些是"不是真模块"的东西）
 LEFTOVER_PROBE_MODULES = ("t03probe",)
+
+# 测试专用的第三方插件目录前缀（T14 的插件测试会往 plugins/ 下造真插件，正常由
+# uninstall 删掉；但进程被强杀时 teardown 不执行，就会像下面这样留下来）
+LEFTOVER_PLUGIN_GLOBS = ("demo3p-*", "drillplug")
 
 
 def _clean_leftovers() -> None:
@@ -33,6 +38,10 @@ def _clean_leftovers() -> None:
         d = MODULES_DIR / name
         if d.exists():
             shutil.rmtree(d, ignore_errors=True)
+    for pattern in LEFTOVER_PLUGIN_GLOBS:
+        for d in PLUGINS_DIR.glob(pattern):
+            if d.is_dir():
+                shutil.rmtree(d, ignore_errors=True)
 
 
 @pytest.fixture(scope="session", autouse=True)

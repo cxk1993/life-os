@@ -114,7 +114,7 @@ def create_app(
         request: Request,
         topics: str | None = Query(
             default=None,
-            description="逗号分隔的 topic 模式，如 calendar.*,todo.*；留空收全部",
+            description="逗号分隔的 topic 模式，如 order.*,task.*；留空收全部",
         ),
     ) -> StreamingResponse:
         patterns = [t.strip() for t in (topics or "").split(",") if t.strip()]

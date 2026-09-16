@@ -1,0 +1,27 @@
+{
+  "id": "plugins",
+  "name": "插件管理",
+  "version": "0.1.0",
+  "kind": "core",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "api",
+  "description": "插件发现 / 生命周期 / 权限 / 迁移 / 设置 的管理接口（T14 内核侧暴露）",
+  "author": "yunxi",
+  "window": { "w": 720, "h": 520 },
+  "entry": "",
+  "api": {
+    "base": "/api/v1/plugins",
+    "openapi": "/api/v1/plugins/openapi.json",
+    "health": "/api/v1/plugins/health"
+  },
+  "provides": ["plugin.manage", "plugin.list", "plugin.enable", "plugin.disable", "plugin.install", "plugin.uninstall"],
+  "requires": [],
+  "slots": [],
+  "emits": ["plugin.installed", "plugin.enabled", "plugin.disabled", "plugin.uninstalled"],
+  "consumes": [],
+  "permissions": [],
+  "migrations": null,
+  "settingsSchema": null,
+  "lifecycle": { "onInstall": null, "onEnable": null, "onDisable": null, "onUninstall": null }
+}

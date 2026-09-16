@@ -66,6 +66,9 @@ exclude = [".venv", "__pycache__", "data"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+# FastAPI 的依赖注入 `Depends(...)` / `Body(...)` 写在参数默认值里会触发 B008，
+# 但这是 FastAPI 的标准用法，并非真问题，故在后端全局忽略。
+ignore = ["B008"]
 
 # ────────────────────────────── mypy ──────────────────────────────
 [tool.mypy]
