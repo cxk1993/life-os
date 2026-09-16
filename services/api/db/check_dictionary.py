@@ -17,8 +17,6 @@ from typing import Any
 from sqlalchemy import String, Text
 from sqlalchemy.types import Boolean, DateTime, Integer, TypeDecorator
 
-from db.base import Base
-
 _DICT_PATH = Path(__file__).resolve().parents[3] / "contracts" / "data-dictionary.md"
 
 _ROW_RE = re.compile(r"^\|\s*([a-z_]+)\s*\|\s*([a-z_]+)\s*\|\s*([a-z()\d ]+?)\s*\|")
@@ -71,14 +69,41 @@ def parse_dictionary(path: Path | None = None) -> dict[str, dict[str, dict[str, 
     return tables
 
 
-def compare(path: Path | None = None) -> tuple[bool, list[str]]:
-    """（是否一致, 差异列表）。模型以 Base.metadata 为准绳，双向核对。"""
-    from db import models  # noqa: F401  导入即注册内核表
+def _kernel_tables() -> dict[str, Any]:
+    """内核表：**只认 `db/models` 里声明的模型**（返回 {表名: Table}）。
 
+    ★ 为什么不能用 `Base.metadata.tables` 全量比对：
+
+    SQLModel/SQLAlchemy 的 `Base.metadata` 是**进程级全局**的。插件模型只要在
+    本进程里被 import 过一次（插件 router 会 import 自己的 models，这是常态），
+    就会落进同一个 metadata。于是「模型有而字典未登记」这道守卫会**对着插件表报错**
+    ——而插件表本来就登记在字典的「业务表」一节，根本不该参与内核表的逐字段比对。
+    这与本模块自己的 docstring（"比对「内核表」一节与 db/models 的 SQLModel 元数据"）
+    也自相矛盾。
+
+    **实际后果（2026-09-16 踩到）**：pytest 按字母序收集，`tests/test_<插件>.py`
+    排在 `tests/test_db.py` 之前 → 插件模型先被 import → `test_db.py::
+    test_dictionary_matches_models` 失败（`模型有而字典未登记：calendar_event`，
+    而 calendar_event 其实早在 `contracts/data-dictionary.md` 的业务表一节登记过）。
+    等于**每张业务卡都会让基座测试变红**，且原因与自己无关。
+    """
+    from db import models as kernel_models
+
+    tables: dict[str, Any] = {}
+    for name in kernel_models.__all__:
+        table = getattr(getattr(kernel_models, name), "__table__", None)
+        if table is not None:
+            tables[table.name] = table
+    return tables
+
+
+def compare(path: Path | None = None) -> tuple[bool, list[str]]:
+    """（是否一致, 差异列表）。模型以 db/models 的内核模型为准绳，双向核对。"""
     dict_tables = parse_dictionary(path)
     diffs: list[str] = []
 
-    meta_tables = set(Base.metadata.tables)
+    kernel_tables = _kernel_tables()
+    meta_tables = set(kernel_tables)
     dict_table_names = set(dict_tables)
     for t in sorted(meta_tables - dict_table_names):
         diffs.append(f"模型有而字典未登记：{t}")
@@ -86,7 +111,7 @@ def compare(path: Path | None = None) -> tuple[bool, list[str]]:
         diffs.append(f"字典有而模型不存在：{t}")
 
     for t in sorted(meta_tables & dict_table_names):
-        model_cols = Base.metadata.tables[t].columns
+        model_cols = kernel_tables[t].columns
         dict_cols = dict_tables[t]
         for c in model_cols:
             if c.name not in dict_cols:
