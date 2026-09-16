@@ -1,0 +1,50 @@
+{
+  "id": "calendar",
+  "name": "日程表",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "box",
+  "description": "横轴天、纵轴小时的可嵌套日程表",
+  "author": "yunxi",
+  "window": {
+    "w": 960,
+    "h": 620,
+    "minW": 520,
+    "minH": 380,
+    "singleton": false
+  },
+  "entry": "@apps/calendar",
+  "api": {
+    "base": "/api/v1/calendar",
+    "openapi": "/api/v1/calendar/openapi.json",
+    "health": "/api/v1/calendar/health"
+  },
+  "provides": [
+    "calendar.event.read",
+    "calendar.event.write",
+    "calendar.slot.free"
+  ],
+  "requires": [],
+  "slots": [
+    "dashboard.card"
+  ],
+  "emits": [
+    "calendar.event.created",
+    "calendar.event.updated",
+    "calendar.event.deleted"
+  ],
+  "consumes": [],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}
