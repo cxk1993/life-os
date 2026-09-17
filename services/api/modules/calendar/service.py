@@ -8,10 +8,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from core.errors import NotFoundError, ValidationError
 
@@ -62,7 +63,7 @@ class CalendarService:
             "children": children if children is not None else [],
         }
 
-    def _build_tree(self, rows: list[CalendarEvent]) -> list[dict[str, Any]]:
+    def _build_tree(self, rows: Sequence[CalendarEvent]) -> list[dict[str, Any]]:
         """一次查询的结果组装成树，禁止 N+1。"""
         by_id = {r.id: r for r in rows}
         children_map: dict[str, list[CalendarEvent]] = {}
@@ -122,7 +123,7 @@ class CalendarService:
             if not frontier:
                 break
             kids = self.db.exec(
-                select(CalendarEvent).where(CalendarEvent.parent_id.in_(frontier))
+                select(CalendarEvent).where(col(CalendarEvent.parent_id).in_(frontier))
             ).all()
             rows.extend(kids)
             frontier = [k.id for k in kids]
@@ -329,7 +330,9 @@ class CalendarService:
         ).all()
         for c in kids:
             self._delete_subtree(c.id)
-        self.db.delete(self.db.get(CalendarEvent, event_id))  # type: ignore[arg-type]
+        ev = self.db.get(CalendarEvent, event_id)
+        if ev is not None:
+            self.db.delete(ev)
 
     def delete(self, event_id: str) -> None:
         ev = self.db.get(CalendarEvent, event_id)
@@ -350,7 +353,7 @@ class CalendarService:
             select(CalendarEvent).where(
                 CalendarEvent.start_at < day_end,
                 CalendarEvent.end_at > day_start,
-                CalendarEvent.parent_id.is_(None),
+                col(CalendarEvent.parent_id).is_(None),
             )
         ).all()
         busy = sorted(

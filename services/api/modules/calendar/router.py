@@ -8,9 +8,13 @@ HTTP 契约（全项目统一，不许自创）：
 ★ 不自己捕获异常包成自定义格式，内核统一处理。
 ★ 事件总线：写操作 publish 到 event_bus，内核 SSE（/api/v1/events/subscribe）自动下推。
 ★ 内部一律用包路径导入（from modules.calendar.xxx import ...），不要相对导入。
+★ 路径参数用 Annotated[str, FPath(...)]（不是 = FPath(...)）：
+  后者是「带默认值的参数」，会逼后面的 body 也必须给默认值，mypy 报
+  non-default argument follows default argument；前者没有默认值，body 可以必填。
+★ 本文件**不要**加 `from __future__ import annotations`：
+  它会把 `-> None` 变成字符串 "None" → get_type_hints 得到 NoneType（truthy）
+  → FastAPI 认为 204 带了响应体 → 整个后端起不来。
 """
-from __future__ import annotations
-
 import json
 from datetime import datetime
 from pathlib import Path
@@ -36,8 +40,6 @@ with _MANIFEST_PATH.open(encoding="utf-8") as _f:
     _MANIFEST = json.load(_f)
 
 # ★ 依赖别名**只做类型**，不要把 Depends 塞进 Annotated：
-#   塞进去之后参数就不能写 = None（mypy 报 Incompatible default），
-#   也不能省略默认值（依赖参数排在带默认值的查询参数之后 → SyntaxError）。
 #   标准写法：db: Session = Depends(get_db)，FastAPI 与 mypy 都满意。
 DbDep = Session
 UserDep = User
@@ -84,7 +86,7 @@ def create_event(
 
 @router.get("/events/{event_id}", response_model=EventOut)
 def get_event(
-    event_id: str = FPath(...),
+    event_id: Annotated[str, FPath(...)],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
@@ -93,8 +95,8 @@ def get_event(
 
 @router.patch("/events/{event_id}", response_model=EventOut)
 def update_event(
-    event_id: str = FPath(...),
-    body: EventUpdate = None,
+    event_id: Annotated[str, FPath(...)],
+    body: EventUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
@@ -105,16 +107,10 @@ def update_event(
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
-    event_id: str = FPath(...),
+    event_id: Annotated[str, FPath(...)],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-):
-    # ★ 这里**故意不写 `-> None`**：本文件有 `from __future__ import annotations`，
-    #   于是 `-> None` 会以字符串 "None" 存在，get_type_hints 把它解析成 `NoneType`，
-    #   而 NoneType 是 truthy ⇒ FastAPI 认为"204 带了响应体"，在建路由时直接
-    #   AssertionError: Status code 204 must not have a response body，
-    #   导致**整个后端起不来**（不止本插件）。
-    #   不写返回注解（或写 `-> None` 且去掉 future import）才安全。
+) -> None:
     CalendarService(db).delete(event_id)
     _emit("calendar.event.deleted", {"id": event_id})
 
@@ -125,8 +121,8 @@ def delete_event(
     status_code=status.HTTP_201_CREATED,
 )
 def add_child(
-    event_id: str = FPath(...),
-    body: EventCreate = None,
+    event_id: Annotated[str, FPath(...)],
+    body: EventCreate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
@@ -137,9 +133,9 @@ def add_child(
 
 @router.patch("/events/{event_id}/children/{child_id}", response_model=EventOut)
 def update_child(
-    event_id: str = FPath(...),
-    child_id: str = FPath(...),
-    body: EventUpdate = None,
+    event_id: Annotated[str, FPath(...)],
+    child_id: Annotated[str, FPath(...)],
+    body: EventUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
@@ -153,12 +149,11 @@ def update_child(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_child(
-    event_id: str = FPath(...),
-    child_id: str = FPath(...),
+    event_id: Annotated[str, FPath(...)],
+    child_id: Annotated[str, FPath(...)],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-):
-    # 同 delete_event：204 端点不许带（哪怕是注解推导出来的）响应模型。
+) -> None:
     CalendarService(db).delete_child(event_id, child_id)
     _emit("calendar.event.deleted", {"id": child_id, "parent_id": event_id})
 

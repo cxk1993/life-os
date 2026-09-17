@@ -45,4 +45,6 @@ class CalendarEvent(PkMixin, TimestampMixin, SQLModel, table=True):
     source: str = Field(default="manual", max_length=16, index=True)
     external_ref: str | None = Field(default=None, max_length=200)
     location: str | None = Field(default=None, max_length=200)
-    note: str | None = Field(default=None, sa_column=SAText)
+    # 长文本备注：用 sa_type=（类型本身），不用 sa_column=（要 Column 实例，
+    # 且多表继承时会撞 "Column object already assigned to Table"）。
+    note: str | None = Field(default=None, sa_type=SAText)
