@@ -6,11 +6,14 @@
   "minKernel": "0.1.0",
   "kernelApi": "^1",
   "icon": "box",
-  "description": "习惯打卡（由 create_plugin.py 生成，请补全 description）",
+  "description": "习惯打卡与连续天数追踪，支持休息日不破连击",
   "author": "yunxi",
   "window": {
     "w": 720,
-    "h": 520
+    "h": 520,
+    "minW": 420,
+    "minH": 320,
+    "singleton": false
   },
   "entry": "@apps/habits",
   "api": {
@@ -18,10 +21,22 @@
     "openapi": "/api/v1/habits/openapi.json",
     "health": "/api/v1/habits/health"
   },
-  "provides": [],
+  "provides": [
+    "habits.habit.read",
+    "habits.habit.write",
+    "habits.log.write"
+  ],
   "requires": [],
-  "slots": [],
-  "emits": [],
+  "slots": [
+    "dashboard.card"
+  ],
+  "emits": [
+    "habits.habit.created",
+    "habits.habit.updated",
+    "habits.habit.deleted",
+    "habits.log.checked",
+    "habits.log.unchecked"
+  ],
   "consumes": [],
   "permissions": [
     "db:own"

@@ -1,0 +1,144 @@
+/*
+ * 习惯打卡样式。只使用设计令牌 var(--xxx)，不写死颜色。
+ */
+
+.habits-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+}
+
+.habits-add {
+  display: flex;
+  gap: var(--sp-2);
+}
+.habits-add__input {
+  flex: 1;
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+}
+.habits-add__input::placeholder {
+  color: var(--txt-faint);
+}
+.habits-add__input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.habits-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow: auto;
+  flex: 1;
+}
+
+.habit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.habit-row--done {
+  border-color: var(--accent);
+}
+.habit-row--rest {
+  opacity: 0.55;
+}
+
+.habit-row__check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: transparent;
+  color: var(--txt-faint);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.habit-row__check--done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+}
+.habit-row__check:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.habit-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.habit-row__name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.habit-row__meta {
+  display: flex;
+  gap: var(--sp-2);
+  font-size: 12px;
+  color: var(--txt-faint);
+  flex-wrap: wrap;
+}
+.habit-row__streak {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.habit-row__del {
+  opacity: 0;
+  flex-shrink: 0;
+}
+.habit-row:hover .habit-row__del,
+.habit-row__del:focus-visible {
+  opacity: 1;
+}
+.habit-row__del:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* dashboard 卡片 */
+.habits-dash__stats {
+  display: flex;
+  gap: var(--sp-4);
+}
+.habits-dash__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.habits-dash__num {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--txt);
+}
+.habits-dash__lbl {
+  font-size: 11px;
+  color: var(--txt-faint);
+}

@@ -13,7 +13,7 @@
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date as DateType
 
 from sqlalchemy import Date
 from sqlalchemy import Text as SAText
@@ -58,10 +58,12 @@ class HabitLog(PkMixin, TimestampMixin, table=True):
     habit_id: str = Field(
         max_length=32, index=True, foreign_key="habits_habit.id"
     )
-    # 「日期」语义：本地日历日，不是带时区时刻
-    date: date = Field(sa_type=Date, index=True)
+    # 「日期」语义：本地日历日，不是带时区时刻。
+    # 字段名不能叫 date（会与 datetime.date 类型注解撞名，Pydantic 直接拒绝建模）。
+    date: DateType = Field(sa_type=Date, index=True)
     # 实际值（时长 / 次数 / 任意文本）；普通打卡留空
     value: str = Field(default="", max_length=120)
-    note: str | None = Field(default=None, sa_column=SAText)
+    # 长文本备注：sa_type= 传类型本身（与 calendar 同款，sa_column 要 Column 实例）
+    note: str | None = Field(default=None, sa_type=SAText)
     # 这天是请假 / 休息日（不算完成但也不破 streak）
     is_rest: bool = Field(default=False)

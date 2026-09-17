@@ -1,11 +1,18 @@
-/** 习惯打卡 —— 内置插件的前端入口（T14 的加载器按 manifest.entry 加载它）。 */
-export function Component() {
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-semibold">习惯打卡</h2>
-      <p className="text-sm opacity-70">由 create_plugin.py 生成，请把界面写在这里。</p>
-    </div>
-  );
-}
+/**
+ * 习惯打卡插件入口（T14 加载器按 manifest.entry = "@apps/habits" 加载）。
+ */
+import type { ComponentType } from "react";
+import HabitsApp from "./HabitsApp";
+import DashboardCard from "./slots/DashboardCard";
+import "./habits.css";
 
-export default { Component };
+const PluginModule = {
+  manifestId: "habits",
+  Component: HabitsApp as ComponentType,
+  slots: {
+    "dashboard.card": DashboardCard as ComponentType,
+  },
+};
+
+export default PluginModule;
+export { HabitsApp, DashboardCard };
