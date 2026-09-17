@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlmodel import Session, select
@@ -35,7 +35,7 @@ def to_utc(value: str | datetime) -> datetime:
         dt = value
     if dt.tzinfo is None:
         raise ValidationError("时间必须带时区，例如 2026-09-15T08:00:00+08:00")
-    return dt.astimezone(timezone.utc)
+    return dt.astimezone(UTC)
 
 
 class CalendarService:
@@ -43,7 +43,9 @@ class CalendarService:
         self.db = db
 
     # ─────────────────────────────── 读 ───────────────────────────────
-    def _dump(self, ev: CalendarEvent, children: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    def _dump(
+        self, ev: CalendarEvent, children: list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         return {
             "id": ev.id,
             "title": ev.title,

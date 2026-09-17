@@ -2,7 +2,7 @@
 
 - **提出者**：编排者（云昔）
 - **影响谁**：T05 / T06 / T07 / T08 / T10 / T12（以及后续 T09 / T11 / T13）
-- **状态**：open
+- **状态**：**fixed**（2026-09-16 源头修复并重装配，见文末「修复记录」）
 - **优先级**：**blocker**（每张业务卡都会因此无法让 `make verify` 变绿）
 - **日期**：2026-09-16
 
@@ -68,3 +68,20 @@ contracts/modules/calendar.manifest.json
 2. 抽查 T05/T06 投喂包第 4.1 节，确认两个共享路径已列出且措辞是"追加、不覆盖"；
 3. 用一张卡实际走一遍：它应当能在不越界的前提下写出 `tests/test_<id>.py`
    并让 `pytest tests/test_<id>.py` 跑起来。
+
+---
+
+## 修复记录（2026-09-16，编排者）
+
+按"改任务卡源头 + 重跑装配"的路子落实，**没有放宽任何铁律**：
+
+| 改动 | 内容 |
+|:--|:--|
+| `任务卡/T05–T12`（8 张卡 × 3 处） | `owner_dir` 与交付物清单里的旧路径 `contracts/modules/<id>.manifest.json` 全部替换为 `services/api/tests/test_<id>.py, contracts/data-dictionary.md` |
+| `任务书_总纲_v0.1.md` §3.5 交接物清单 | manifest 改为真实路径（生成器产出）；补两个共享文件条目 + 追加-only 纪律说明 |
+| `模板包/5_验收与自检模板.md` | `check_files.sh` 原来要求 `modules/<id>/api/router.py`（旧双层布局，T06 的 `api/` 目录就是这么被逼出来的）与 `contracts/modules/$ID.manifest.json` —— 全部改为 T14 实际生成的单层布局；新增数据字典登记的软检查；§1.3 越界 grep 同步更新 |
+| `_tools/build_feeds.py` | ① §4.1 对插件卡注入"共享文件追加权"三行细则；② 卡片信息表新增"共享文件（只许追加）"一行；③ `HANDOFF_PLUGIN` 注入第 4 批 4 条框架事实（生成器真实路径 / manifest 真相 / 204+`-> None` / 相对导入的精确边界）；④ 新增 `HANDOFF_RESUME_4`：六张卡各自的断点续跑备忘 |
+| 重跑装配 | `python _tools/build_feeds.py` → 29 个文件重新生成；`contracts/modules` 残留清零（剩下的全是有意的"此路已作废"警示） |
+
+**遗留**：修复后这些卡片正文是源头真相；第 4 批六张卡的工作区 WIP 不受影响（它们的边界授权
+以**新投喂包**为准，续跑时按新边界执行）。`HANDOFF_RESUME_4` 在整卡交付后要删。

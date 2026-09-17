@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,11 +25,11 @@ class EventOut(BaseModel):
     all_day: bool
     span_days: int
     source: str
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     sort: int
-    location: Optional[str] = None
-    note: Optional[str] = None
-    children: list["EventOut"] = Field(default_factory=list)
+    location: str | None = None
+    note: str | None = None
+    children: list[EventOut] = Field(default_factory=list)
 
 
 class EventCreate(BaseModel):
@@ -41,27 +40,27 @@ class EventCreate(BaseModel):
     end_at: datetime
     color: str = "var(--accent)"
     all_day: bool = False
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     span_days: int = 1
     source: str = "manual"
     sort: int = 0
-    location: Optional[str] = None
-    note: Optional[str] = None
-    children: list["EventCreate"] = Field(default_factory=list)
+    location: str | None = None
+    note: str | None = None
+    children: list[EventCreate] = Field(default_factory=list)
 
 
 class EventUpdate(BaseModel):
     """改标题/颜色/时间/跨天等。返回受影响子块的钳制后坐标（体现在响应树里）。"""
 
-    title: Optional[str] = Field(default=None, max_length=200)
-    color: Optional[str] = None
-    start_at: Optional[datetime] = None
-    end_at: Optional[datetime] = None
-    all_day: Optional[bool] = None
-    span_days: Optional[int] = None
-    sort: Optional[int] = None
-    location: Optional[str] = None
-    note: Optional[str] = None
+    title: str | None = Field(default=None, max_length=200)
+    color: str | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    all_day: bool | None = None
+    span_days: int | None = None
+    sort: int | None = None
+    location: str | None = None
+    note: str | None = None
 
 
 class FreeSlotOut(BaseModel):

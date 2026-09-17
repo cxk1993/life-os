@@ -35,3 +35,6 @@ Thumbs.db
 # vite 每次加载 vite.config.ts 都会生成的临时副本（每次 make verify 都会刷新，
 # 不清掉的话会不停挤进 git status —— 实测漏了 10 个进来）
 apps/web/vite.config.ts.timestamp-*.mjs
+
+# Windows 保留设备名，git 无法索引（Git Bash 下 ">nul" 产生）
+nul

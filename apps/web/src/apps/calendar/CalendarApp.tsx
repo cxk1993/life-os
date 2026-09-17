@@ -1,0 +1,304 @@
+/**
+ * 日程表主应用（插件入口组件）。
+ * 组合：工具栏（视图切换 / 缩放 / 回到现在 / 新建）+ 时间网格（日·周）或月历 + 右侧 Inspector
+ * + 全局 Toast。
+ *
+ * 数据一律来自 useCalendarEvents（TanStack Query 拉取 + SSE 增量合并 + 乐观更新/回滚）。
+ * 所有写请求经 api.ts 自带 Idempotency-Key，对接真实后端，不使用任何 mock。
+ */
+
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { EventCreate, EventPatch } from "./api";
+import { useCalendarEvents } from "./hooks/useCalendarEvents";
+import "./calendar.css";
+import { TimeGrid } from "./grid/TimeGrid";
+import { MonthGrid } from "./grid/MonthGrid";
+import { Inspector } from "./inspector/Inspector";
+import { useCalendarUI, SCALE_PRESETS, useToast } from "./state";
+import { addDays, startOfDay } from "./lib/time";
+
+function mondayOf(d: Date): Date {
+  const wd = (d.getDay() + 6) % 7; // 周一=0
+  return addDays(startOfDay(d), -wd);
+}
+function monthGridStart(anchor: Date): Date {
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const wd = (first.getDay() + 6) % 7;
+  return addDays(startOfDay(first), -wd);
+}
+
+/** 测量元素宽度（用于让网格列宽自适应容器）。 */
+function useElementWidth<T extends HTMLElement>(): [React.RefObject<T>, number] {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setW(el.clientWidth);
+    measure();
+    // jsdom 等环境无 ResizeObserver：仅测量一次即可（不影响真实浏览器行为）。
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w];
+}
+
+const DEFAULT_COLOR = "var(--accent)";
+
+export function CalendarApp() {
+  const {
+    view,
+    hourHeight,
+    selectedId,
+    scrollToNowTick,
+    setView,
+    setHourHeight,
+    select,
+    requestScrollToNow,
+  } = useCalendarUI();
+  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const [areaRef, areaW] = useElementWidth<HTMLDivElement>();
+
+  // 可见范围：随视图变化
+  const { weekStart, weekDays, range } = useMemo(() => {
+    if (view === "day") {
+      const ws = startOfDay(anchor);
+      return {
+        weekStart: ws,
+        weekDays: 1,
+        range: { from: ws.toISOString(), to: addDays(ws, 1).toISOString() },
+      };
+    }
+    if (view === "month") {
+      const ws = monthGridStart(anchor);
+      return {
+        weekStart: ws,
+        weekDays: 7,
+        range: { from: ws.toISOString(), to: addDays(ws, 42).toISOString() },
+      };
+    }
+    const ws = mondayOf(anchor);
+    return {
+      weekStart: ws,
+      weekDays: 7,
+      range: { from: ws.toISOString(), to: addDays(ws, 7).toISOString() },
+    };
+  }, [view, anchor]);
+
+  const data = useCalendarEvents(range);
+  const events = data.events;
+
+  // 列宽自适应：网格宽 = 容器宽 - 左侧时间轴(64) - 滚动条余量
+  const dayWidth = Math.max(96, Math.floor((areaW - 64 - 2) / weekDays));
+
+  const selected = useMemo(
+    () => events.find((e) => e.id === selectedId) ?? null,
+    [events, selectedId],
+  );
+  const parentOfSelected = useMemo(() => {
+    if (!selected?.parent_id) return null;
+    return events.find((e) => e.id === selected.parent_id) ?? null;
+  }, [selected, events]);
+
+  // —— 各类写操作 → 对应 mutation ——
+  const handleMove = useCallback(
+    (id: string, start: string, end: string, spanDays: number) =>
+      data.updateEvent.mutate({ id, patch: { start_at: start, end_at: end, span_days: spanDays } }),
+    [data],
+  );
+  const handleResize = useCallback(
+    (id: string, _mode: "bottom" | "right", start: string, end: string, spanDays: number) =>
+      data.updateEvent.mutate({ id, patch: { start_at: start, end_at: end, span_days: spanDays } }),
+    [data],
+  );
+  const handlePatch = useCallback(
+    (id: string, patch: EventPatch) => data.updateEvent.mutate({ id, patch }),
+    [data],
+  );
+  const handlePatchChild = useCallback(
+    (parentId: string, childId: string, patch: EventPatch) =>
+      data.updateChild.mutate({ parentId, childId, patch }),
+    [data],
+  );
+  const handleCreate = useCallback(
+    (startISO: string, endISO: string) => {
+      const input: EventCreate = {
+        title: "新事项",
+        start_at: startISO,
+        end_at: endISO,
+        color: DEFAULT_COLOR,
+      };
+      data.createEvent.mutate(input);
+    },
+    [data],
+  );
+  const handleCreateAt = useCallback(
+    (startISO: string) => {
+      const s = new Date(startISO);
+      const e = new Date(s.getTime() + 60 * 60 * 1000);
+      data.createEvent.mutate({
+        title: "新事项",
+        start_at: s.toISOString(),
+        end_at: e.toISOString(),
+        color: DEFAULT_COLOR,
+      });
+    },
+    [data],
+  );
+  const handleAddChild = useCallback(
+    (parentId: string, input: { title: string; start_at: string; end_at: string }) =>
+      data.addChild.mutate({ parentId, input: { ...input, color: DEFAULT_COLOR } }),
+    [data],
+  );
+  const handleDelete = useCallback(
+    (id: string) => {
+      if (parentOfSelected && selected?.id === id) {
+        data.deleteChild.mutate({ parentId: parentOfSelected.id, childId: id });
+      } else {
+        data.deleteEvent.mutate(id);
+      }
+      select(null);
+    },
+    [data, parentOfSelected, selected, select],
+  );
+  const handleDeleteChild = useCallback(
+    (parentId: string, childId: string) => data.deleteChild.mutate({ parentId, childId }),
+    [data],
+  );
+
+  const toasts = useToast((s) => s.toasts);
+
+  return (
+    <div className="cal-app">
+      <div className="cal-toolbar">
+        <div className="cal-toolbar-group">
+          <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>
+            日
+          </button>
+          <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>
+            周
+          </button>
+          <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>
+            月
+          </button>
+        </div>
+
+        <div className="cal-toolbar-group">
+          <span className="cal-toolbar-label">缩放</span>
+          {SCALE_PRESETS.map((p) => (
+            <button
+              key={p.hourHeight}
+              className={hourHeight === p.hourHeight ? "active" : ""}
+              onClick={() => setHourHeight(p.hourHeight)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="cal-toolbar-group">
+          <button onClick={requestScrollToNow}>回到现在</button>
+          <button
+            onClick={() => {
+              const s = new Date();
+              s.setMinutes(0, 0, 0);
+              const e = new Date(s.getTime() + 60 * 60 * 1000);
+              handleCreate(s.toISOString(), e.toISOString());
+            }}
+          >
+            + 新建
+          </button>
+          <button
+            onClick={() =>
+              setAnchor((a) =>
+                view === "month"
+                  ? new Date(a.getFullYear(), a.getMonth() - 1, 1)
+                  : addDays(a, view === "week" ? -7 : -1),
+              )
+            }
+          >
+            ‹
+          </button>
+          <button
+            onClick={() =>
+              setAnchor((a) =>
+                view === "month"
+                  ? new Date(a.getFullYear(), a.getMonth() + 1, 1)
+                  : addDays(a, view === "week" ? 7 : 1),
+              )
+            }
+          >
+            ›
+          </button>
+          <button onClick={() => setAnchor(new Date())}>今天</button>
+        </div>
+
+        <div className="cal-toolbar-group cal-toolbar-status">
+          {data.isLoading ? <span>加载中…</span> : null}
+          {data.error ? <span className="cal-err">加载失败</span> : null}
+        </div>
+      </div>
+
+      <div className="cal-main">
+        <div className="cal-grid-area" ref={areaRef}>
+          {view === "month" ? (
+            <MonthGrid
+              events={events}
+              anchor={anchor}
+              selectedId={selectedId}
+              onSelect={select}
+              onCreateAt={handleCreateAt}
+            />
+          ) : (
+            <TimeGrid
+              events={events}
+              weekStart={weekStart}
+              weekDays={weekDays}
+              hourHeight={hourHeight}
+              dayWidth={dayWidth}
+              selectedId={selectedId}
+              onCreate={handleCreate}
+              onSelect={select}
+              onMove={handleMove}
+              onResize={handleResize}
+              onRename={(id, title) => handlePatch(id, { title })}
+              onColor={(id, color) => handlePatch(id, { color })}
+              onFocus={(id) => select(id)}
+              onAddChild={(id) => {
+                const parent = events.find((e) => e.id === id);
+                const s = parent ? parent.start_at : new Date().toISOString();
+                const eEnd = parent
+                  ? parent.end_at
+                  : new Date(Date.now() + 3_600_000).toISOString();
+                handleAddChild(id, { title: "新子块", start_at: s, end_at: eEnd });
+              }}
+              onDelete={handleDelete}
+              scrollSignal={scrollToNowTick}
+            />
+          )}
+        </div>
+
+        <Inspector
+          selected={selected}
+          parentOfSelected={parentOfSelected}
+          onPatch={handlePatch}
+          onPatchChild={handlePatchChild}
+          onAddChild={handleAddChild}
+          onDelete={handleDelete}
+          onDeleteChild={handleDeleteChild}
+          onSelect={select}
+        />
+      </div>
+
+      <div className="cal-toasts">
+        {toasts.map((t) => (
+          <div key={t.id} className={`cal-toast ${t.type}`}>
+            {t.msg}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

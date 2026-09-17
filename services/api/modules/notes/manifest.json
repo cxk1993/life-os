@@ -1,0 +1,37 @@
+{
+  "id": "notes",
+  "name": "笔记",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "box",
+  "description": "笔记（由 create_plugin.py 生成，请补全 description）",
+  "author": "yunxi",
+  "window": {
+    "w": 720,
+    "h": 520
+  },
+  "entry": "@apps/notes",
+  "api": {
+    "base": "/api/v1/notes",
+    "openapi": "/api/v1/notes/openapi.json",
+    "health": "/api/v1/notes/health"
+  },
+  "provides": [],
+  "requires": [],
+  "slots": [],
+  "emits": [],
+  "consumes": [],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

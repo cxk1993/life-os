@@ -1,0 +1,41 @@
+# 本机笔记桥配置（跑在主人 Windows 上）
+#
+# ★ PSK（预共享密钥）不要写在这里的明文。生产由 nssm 服务环境注入 BRIDGE_PSK，
+#   桥读取优先级：环境变量 BRIDGE_PSK > 下面的 psk 字段（仅本地开发兜底）。
+#   同步改到服务器侧 .env 的 BRIDGE_PSK，两侧必须一致。
+psk: ""
+
+# 四个笔记库（主人真实路径）
+libs:
+  - id: main
+    name: 主仓库
+    path: "./vault/笔记软件/obsidian/主仓库"
+    mode: ro            # 默认只读
+    enabled: true
+    include: ["**/*.md"]
+    exclude: []
+
+  - id: review
+    name: work review 日报
+    path: "./vault/笔记软件/obsidian/主仓库/work review日报"
+    mode: ro
+    enabled: true
+    include: ["**/*.md"]
+    exclude: []
+
+  - id: undo
+    name: 复盘
+    path: "./vault/笔记软件/obsidian/主仓库/复盘"
+    mode: ro
+    enabled: true
+    include: ["**/*.md"]
+    exclude: []
+
+  # 云昔专用文件夹：默认关，主人自行打开
+  - id: claude
+    name: 云昔专用文件夹
+    path: "./vault/笔记软件/obsidian/主仓库/云昔专用文件夹"
+    mode: ro
+    enabled: false
+    include: ["**/*.md"]
+    exclude: []

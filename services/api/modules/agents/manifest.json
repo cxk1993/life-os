@@ -1,0 +1,53 @@
+{
+  "id": "agents",
+  "name": "AI 编排",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "bot",
+  "description": "AI 编排控制台 · 任务块分发（把一句话目标拆成任务块、派给 agent、实时看进度、收回报）",
+  "author": "yunxi",
+  "window": {
+    "w": 980,
+    "h": 680,
+    "minW": 640,
+    "minH": 480,
+    "singleton": false
+  },
+  "entry": "@apps/agents",
+  "api": {
+    "base": "/api/v1/agents",
+    "openapi": "/api/v1/agents/openapi.json",
+    "health": "/api/v1/agents/health"
+  },
+  "provides": [
+    "agents.task.read",
+    "agents.task.write",
+    "agents.task.dispatch",
+    "agents.task.report"
+  ],
+  "requires": [],
+  "slots": [
+    "dashboard.card"
+  ],
+  "emits": [
+    "agents.task.created",
+    "agents.task.updated",
+    "agents.task.dispatched",
+    "agents.task.done"
+  ],
+  "consumes": [],
+  "permissions": [
+    "db:own",
+    "net:out:localhost"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

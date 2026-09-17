@@ -15,7 +15,6 @@ from datetime import datetime, timedelta, timezone  # noqa: E402
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
-from sqlmodel import SQLModel  # noqa: E402
 
 from core.app import create_app  # noqa: E402
 from core.security import create_access_token  # noqa: E402
@@ -203,8 +202,6 @@ def test_cross_day_event(client, auth):
 
 # ───────────────────────── free-slots ─────────────────────────
 def test_free_slots_two_busy_blocks(client, auth):
-    # 清空当天主人已有的事件干扰：用全新一天
-    day = datetime(2026, 10, 1, tzinfo=timezone.utc)
     b1 = {
         "title": "早会",
         "start_at": _iso(datetime(2026, 10, 1, 1, 0, tzinfo=TZ)),

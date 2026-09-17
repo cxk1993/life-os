@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Optional
 
 from sqlmodel import Field
 
@@ -38,19 +37,19 @@ class TodoItem(PkMixin, TimestampMixin, table=True):
 
     text: str = Field(max_length=500)
     done: bool = Field(default=False, index=True)
-    done_at: Optional[datetime] = Field(default=None, sa_type=TimestampTZ, index=True)
-    due_at: Optional[datetime] = Field(default=None, sa_type=TimestampTZ, index=True)
-    priority: Optional[str] = Field(default=None, max_length=8)  # high|medium|low
-    recur_rule: Optional[str] = Field(default=None, max_length=200)  # RRULE 或原文
-    tags: Optional[str] = Field(default=None)  # JSON 列表
-    source_path: Optional[str] = Field(default=None, max_length=500)
-    source_line: Optional[int] = Field(default=None)
+    done_at: datetime | None = Field(default=None, sa_type=TimestampTZ, index=True)
+    due_at: datetime | None = Field(default=None, sa_type=TimestampTZ, index=True)
+    priority: str | None = Field(default=None, max_length=8)  # high|medium|low
+    recur_rule: str | None = Field(default=None, max_length=200)  # RRULE 或原文
+    tags: str | None = Field(default=None)  # JSON 列表
+    source_path: str | None = Field(default=None, max_length=500)
+    source_line: int | None = Field(default=None)
     sort: int = Field(default=0)
-    series_id: Optional[str] = Field(default=None, index=True)  # 周期链 id
+    series_id: str | None = Field(default=None, index=True)  # 周期链 id
     instance_no: int = Field(default=0)
 
 
-def tags_from_json(raw: Optional[str]) -> list[str]:
+def tags_from_json(raw: str | None) -> list[str]:
     """DB 里的 tags 字符串 → 列表（空/非法 → []）。"""
     if not raw:
         return []
@@ -61,7 +60,7 @@ def tags_from_json(raw: Optional[str]) -> list[str]:
         return []
 
 
-def tags_to_json(tags: list[str]) -> Optional[str]:
+def tags_to_json(tags: list[str]) -> str | None:
     """列表 → DB 字符串（空列表 → None，不占空间）。"""
     if not tags:
         return None

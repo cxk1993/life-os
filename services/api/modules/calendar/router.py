@@ -12,12 +12,13 @@ HTTP 契约（全项目统一，不许自创）：
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Path as FPath, Query, status
+from fastapi import APIRouter, Depends, Query, status
+from fastapi import Path as FPath
 from sqlmodel import Session
 
 from core.config import get_settings
@@ -26,7 +27,7 @@ from core.events import event_bus
 from core.security import User
 
 from .schema import EventCreate, EventOut, EventUpdate, FreeSlotOut
-from .service import CalendarService, to_utc
+from .service import CalendarService
 
 router = APIRouter()
 
@@ -34,8 +35,12 @@ _MANIFEST_PATH = Path(__file__).resolve().parent / "manifest.json"
 with _MANIFEST_PATH.open(encoding="utf-8") as _f:
     _MANIFEST = json.load(_f)
 
-DbDep = Annotated[Session, Depends(get_db)]
-UserDep = Annotated[User, Depends(get_current_user)]
+# ★ 依赖别名**只做类型**，不要把 Depends 塞进 Annotated：
+#   塞进去之后参数就不能写 = None（mypy 报 Incompatible default），
+#   也不能省略默认值（依赖参数排在带默认值的查询参数之后 → SyntaxError）。
+#   标准写法：db: Session = Depends(get_db)，FastAPI 与 mypy 都满意。
+DbDep = Session
+UserDep = User
 
 
 def _emit(topic: str, payload: dict) -> None:
@@ -60,8 +65,8 @@ def list_events(
     to: str = Query(...),
     include_children: bool = Query(True),
     flat: bool = Query(False),
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ) -> list[dict]:
     return CalendarService(db).list_range(frm, to, include_children, flat)
 
@@ -69,8 +74,8 @@ def list_events(
 @router.post("/events", response_model=EventOut, status_code=status.HTTP_201_CREATED)
 def create_event(
     body: EventCreate,
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ) -> dict:
     out = CalendarService(db).create(body)
     _emit("calendar.event.created", out)
@@ -80,8 +85,8 @@ def create_event(
 @router.get("/events/{event_id}", response_model=EventOut)
 def get_event(
     event_id: str = FPath(...),
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ) -> dict:
     return CalendarService(db).get_tree(event_id)
 
@@ -90,8 +95,8 @@ def get_event(
 def update_event(
     event_id: str = FPath(...),
     body: EventUpdate = None,
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ) -> dict:
     out = CalendarService(db).update(event_id, body)
     _emit("calendar.event.updated", out)
@@ -101,8 +106,8 @@ def update_event(
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
     event_id: str = FPath(...),
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ):
     # ★ 这里**故意不写 `-> None`**：本文件有 `from __future__ import annotations`，
     #   于是 `-> None` 会以字符串 "None" 存在，get_type_hints 把它解析成 `NoneType`，
@@ -122,8 +127,8 @@ def delete_event(
 def add_child(
     event_id: str = FPath(...),
     body: EventCreate = None,
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ) -> dict:
     out = CalendarService(db).add_child(event_id, body)
     _emit("calendar.event.created", out)
@@ -135,8 +140,8 @@ def update_child(
     event_id: str = FPath(...),
     child_id: str = FPath(...),
     body: EventUpdate = None,
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ) -> dict:
     out = CalendarService(db).update_child(event_id, child_id, body)
     _emit("calendar.event.updated", out)
@@ -150,8 +155,8 @@ def update_child(
 def delete_child(
     event_id: str = FPath(...),
     child_id: str = FPath(...),
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ):
     # 同 delete_event：204 端点不许带（哪怕是注解推导出来的）响应模型。
     CalendarService(db).delete_child(event_id, child_id)
@@ -165,8 +170,8 @@ def free_slots(
         description="YYYY-MM-DD，按主人本地时区（settings.tz，默认 Asia/Shanghai）的自然日计算",
     ),
     min_hours: float = Query(1.0, ge=0.5),
-    db: DbDep = None,
-    _user: UserDep = None,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
 ) -> list[FreeSlotOut]:
     # ★ 不能按 UTC 切天：主人说"10 月 1 日"指的是**本地**那一天。
     #   按 UTC 切会把本地 01:00-03:00 的事件（= UTC 前一天 17:00）漏掉，

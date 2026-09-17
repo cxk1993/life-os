@@ -1,0 +1,37 @@
+{
+  "id": "habits",
+  "name": "习惯打卡",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "box",
+  "description": "习惯打卡（由 create_plugin.py 生成，请补全 description）",
+  "author": "yunxi",
+  "window": {
+    "w": 720,
+    "h": 520
+  },
+  "entry": "@apps/habits",
+  "api": {
+    "base": "/api/v1/habits",
+    "openapi": "/api/v1/habits/openapi.json",
+    "health": "/api/v1/habits/health"
+  },
+  "provides": [],
+  "requires": [],
+  "slots": [],
+  "emits": [],
+  "consumes": [],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

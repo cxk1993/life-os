@@ -1,0 +1,210 @@
+/*
+ * 待办模块样式。只使用设计令牌 var(--xxx)，不写死任何颜色。
+ * 该文件随 index.tsx 一起被内核 React.lazy 加载，作用域即本插件。
+ */
+
+.todo-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+}
+
+/* —— 快速添加 —— */
+.todo-quick {
+  display: flex;
+  gap: var(--sp-2);
+}
+.todo-quick__input {
+  flex: 1;
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+}
+.todo-quick__input::placeholder {
+  color: var(--txt-faint);
+}
+.todo-quick__input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+/* —— 列表 —— */
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* —— 单行 —— */
+.todo-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.todo-row:hover {
+  border-color: var(--line-strong);
+}
+.todo-row--done {
+  opacity: 0.55;
+}
+.todo-row--done .todo-row__text {
+  text-decoration: line-through;
+  color: var(--txt-faint);
+}
+.todo-row__check {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--accent-fg);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.todo-row__check[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+.todo-row__main {
+  flex: 1;
+  min-width: 0;
+}
+.todo-row__text {
+  display: inline-block;
+  cursor: text;
+  word-break: break-word;
+}
+.todo-row__edit {
+  width: 100%;
+  height: 24px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+}
+.todo-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: var(--sp-1);
+}
+.todo-row__del {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 var(--sp-2);
+  font-size: 12px;
+}
+
+/* —— 标签 / 优先级药丸 —— */
+.todo-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  line-height: 16px;
+  background: var(--surface-3);
+  color: var(--txt-dim);
+  border: 1px solid var(--line);
+}
+.todo-pill--high {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+.todo-pill--medium {
+  color: var(--warn);
+  border-color: var(--warn);
+  background: transparent;
+}
+.todo-pill--low {
+  color: var(--txt-faint);
+}
+.todo-pill--tag {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.todo-pill--overdue {
+  color: var(--warn);
+  border-color: var(--warn);
+  background: transparent;
+}
+.todo-pill--recur {
+  color: var(--txt-dim);
+}
+
+/* —— 错误态 —— */
+.todo-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5);
+  text-align: center;
+  color: var(--txt-dim);
+}
+.todo-error__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--danger);
+}
+.todo-error__msg {
+  font-size: 12px;
+  color: var(--txt-faint);
+  max-width: 28ch;
+}
+.todo-error__retry {
+  margin-top: var(--sp-2);
+}
+
+/* —— 概览卡片（dashboard.card 扩展点）—— */
+.todo-dash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.todo-dash__stats {
+  display: flex;
+  gap: var(--sp-4);
+}
+.todo-dash__stat {
+  display: flex;
+  flex-direction: column;
+}
+.todo-dash__num {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--txt);
+}
+.todo-dash__lbl {
+  font-size: 11px;
+  color: var(--txt-faint);
+}
