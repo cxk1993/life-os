@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from core.errors import NotFoundError, ValidationError
 from core.events import event_bus
@@ -94,10 +95,11 @@ def parse_quick_line(raw: str) -> TodoLine:
 
     def repl(dm: re.Match[str]) -> str:
         tok = dm.group(1)
+        # parse_todo_line 只认带括号的 `(@YYYY-MM-DD)` 形式。
+        # ISO 日期也要补括号——否则 @2026-09-21 会原样留在正文里（实测踩过）。
         if re.fullmatch(r"\d{4}-\d{2}-\d{2}", tok):
-            return dm.group(0)
+            return f"(@{tok})"
         d = parse_natural_date(tok)
-        # parse_todo_line 只认带括号的 `(@YYYY-MM-DD)` 形式，必须补括号
         return f"(@{d.isoformat()})" if d else dm.group(0)
 
     line = re.sub(r"@([^\s(@]+)", repl, line)
@@ -154,7 +156,7 @@ class TodoService:
             "created_at": r.created_at, "updated_at": r.updated_at,
         }
 
-    def _sort_key(self, r: TodoItem):
+    def _sort_key(self, r: TodoItem) -> tuple[int, int, datetime, int, str]:
         undone = not r.done
         overdue = undone and r.due_at is not None and r.due_at < utcnow()
         due = r.due_at or datetime.max.replace(tzinfo=UTC)
@@ -162,23 +164,31 @@ class TodoService:
                 r.sort, r.text or "")
 
     # ───────────────────────── 读 ─────────────────────────
-    def list_items(self, status=None, due_before=None, due_after=None, tag=None,
-                   source=None, limit=50, cursor=None):
+    def list_items(
+        self,
+        status: str | None = None,
+        due_before: str | None = None,
+        due_after: str | None = None,
+        tag: str | None = None,
+        source: str | None = None,
+        limit: int = 50,
+        cursor: str | None = None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
         stmt = select(TodoItem)
-        conds = []
+        conds: list[Any] = []
         if status == "done":
             conds.append(TodoItem.done == True)  # noqa: E712
         elif status == "todo":
             conds.append(TodoItem.done == False)  # noqa: E712
         if due_before:
-            conds.append(TodoItem.due_at <= to_utc(due_before))
+            conds.append(col(TodoItem.due_at) <= to_utc(due_before))
         if due_after:
-            conds.append(TodoItem.due_at >= to_utc(due_after))
+            conds.append(col(TodoItem.due_at) >= to_utc(due_after))
         if source:
             conds.append(TodoItem.source_path == source)
         for c in conds:
             stmt = stmt.where(c)
-        rows = self.db.exec(stmt).all()
+        rows: list[TodoItem] = list(self.db.exec(stmt).all())
         if tag:
             rows = [r for r in rows if tag in tags_from_json(r.tags)]
         rows.sort(key=self._sort_key)
@@ -308,7 +318,9 @@ class TodoService:
         return ToggleOut(id=item.id, done=False, done_at=None)
 
     # ───────────────────────── 导入 / 导出 ─────────────────────────
-    def import_markdown(self, content: str, source_path: str | None = None):
+    def import_markdown(
+        self, content: str, source_path: str | None = None
+    ) -> tuple[int, int, list[dict[str, Any]]]:
         items: list[TodoItem] = []
         task_lines = 0
         for i, line in enumerate(content.splitlines(), 1):
@@ -335,8 +347,8 @@ class TodoService:
             event_bus.publish("todo.item.created", self._dump(it), source="todo")
         return len(items), task_lines, [self._dump(it) for it in items]
 
-    def export_markdown(self, status=None, tag=None) -> str:
-        rows = self.db.exec(select(TodoItem)).all()
+    def export_markdown(self, status: str | None = None, tag: str | None = None) -> str:
+        rows: list[TodoItem] = list(self.db.exec(select(TodoItem)).all())
         if status == "done":
             rows = [r for r in rows if r.done]
         elif status == "todo":

@@ -10,12 +10,15 @@ HTTP 契约（全项目统一，不许自创）：
   （/api/v1/events/subscribe）自动下推，无需在此手动发。
 ★ 幂等（Idempotency-Key）由内核 IdempotencyMiddleware 自动处理，这里不重复做。
 ★ 内部一律用包路径导入（from modules.todo.xxx import ...）。
+★ 路径参数用 Annotated[str, FPath(...)]（不是 = FPath(...)）：
+  后者是「带默认值的参数」，会逼后面的 body 也必须给默认值。
+★ 本文件**不要**加 `from __future__ import annotations`：
+  它会把 `-> None` 变成字符串 "None" → get_type_hints 得到 NoneType（truthy）
+  → FastAPI 认为 204 带了响应体 → 整个后端起不来。
 """
-from __future__ import annotations
-
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi import Path as FPath
@@ -45,10 +48,7 @@ _MANIFEST_PATH = Path(__file__).resolve().parent / "manifest.json"
 with _MANIFEST_PATH.open(encoding="utf-8") as _f:
     _MANIFEST = json.load(_f)
 
-# ★ 依赖别名**只做类型**，不要把 Depends 塞进 Annotated：
-#   塞进去之后参数就不能写 = None（mypy 报 Incompatible default），
-#   也不能省略默认值（依赖参数排在带默认值的查询参数之后 → SyntaxError）。
-#   标准写法：db: Session = Depends(get_db)，FastAPI 与 mypy 都满意。
+# ★ 依赖别名**只做类型**，不要把 Depends 塞进 Annotated。
 DbDep = Session
 UserDep = User
 
@@ -76,7 +76,7 @@ def list_items(
     cursor: str | None = Query(None, description="分页游标（opaque）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> dict[str, Any]:
     items, next_cursor = TodoService(db).list_items(
         status=status, due_before=due_before, due_after=due_after,
         tag=tag, source=source, limit=limit, cursor=cursor,
@@ -89,49 +89,45 @@ def create_item(
     body: TodoCreate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> dict[str, Any]:
     # 事件在 service 层发布（todo.item.created）
     return TodoService(db).create(body)
 
 
 @router.get("/items/{item_id}", response_model=TodoItemOut)
 def get_item(
-    item_id: str = FPath(..., description="待办 id"),
+    item_id: Annotated[str, FPath(description="待办 id")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> dict[str, Any]:
     return TodoService(db).get(item_id)
 
 
 @router.patch("/items/{item_id}", response_model=TodoItemOut)
 def update_item(
-    item_id: str = FPath(..., description="待办 id"),
-    body: TodoUpdate = None,
+    item_id: Annotated[str, FPath(description="待办 id")],
+    body: TodoUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> dict[str, Any]:
     return TodoService(db).update(item_id, body)
 
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(
-    item_id: str = FPath(..., description="待办 id"),
+    item_id: Annotated[str, FPath(description="待办 id")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-):
-    # ★ 故意不写 `-> None`：本文件有 `from __future__ import annotations`，
-    #   写 `-> None` 会以字符串 "None" 存在，get_type_hints 解析成 NoneType，
-    #   触发 FastAPI 断言 "Status code 204 must not have a response body"，
-    #   导致**整个后端起不来**。不写返回注解才安全。
+) -> None:
     TodoService(db).delete(item_id)
 
 
 @router.post("/items/{item_id}/toggle", response_model=ToggleOut)
 def toggle_item(
-    item_id: str = FPath(..., description="待办 id"),
+    item_id: Annotated[str, FPath(description="待办 id")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> ToggleOut:
     # 完成 → 写 done_at；若是周期任务 → 生成下一条实例并保留历史。
     # 事件在 service 层发布（todo.item.completed / todo.item.updated / todo.item.created）。
     return TodoService(db).toggle(item_id)
@@ -142,7 +138,7 @@ def import_markdown(
     body: ImportIn,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> dict[str, Any]:
     """从 Obsidian 文件批量导入，保留原行位置（记录 source_path + 行号）。
 
     两种来源二选一：content（直接给 markdown 文本）或 path（本机文件路径）。
@@ -165,17 +161,17 @@ def export_markdown(
     body: ExportIn | None = None,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> ExportOut:
     """导出回 markdown 文本（供前端 diff 预览，v0.1 不自动写回 Obsidian）。"""
     body = body or ExportIn()
     markdown = TodoService(db).export_markdown(status=body.status, tag=body.tag)
-    return {"markdown": markdown}
+    return ExportOut(markdown=markdown)
 
 
 @router.get("/summary", response_model=SummaryOut)
 def summary(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
-) -> dict:
+) -> SummaryOut:
     """概览统计：今日待办 / 逾期 / 本周完成。"""
     return TodoService(db).summary()
