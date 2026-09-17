@@ -1,0 +1,166 @@
+{
+  "project": "life",
+  "generated_at": "2026-09-17T05:40:00Z",
+  "order": ["T01", "T02", "T03", "T04", "T14", "T05", "T06", "T07", "T08", "T10", "T12", "T13"],
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "规划与契约定基",
+      "weight": 3,
+      "dep_on": [],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "README.md",
+        "contracts/data-dictionary.md",
+        "docs/adr/0001-技术栈选型.md",
+        "docs/adr/0002-插件协议.md",
+        "docs/rfc/TEMPLATE.md",
+        "deploy/compose.dev.yml",
+        "Makefile",
+        "scripts/dev.ps1",
+        ".editorconfig",
+        ".gitattributes",
+        ".gitignore",
+        ".pre-commit-config.yaml",
+        "pyproject.toml",
+        "package.json",
+        "apps/web/",
+        "services/api/"
+      ]
+    },
+    {
+      "id": "T02",
+      "title": "前端内核：多开窗口系统",
+      "weight": 3,
+      "dep_on": ["T01"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "apps/web/src/kernel/",
+        "apps/web/src/shared/",
+        "apps/web/src/kernel/store.ts"
+      ]
+    },
+    {
+      "id": "T03",
+      "title": "后端内核：API 服务器 + SSE + 鉴权",
+      "weight": 4,
+      "dep_on": ["T01"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/core/",
+        "services/api/main.py"
+      ]
+    },
+    {
+      "id": "T04",
+      "title": "数据层：模型 + 迁移",
+      "weight": 3,
+      "dep_on": ["T01"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/db/",
+        "services/api/alembic/"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "插件框架 ★ 硬闸门",
+      "weight": 3,
+      "dep_on": ["T01", "T02", "T03", "T04"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/core/plugins/",
+        "apps/web/src/kernel/plugins/",
+        "apps/web/src/kernel/slots/",
+        "services/api/scripts/create_plugin.py"
+      ]
+    },
+    {
+      "id": "T05",
+      "title": "业务插件：日程表 calendar",
+      "weight": 6,
+      "dep_on": ["T14"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/modules/calendar/",
+        "apps/web/src/apps/calendar/"
+      ]
+    },
+    {
+      "id": "T06",
+      "title": "业务插件：待办清单 todo",
+      "weight": 5,
+      "dep_on": ["T14"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/modules/todo/",
+        "apps/web/src/apps/todo/"
+      ]
+    },
+    {
+      "id": "T07",
+      "title": "业务插件：笔记 notes",
+      "weight": 5,
+      "dep_on": ["T14"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/modules/notes/",
+        "services/bridge/",
+        "apps/web/src/apps/notes/"
+      ]
+    },
+    {
+      "id": "T08",
+      "title": "业务插件：账本 finance",
+      "weight": 5,
+      "dep_on": ["T14"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/modules/finance/",
+        "apps/web/src/apps/finance/"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "业务插件：习惯清单 habits",
+      "weight": 4,
+      "dep_on": ["T14"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/modules/habits/",
+        "apps/web/src/apps/habits/"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "业务插件：AI 智能体 agents",
+      "weight": 5,
+      "dep_on": ["T14"],
+      "blocked_by": [],
+      "status": "done",
+      "deliverables": [
+        "services/api/modules/agents/",
+        "apps/web/src/apps/agents/"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "业务插件：预留 feature",
+      "weight": 5,
+      "dep_on": ["T14"],
+      "blocked_by": [],
+      "status": "ready",
+      "deliverables": []
+    }
+  ]
+}

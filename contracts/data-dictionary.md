@@ -62,8 +62,9 @@
 | habit / habit_log | habit | habit_log(habit_id, date) 打卡查询 |
 | review_daily | review | (date) 唯一，日报按天取 |
 | finance_snapshot | finance | (date) 唯一，每日快照 |
+| finance_entry | finance | (occurred_at) 区间流水主查询；(category)(account)(direction) 过滤 |
 | growth_axis / growth_item | growth | growth_item(axis_id) 罗盘装配 |
-| agent_task | orchestrate | (status) 任务块状态机查询（draft→queued→running→done/failed/cancelled，done 后不可改） |
+| agents_task / agents_agent / agents_dispatch | agents | agents_task(status, assignee)；agents_dispatch(task_id, status)；dispatch_id 唯一幂等键 |
 
 **索引之外的建表规矩**（见 `db/base.py` 与 `docs/示例/calendar_event_示例.py`）：
 表名 = 插件 id 前缀 + 名词；必须继承 `PkMixin + TimestampMixin`；外键写明
