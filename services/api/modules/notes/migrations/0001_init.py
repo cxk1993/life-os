@@ -1,4 +1,4 @@
-"""插件迁移 0001：建 NotesItem 表。
+"""插件迁移 0001：建 NoteLib / NoteIndex 表。
 
 ★ 只增不改：已执行过的迁移文件不许再动，要改就加 0002。
 ★ models.py 必须**按文件路径**加载，不能写 `from .models import ...`：
@@ -26,8 +26,12 @@ def _load_models() -> Any:
 
 
 def upgrade(engine: Any) -> None:
-    _load_models().NotesItem.__table__.create(bind=engine, checkfirst=True)
+    models = _load_models()
+    models.NoteLib.__table__.create(bind=engine, checkfirst=True)
+    models.NoteIndex.__table__.create(bind=engine, checkfirst=True)
 
 
 def downgrade(engine: Any) -> None:
-    _load_models().NotesItem.__table__.drop(bind=engine, checkfirst=True)
+    models = _load_models()
+    models.NoteIndex.__table__.drop(bind=engine, checkfirst=True)
+    models.NoteLib.__table__.drop(bind=engine, checkfirst=True)

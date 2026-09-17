@@ -1,11 +1,15 @@
-/** 笔记 —— 内置插件的前端入口（T14 的加载器按 manifest.entry 加载它）。 */
-export function Component() {
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-semibold">笔记</h2>
-      <p className="text-sm opacity-70">由 create_plugin.py 生成，请把界面写在这里。</p>
-    </div>
-  );
-}
+/**
+ * 笔记插件入口（T14 加载器按 manifest.entry = "@apps/notes" 加载）。
+ */
+import type { ComponentType } from "react";
+import NotesApp from "./NotesApp";
+import "./notes.css";
 
-export default { Component };
+const PluginModule = {
+  manifestId: "notes",
+  Component: NotesApp as ComponentType,
+  slots: {},
+};
+
+export default PluginModule;
+export { NotesApp };

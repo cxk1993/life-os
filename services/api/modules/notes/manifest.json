@@ -6,7 +6,7 @@
   "minKernel": "0.1.0",
   "kernelApi": "^1",
   "icon": "box",
-  "description": "笔记（由 create_plugin.py 生成，请补全 description）",
+  "description": "本机 Obsidian 笔记索引与搜索（全文经本机桥按需拉取，不进服务器库）",
   "author": "yunxi",
   "window": {
     "w": 720,
@@ -20,11 +20,12 @@
   },
   "provides": [],
   "requires": [],
-  "slots": [],
-  "emits": [],
+  "slots": ["dashboard.card"],
+  "emits": ["notes.lib.synced"],
   "consumes": [],
   "permissions": [
-    "db:own"
+    "db:own",
+    "bridge:read"
   ],
   "migrations": "api/migrations",
   "settingsSchema": "api/settings.schema.json",
