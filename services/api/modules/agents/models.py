@@ -64,13 +64,15 @@ class AgentTask(PkMixin, TimestampMixin, table=True):
 
 
 class AgentAgent(PkMixin, TimestampMixin, table=True):
-    """注册到编排器的外部 agent（在线状态 + 能力标签 + 负载）。"""
+    """注册到编排器的 agent 定义（名称/描述/能力标签 + 启用状态 + 负载）。"""
 
     __tablename__ = "agents_agent"
 
-    name: str = Field(max_length=120)
+    name: str = Field(max_length=120, index=True)
+    description: str = Field(default="", sa_type=Text)
     capabilities: Any = Field(default_factory=list, sa_column=Column(JSON, nullable=True))
     load: int = Field(default=0)  # 当前负载（进行中任务数）
+    enabled: bool = Field(default=True)
     callback_url: str | None = Field(default=None, max_length=300)
     last_seen: datetime | None = Field(default=None, sa_type=TimestampTZ)
 
