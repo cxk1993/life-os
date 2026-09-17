@@ -1,11 +1,15 @@
-/** 理财 —— 内置插件的前端入口（T14 的加载器按 manifest.entry 加载它）。 */
-export function Component() {
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-semibold">理财</h2>
-      <p className="text-sm opacity-70">由 create_plugin.py 生成，请把界面写在这里。</p>
-    </div>
-  );
-}
+/**
+ * 理财插件入口（T14 加载器按 manifest.entry = "@apps/finance" 加载）。
+ */
+import type { ComponentType } from "react";
+import FinanceApp from "./FinanceApp";
+import "./finance.css";
 
-export default { Component };
+const PluginModule = {
+  manifestId: "finance",
+  Component: FinanceApp as ComponentType,
+  slots: {},
+};
+
+export default PluginModule;
+export { FinanceApp };

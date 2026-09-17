@@ -6,7 +6,7 @@
   "minKernel": "0.1.0",
   "kernelApi": "^1",
   "icon": "box",
-  "description": "理财（由 create_plugin.py 生成，请补全 description）",
+  "description": "个人账本：流水 CRUD（金额整数分）、分类/账户/日期/方向过滤、区间收支与分类汇总。",
   "author": "yunxi",
   "window": {
     "w": 720,
@@ -18,10 +18,17 @@
     "openapi": "/api/v1/finance/openapi.json",
     "health": "/api/v1/finance/health"
   },
-  "provides": [],
+  "provides": [
+    "finance.entry.read",
+    "finance.entry.write"
+  ],
   "requires": [],
   "slots": [],
-  "emits": [],
+  "emits": [
+    "finance.entry.created",
+    "finance.entry.updated",
+    "finance.entry.deleted"
+  ],
   "consumes": [],
   "permissions": [
     "db:own"

@@ -1,0 +1,147 @@
+/*
+ * 理财样式。只使用设计令牌 var(--xxx)，不写死颜色。
+ */
+
+.finance-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+}
+
+.finance-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.finance-summary__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.finance-summary__label {
+  color: var(--txt-faint);
+  font-size: 12px;
+}
+
+.finance-summary__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.finance-add {
+  display: grid;
+  grid-template-columns: 88px 1fr 1fr 1fr auto;
+  gap: var(--sp-2);
+  align-items: end;
+}
+
+.finance-add__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.finance-add__field label {
+  color: var(--txt-faint);
+  font-size: 11px;
+}
+
+.finance-add__input,
+.finance-add select {
+  height: 32px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+}
+
+.finance-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.finance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+
+.finance-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.finance-row__title {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+}
+
+.finance-row__cat {
+  font-weight: 500;
+}
+
+.finance-row__meta {
+  color: var(--txt-faint);
+  font-size: 12px;
+}
+
+.finance-row__amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.finance-row__del {
+  border: none;
+  background: transparent;
+  color: var(--txt-faint);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  font: inherit;
+}
+
+.finance-row__del:hover {
+  color: var(--txt);
+  background: var(--surface-3, var(--surface-2));
+}
+
+.finance-filters {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.finance-filters select,
+.finance-filters input {
+  height: 28px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+  font-size: 12px;
+}
