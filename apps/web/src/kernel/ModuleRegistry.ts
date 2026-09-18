@@ -15,13 +15,22 @@ import type { ModuleManifest, PluginModule } from "./types";
  * 的错误边界兜底（只该窗口占位，桌面不白屏）。
  */
 
-/** 显式 entry → loader（mock 演示用，确定性、可被 Tree-shaking 分析）。 */
+/** 显式 entry → loader（确定性、可被 Tree-shaking 分析）。 */
 const ENTRY_LOADERS: Record<string, () => Promise<{ default: PluginModule }>> = {
   "@mocks/alpha": () => import("@/shared/mocks/alpha"),
   "@mocks/beta": () => import("@/shared/mocks/beta"),
   "@mocks/gamma": () => import("@/shared/mocks/gamma"),
   "@mocks/delta": () => import("@/shared/mocks/delta"),
   "@mocks/broken": () => import("@/shared/mocks/broken"),
+  // 业务插件：必须走显式 import，运行时 import("@/apps/...") 打包器无法解析
+  "@/apps/calendar": () => import("@/apps/calendar"),
+  "@/apps/todo": () => import("@/apps/todo"),
+  "@/apps/habits": () => import("@/apps/habits"),
+  "@/apps/finance": () => import("@/apps/finance"),
+  "@/apps/notes": () => import("@/apps/notes"),
+  "@/apps/agents": () => import("@/apps/agents"),
+  "@/apps/review": () => import("@/apps/review"),
+  "@/apps/dashboard": () => import("@/apps/dashboard"),
 };
 
 /** 把 entry 说明符解析成 React.lazy 可用的 loader。 */

@@ -58,5 +58,85 @@
     "description": "entry 指向不存在的文件，用于验证「模块缺失」时的容错占位。",
     "entry": "@mocks/ghost",
     "window": { "w": 480, "h": 300, "minW": 360, "minH": 240 }
+  },
+  {
+    "id": "dashboard",
+    "name": "成长罗盘",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "盘",
+    "description": "首屏聚合：今日 / 钱 / 复盘 / 系统健康 + dashboard.card 扩展位。",
+    "entry": "@/apps/dashboard",
+    "window": { "w": 960, "h": 680, "minW": 640, "minH": 420, "singleton": true }
+  },
+  {
+    "id": "review",
+    "name": "复盘",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "复",
+    "description": "Work-Review 只读复盘：日报 / 趋势 / 批注。",
+    "entry": "@/apps/review",
+    "window": { "w": 900, "h": 640, "minW": 560, "minH": 400 }
+  },
+  {
+    "id": "calendar",
+    "name": "日程表",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "历",
+    "description": "周视图日程色块。",
+    "entry": "@/apps/calendar",
+    "window": { "w": 1000, "h": 700, "minW": 720, "minH": 480 }
+  },
+  {
+    "id": "todo",
+    "name": "待办",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "待",
+    "description": "今日 / 全部 / 周期待办。",
+    "entry": "@/apps/todo",
+    "window": { "w": 720, "h": 560, "minW": 480, "minH": 360 }
+  },
+  {
+    "id": "habits",
+    "name": "习惯",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "惯",
+    "description": "习惯打卡与连击。",
+    "entry": "@/apps/habits",
+    "window": { "w": 720, "h": 560, "minW": 480, "minH": 360 }
+  },
+  {
+    "id": "finance",
+    "name": "理财",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "财",
+    "description": "本地流水 + BeeCount 快照同步面板。",
+    "entry": "@/apps/finance",
+    "window": { "w": 880, "h": 620, "minW": 560, "minH": 400 }
+  },
+  {
+    "id": "notes",
+    "name": "笔记",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "记",
+    "description": "本机笔记索引与预览（桥相关）。",
+    "entry": "@/apps/notes",
+    "window": { "w": 800, "h": 600, "minW": 520, "minH": 380 }
+  },
+  {
+    "id": "agents",
+    "name": "智能体",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "智",
+    "description": "Agent 注册与任务块离线编排。",
+    "entry": "@/apps/agents",
+    "window": { "w": 800, "h": 600, "minW": 520, "minH": 380 }
   }
 ]

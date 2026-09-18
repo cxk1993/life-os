@@ -1,0 +1,177 @@
+/*
+ * 成长罗盘（dashboard）样式。只使用设计令牌 var(--xxx)，不写死颜色。
+ */
+
+.dash-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+  overflow: auto;
+}
+
+.dash-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  font-size: 12px;
+}
+
+.dash-banner__tag {
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dash-date {
+  color: var(--txt-faint);
+  font-size: 12px;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+@media (max-width: 720px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dash-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+}
+
+.dash-card__title {
+  font-weight: 600;
+  color: var(--txt);
+  font-size: 13px;
+}
+
+.dash-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.dash-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.dash-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 64px;
+}
+
+.dash-stat__num {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--txt);
+  line-height: 1.2;
+}
+
+.dash-stat__lbl {
+  font-size: 11px;
+  color: var(--txt-faint);
+}
+
+.dash-muted {
+  color: var(--txt-faint);
+  font-size: 12px;
+}
+
+.dash-degraded {
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.dash-health {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.dash-health__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--txt-dim);
+}
+
+.dash-health__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--txt-faint);
+  flex-shrink: 0;
+}
+
+.dash-health__item[data-status="ok"] .dash-health__dot {
+  background: var(--ok);
+}
+.dash-health__item[data-status="timeout"] .dash-health__dot,
+.dash-health__item[data-status="error"] .dash-health__dot {
+  background: var(--danger);
+}
+
+.dash-cards-hint {
+  margin-top: var(--sp-1);
+  font-size: 11px;
+  color: var(--txt-faint);
+}
+
+.dash-slot-host {
+  min-height: 48px;
+}
+
+.dash-slot-host .slot__empty {
+  color: var(--txt-faint);
+  font-size: 12px;
+  padding: var(--sp-2);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+}
+
+.dash-error {
+  padding: var(--sp-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-md);
+  color: var(--danger);
+  background: var(--surface);
+}
+
+.dash-loading {
+  color: var(--txt-faint);
+  padding: var(--sp-4);
+  text-align: center;
+}

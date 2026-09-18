@@ -118,7 +118,7 @@
       "weight": 5,
       "dep_on": ["T14", "T07"],
       "blocked_by": [],
-      "status": "in_progress",
+      "status": "done_subset",
       "gap": "workbuddy 有卡；life 尚无 modules/review。只读；dev 口 49996；凭据走 env",
       "deliverables": [
         "services/api/modules/review/",
@@ -142,9 +142,9 @@
       "title": "概览 · 成长罗盘（最小首屏）",
       "weight": 5,
       "dep_on": ["T05", "T06", "T08B", "T09", "T10"],
-      "blocked_by": ["T08B", "T09"],
-      "status": "blocked",
-      "gap": "待 T08B/T09 有真实数据接口后做最小闭环；完整三轴罗盘可后补",
+      "blocked_by": [],
+      "status": "done_subset",
+      "gap": "完整三轴罗盘与 growth 写接口后补；聚合 e2e 为 mock",
       "deliverables": [
         "services/api/modules/dashboard/",
         "apps/web/src/apps/dashboard/",
