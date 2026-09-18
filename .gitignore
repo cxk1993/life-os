@@ -38,3 +38,14 @@ apps/web/vite.config.ts.timestamp-*.mjs
 
 # Windows 保留设备名，git 无法索引（Git Bash 下 ">nul" 产生）
 nul
+
+# ── 本机桥 / frp 本地文件（含 PSK、token，绝不入库）──
+services/bridge/start-bridge.cmd
+services/bridge/*.err
+deploy/tools/frp/frpc.toml
+deploy/tools/frp/start-frpc.cmd
+deploy/tools/frp/*.log
+deploy/tools/frp/*.err
+deploy/tools/frp/frpc-out.txt
+deploy/tools/nssm/
+deploy/tools/**/*.exe
