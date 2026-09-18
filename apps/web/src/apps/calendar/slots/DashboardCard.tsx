@@ -6,19 +6,22 @@
 
 import { useMemo } from "react";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
-import { addDays, startOfDay } from "../lib/time";
+import { DAY_MS, formatSH, shWallClock, shWallParts, startOfDay } from "../lib/time";
 
 export function DashboardCard() {
-  const today = startOfDay(new Date());
+  // 今日窗口以东八区墙钟 00:00 为起点，from/to 带 +08:00（与 CalendarApp 一致）。
+  const now = new Date();
+  const p = shWallParts(now);
+  const todaySh = shWallClock(p.y, p.mo, p.d, 0, 0, 0, 0);
   const range = useMemo(
-    () => ({ from: today.toISOString(), to: addDays(today, 1).toISOString() }),
+    () => ({ from: formatSH(todaySh), to: formatSH(new Date(todaySh.getTime() + DAY_MS)) }),
     [],
   );
   const { events, isLoading } = useCalendarEvents(range);
 
   const todayEvents = events.filter((e) => {
     const s = startOfDay(new Date(e.start_at));
-    return s.getTime() === today.getTime();
+    return s.getTime() === todaySh.getTime();
   });
 
   return (

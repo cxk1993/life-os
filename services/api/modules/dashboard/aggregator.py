@@ -5,24 +5,24 @@
   2. 每个子调用超时 800ms；失败/超时返回 {"status": "timeout"|"error"}。
   3. 任何一个模块挂掉都不能让 overview 500 —— 对应卡片降级，其余照常。
 
-自调地址：`DASHBOARD_SELF_BASE`（默认 http://127.0.0.1:8000）。
+自调地址：`DASHBOARD_SELF_BASE`（默认 http://127.0.0.1:18000）。
 内网鉴权：`DASHBOARD_SELF_TOKEN` 优先；未设置时复用 core.security 签发的 admin access token。
 测试注入：`set_fetch_override(mock_fetch)`，无需真起 8000。
 """
 from __future__ import annotations
 
 import asyncio
-import os
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from datetime import time as dtime
 from typing import Any
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import httpx
 
-from core.config import get_settings
+from core.config import get_settings, read_setting
 from core.security import create_access_token
 
 # 单子调用超时（毫秒）—— 任务卡 T11 判分线
@@ -55,13 +55,13 @@ _fetch_override: FetchFn | None = None
 
 
 def get_self_base() -> str:
-    """同机 Life-OS API 根地址（可被 env 覆盖）。"""
-    return os.environ.get("DASHBOARD_SELF_BASE", "http://127.0.0.1:8000").rstrip("/")
+    """同机 Life-OS API 根地址（可被 env/.env 覆盖）。默认指向生产后端端口 18000。"""
+    return read_setting("DASHBOARD_SELF_BASE", "http://127.0.0.1:18000").rstrip("/")
 
 
 def get_self_token() -> str:
-    """内网自调 token：env 优先，否则复用测试同款 admin JWT。"""
-    tok = os.environ.get("DASHBOARD_SELF_TOKEN", "").strip()
+    """内网自调 token：env/.env 优先，否则复用测试同款 admin JWT。"""
+    tok = read_setting("DASHBOARD_SELF_TOKEN", "").strip()
     if tok:
         return tok
     return create_access_token("admin")
@@ -226,7 +226,14 @@ async def aggregate_overview(fetch: FetchFn | None = None) -> dict[str, Any]:
 
     # 数据调用路径（path → 语义）
     data_paths = {
-        "calendar_events": f"/api/v1/calendar/events?from={frm}&to={to}",
+        # ★★ 必须 URL 编码：frm/to 形如 `2026-09-18T00:00:00+08:00`，那个裸 `+`
+        #   到服务端会被解码成**空格**；而空格在 HTTP 请求行里是分隔符，
+        #   **会把路径截断** → 最终得到 404（不是 422）。
+        #   实测现象：概览页 calendar 项报
+        #   `HTTP 404 for /api/v1/calendar/events?from=2026-09-18T00:00:00+08:00&to=...`
+        "calendar_events": (
+            f"/api/v1/calendar/events?from={quote(frm, safe='')}&to={quote(to, safe='')}"
+        ),
         "todo_summary": "/api/v1/todo/summary",
         "habits_summary": "/api/v1/habits/summary",
         "finance_snapshots": "/api/v1/finance/snapshots?limit=1",

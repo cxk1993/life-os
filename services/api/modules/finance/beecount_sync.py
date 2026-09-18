@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -24,12 +23,10 @@ from sqlmodel import Session, col, select
 from core.events import event_bus
 
 from .beecount_mcp import (
-    ENV_UPSTREAM,
     MCP_PATH,
     READ_TOOLS,
     TOOL_ANALYTICS,
     TOOL_LEDGER_STATS,
-    UPSTREAM_MOCK,
     SupportsReadToolCall,
     call_with_client,
     load_upstream_config,
@@ -231,7 +228,7 @@ def sync_snapshot(
     mock → 离线假数据；mcp → 真打 BeeCount MCP（缺凭据会明确 503）。
     同日重复调用覆盖同一 finance_snapshot 行（date 唯一），不翻倍。
     """
-    upstream_env = (os.environ.get(ENV_UPSTREAM) or UPSTREAM_MOCK).strip().lower() or UPSTREAM_MOCK
+    upstream_env = load_upstream_config()["upstream"]
 
     def _run(c: SupportsReadToolCall) -> dict[str, Any]:
         return sync_from_client(db, c, now=now, upstream=upstream_env)

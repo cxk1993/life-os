@@ -5,9 +5,10 @@
 """
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, overload
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +16,51 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # 项目根目录（services/api/core/config.py -> parents[3] == 项目根 life/）。
 # 用来在 cwd 之外也能定位 .env（uvicorn / pytest 都在 services/api 下运行）。
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+@lru_cache(maxsize=1)
+def _dotenv_values() -> dict[str, str]:
+    """解析项目 .env（cwd/.env 与项目根 .env），返回去引号/去注释的 KEY->VALUE。
+
+    背景：本项目的 .env 仅由 pydantic-settings 的 Settings 加载，**不会**注入进程
+    os.environ。部分模块直接读 os.environ 会拿不到值（见 finance 模块 BeeCount 同步故障）。
+    此函数把 .env 解析成字典，供 read_setting 在 os.environ 缺失时回退使用。
+    与 Settings.env_file 同源（顺序：cwd/.env 优先于项目根 .env）。
+    """
+    values: dict[str, str] = {}
+    for path in (Path.cwd() / ".env", _PROJECT_ROOT / ".env"):
+        if not path.is_file():
+            continue
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            values.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+    return values
+
+
+@overload
+def read_setting(key: str, default: str) -> str: ...
+
+
+@overload
+def read_setting(key: str, default: None = None) -> str | None: ...
+
+
+def read_setting(key: str, default: str | None = None) -> str | None:
+    """读取配置项：os.environ 优先，缺失时回退解析项目根 .env。
+
+    用于那些 pydantic-settings 未声明的运行期开关（如 BEECOUNT_* / DASHBOARD_* /
+    REVIEW_*）。语义与 Settings 的 env_file 一致：真实环境变量覆盖 .env 文件值。
+
+    注意：返回 None 仅当未提供 default 且 env/.env 都没有该键；传 "" 等字符串
+    default 时永远返回 str（见上面的 @overload，调用处因此不必写 `or ""`）。
+    """
+    val = os.environ.get(key)
+    if val:
+        return val
+    return _dotenv_values().get(key, default)
 
 
 class Settings(BaseSettings):

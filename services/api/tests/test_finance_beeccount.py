@@ -129,6 +129,10 @@ def test_source_mcp_missing_token_not_configured(client, auth, monkeypatch):
     monkeypatch.setenv("FINANCE_UPSTREAM", "mcp")
     monkeypatch.setenv("BEECOUNT_BASE_URL", "http://127.0.0.1:8870")
     monkeypatch.delenv("BEECOUNT_MCP_TOKEN", raising=False)
+    # ★ 还必须屏蔽 .env 回退：read_setting 在 os.environ 缺失时会回退读项目根 .env，
+    #   而本机 .env 里确实有 BEECOUNT_MCP_TOKEN —— 不屏蔽就永远模拟不出"未配置"。
+    #   （这条不是为了迁就实现，而是"未配置"在新语义下 = env 与 .env 都没有。）
+    monkeypatch.setattr("core.config._dotenv_values", lambda: {})
     r = client.get(f"{BASE}/beecount/source", headers=auth)
     assert r.status_code == 200
     body = r.json()
@@ -216,6 +220,9 @@ def test_load_upstream_config_and_create_client_errors(monkeypatch):
     monkeypatch.setenv("FINANCE_UPSTREAM", "mcp")
     monkeypatch.delenv("BEECOUNT_BASE_URL", raising=False)
     monkeypatch.delenv("BEECOUNT_MCP_TOKEN", raising=False)
+    # ★ 同 test_source_mcp_missing_token_not_configured：必须一并屏蔽 .env 回退，
+    #   否则 read_setting 会从项目根 .env 读到真实 token/地址，"未配置"就模拟不出来。
+    monkeypatch.setattr("core.config._dotenv_values", lambda: {})
     cfg = load_upstream_config()
     assert cfg["upstream"] == "mcp"
     assert cfg["configured"] is False

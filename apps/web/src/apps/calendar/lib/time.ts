@@ -12,6 +12,47 @@ export const MIN_MS = 60_000;
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;
 
+/**
+ * 主人固定时区：东八区（Asia/Shanghai）。
+ * 日历拉取窗口的 `from`/`to` 必须带 `+08:00`，否则后端 to_utc 按 UTC 截断，
+ * 早 8 点的事件会被漏掉（实测踩过）。这里集中提供"东八区墙钟 ⇄ UTC instant"换算。
+ */
+export const SH_UTC_OFFSET_MS = 8 * HOUR_MS;
+
+/** 把"东八区墙钟"转成 UTC 的 Date（month 为 1-12，便于时间运算 / 与后端对齐）。 */
+export function shWallClock(y: number, mo: number, d: number, h = 0, mi = 0, s = 0, ms = 0): Date {
+  // 东八区墙钟比 UTC 早 8 小时：SH 2026-09-14 00:00 = UTC 2026-09-13 16:00。
+  return new Date(Date.UTC(y, mo - 1, d, h, mi, s, ms) - SH_UTC_OFFSET_MS);
+}
+
+/** 给定任意 UTC instant，返回它在东八区的墙钟年月日星期（仅用于取分量）。 */
+export function shWallParts(utc: Date): { y: number; mo: number; d: number; wd: number } {
+  const sh = new Date(utc.getTime() + SH_UTC_OFFSET_MS);
+  return {
+    y: sh.getUTCFullYear(),
+    mo: sh.getUTCMonth() + 1,
+    d: sh.getUTCDate(),
+    wd: sh.getUTCDay(),
+  };
+}
+
+/** 把任意 UTC instant 格式化为东八区 ISO 字符串（带 +08:00），后端 to_utc 据此解析。 */
+export function formatSH(utc: Date): string {
+  const sh = new Date(utc.getTime() + SH_UTC_OFFSET_MS);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  const p3 = (n: number) => String(n).padStart(3, "0");
+  return (
+    `${sh.getUTCFullYear()}-${p2(sh.getUTCMonth() + 1)}-${p2(sh.getUTCDate())}` +
+    `T${p2(sh.getUTCHours())}:${p2(sh.getUTCMinutes())}:${p2(sh.getUTCSeconds())}.${p3(sh.getUTCMilliseconds())}+08:00`
+  );
+}
+
+/** 计算东八区"本周一 00:00"对应的 UTC instant（周一=0）。 */
+export function shMonday(utc: Date): Date {
+  const { y, mo, d, wd } = shWallParts(utc);
+  return shWallClock(y, mo, d - ((wd + 6) % 7), 0, 0, 0, 0);
+}
+
 /** 纵向吸附粒度：30 分钟。 */
 export const SNAP_MIN = 30;
 

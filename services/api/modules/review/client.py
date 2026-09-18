@@ -11,13 +11,14 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 from datetime import date as DateType
 from datetime import timedelta
 from typing import Any
 
 import httpx
+
+from core.config import read_setting
 
 from .parser import parse_duration
 
@@ -55,7 +56,10 @@ class BridgeOfflineError(ReviewUpstreamError):
 
 
 def _env(name: str, default: str = "") -> str:
-    return (os.environ.get(name) or default).strip()
+    # 走 core.config.read_setting：os.environ 优先，缺失时回退项目根 .env
+    # （pydantic-settings 不会把 .env 注入 os.environ，见 finance 模块同款修复）
+    val = read_setting(name, default)
+    return val.strip() if isinstance(val, str) else ""
 
 
 def _env_bool(name: str, default: bool = False) -> bool:

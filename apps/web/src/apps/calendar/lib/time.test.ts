@@ -10,6 +10,10 @@ import {
   hasOverlapInColumn,
   dayIndexInWeek,
   addDays,
+  DAY_MS,
+  formatSH,
+  shMonday,
+  shWallClock,
 } from "./time";
 
 // 2026-09-14 周一（作为周起始）；2026-09-15 周二
@@ -151,5 +155,23 @@ describe("hasOverlapInColumn", () => {
         { start: new Date(2026, 8, 15, 9, 30, 0), end: new Date(2026, 8, 15, 11, 0, 0) },
       ]),
     ).toBe(true);
+  });
+});
+
+describe("东八区窗口助手（formatSH / shMonday）", () => {
+  it("shWallClock(2026,9,14) 的 formatSH 带 +08:00 且为当日 00:00", () => {
+    expect(formatSH(shWallClock(2026, 9, 14, 0, 0, 0, 0))).toBe("2026-09-14T00:00:00.000+08:00");
+  });
+  it("shMonday 取回本周一（东八区）", () => {
+    // 2026-09-16 周三（UTC 00:00）在东八区是 09-16 08:00，周一应为 09-14
+    const mon = shMonday(new Date(Date.UTC(2026, 8, 16, 0, 0, 0)));
+    expect(mon.getTime()).toBe(shWallClock(2026, 9, 14, 0, 0, 0, 0).getTime());
+  });
+  it("周窗口 from→to 恰好 7 天且都带 +08:00", () => {
+    const mon = shMonday(new Date(Date.UTC(2026, 8, 16, 0, 0, 0)));
+    const from = formatSH(mon);
+    const to = formatSH(new Date(mon.getTime() + 7 * DAY_MS));
+    expect(from).toBe("2026-09-14T00:00:00.000+08:00");
+    expect(to).toBe("2026-09-21T00:00:00.000+08:00");
   });
 });

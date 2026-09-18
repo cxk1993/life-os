@@ -30,18 +30,24 @@ ADR-0003 §2.6 已据此修正：对 BeeCount 必须走 MCP，不能设计成 RE
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable
 from typing import Any, Protocol
 
 import httpx
 
+from core.config import read_setting
 from core.errors import ForbiddenError, ServiceUnavailableError
 
 # ── 环境变量名（凭据只从这里读）──
 ENV_UPSTREAM = "FINANCE_UPSTREAM"
 ENV_BASE_URL = "BEECOUNT_BASE_URL"
 ENV_MCP_TOKEN = "BEECOUNT_MCP_TOKEN"
+
+# ── 环境变量读取 ──
+# 凭据/开关（BEECOUNT_* / DASHBOARD_* / REVIEW_* 等）只声明在 .env，
+# 而 pydantic-settings 不会把 .env 注入进程 os.environ。
+# 统一走 core.config.read_setting（os.environ 优先，缺失回退项目根 .env），
+# 该 helper 的定义集中在 core/config.py，避免每个模块各抄一份解析逻辑。
 
 UPSTREAM_MOCK = "mock"
 UPSTREAM_MCP = "mcp"
@@ -130,9 +136,9 @@ def load_upstream_config() -> dict[str, Any]:
       configured: mcp 模式下 base_url 与 token 是否都已配置
       token_present: token 是否非空（**不返回 token 本身**）
     """
-    upstream = (os.environ.get(ENV_UPSTREAM) or UPSTREAM_MOCK).strip().lower() or UPSTREAM_MOCK
-    base_url = (os.environ.get(ENV_BASE_URL) or "").strip()
-    token = (os.environ.get(ENV_MCP_TOKEN) or "").strip()
+    upstream = read_setting(ENV_UPSTREAM, UPSTREAM_MOCK).strip().lower() or UPSTREAM_MOCK
+    base_url = read_setting(ENV_BASE_URL, "").strip()
+    token = read_setting(ENV_MCP_TOKEN, "").strip()
     token_present = bool(token)
     # mock 离线可跑视为已配置；mcp 需 base_url + token 齐全
     configured = (bool(base_url) and token_present) if upstream == UPSTREAM_MCP else True
@@ -146,8 +152,8 @@ def load_upstream_config() -> dict[str, Any]:
 
 def _require_mcp_credentials() -> tuple[str, str]:
     """mcp 模式取 (base_url, token)；缺任何一个都**明确报错**，不静默空数据。"""
-    base_url = (os.environ.get(ENV_BASE_URL) or "").strip()
-    token = (os.environ.get(ENV_MCP_TOKEN) or "").strip()
+    base_url = read_setting(ENV_BASE_URL, "").strip()
+    token = read_setting(ENV_MCP_TOKEN, "").strip()
     if not base_url:
         raise BeeCountNotConfiguredError(
             f"FINANCE_UPSTREAM=mcp 但未配置 {ENV_BASE_URL}（形如 http://127.0.0.1:8870）"
@@ -540,7 +546,7 @@ def create_client(
     - mock（默认）→ MockBeeCountClient，离线可跑
     - mcp → BeeCountMCPClient；缺 BEECOUNT_BASE_URL / BEECOUNT_MCP_TOKEN **明确报错**
     """
-    upstream = (os.environ.get(ENV_UPSTREAM) or UPSTREAM_MOCK).strip().lower() or UPSTREAM_MOCK
+    upstream = read_setting(ENV_UPSTREAM, UPSTREAM_MOCK).strip().lower() or UPSTREAM_MOCK
     if upstream == UPSTREAM_MOCK:
         return MockBeeCountClient(stats=stats, analytics=analytics)
     if upstream == UPSTREAM_MCP:

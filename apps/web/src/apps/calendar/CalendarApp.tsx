@@ -15,17 +15,7 @@ import { TimeGrid } from "./grid/TimeGrid";
 import { MonthGrid } from "./grid/MonthGrid";
 import { Inspector } from "./inspector/Inspector";
 import { useCalendarUI, SCALE_PRESETS, useToast } from "./state";
-import { addDays, startOfDay } from "./lib/time";
-
-function mondayOf(d: Date): Date {
-  const wd = (d.getDay() + 6) % 7; // 周一=0
-  return addDays(startOfDay(d), -wd);
-}
-function monthGridStart(anchor: Date): Date {
-  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-  const wd = (first.getDay() + 6) % 7;
-  return addDays(startOfDay(first), -wd);
-}
+import { DAY_MS, formatSH, shMonday, shWallClock, shWallParts } from "./lib/time";
 
 /** 测量元素宽度（用于让网格列宽自适应容器）。 */
 function useElementWidth<T extends HTMLElement>(): [React.RefObject<T>, number] {
@@ -61,29 +51,39 @@ export function CalendarApp() {
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const [areaRef, areaW] = useElementWidth<HTMLDivElement>();
 
-  // 可见范围：随视图变化
+  // 可见范围：随视图变化（一律以东八区墙钟为基准，from/to 带 +08:00）。
   const { weekStart, weekDays, range } = useMemo(() => {
     if (view === "day") {
-      const ws = startOfDay(anchor);
+      const p = shWallParts(anchor);
+      const ws = shWallClock(p.y, p.mo, p.d, 0, 0, 0, 0);
       return {
         weekStart: ws,
         weekDays: 1,
-        range: { from: ws.toISOString(), to: addDays(ws, 1).toISOString() },
+        range: { from: formatSH(ws), to: formatSH(new Date(ws.getTime() + DAY_MS)) },
       };
     }
     if (view === "month") {
-      const ws = monthGridStart(anchor);
+      const p = shWallParts(anchor);
+      const first = shWallClock(p.y, p.mo, 1, 0, 0, 0, 0);
+      const fp = shWallParts(first);
+      const gridStart = new Date(first.getTime() - ((fp.wd + 6) % 7) * DAY_MS);
       return {
-        weekStart: ws,
+        weekStart: gridStart,
         weekDays: 7,
-        range: { from: ws.toISOString(), to: addDays(ws, 42).toISOString() },
+        range: {
+          from: formatSH(gridStart),
+          to: formatSH(new Date(gridStart.getTime() + 42 * DAY_MS)),
+        },
       };
     }
-    const ws = mondayOf(anchor);
+    const monday = shMonday(anchor);
     return {
-      weekStart: ws,
+      weekStart: monday,
       weekDays: 7,
-      range: { from: ws.toISOString(), to: addDays(ws, 7).toISOString() },
+      range: {
+        from: formatSH(monday),
+        to: formatSH(new Date(monday.getTime() + 7 * DAY_MS)),
+      },
     };
   }, [view, anchor]);
 
@@ -215,7 +215,7 @@ export function CalendarApp() {
               setAnchor((a) =>
                 view === "month"
                   ? new Date(a.getFullYear(), a.getMonth() - 1, 1)
-                  : addDays(a, view === "week" ? -7 : -1),
+                  : new Date(a.getTime() + (view === "week" ? -7 : -1) * DAY_MS),
               )
             }
           >
@@ -226,7 +226,7 @@ export function CalendarApp() {
               setAnchor((a) =>
                 view === "month"
                   ? new Date(a.getFullYear(), a.getMonth() + 1, 1)
-                  : addDays(a, view === "week" ? 7 : 1),
+                  : new Date(a.getTime() + (view === "week" ? 7 : 1) * DAY_MS),
               )
             }
           >
