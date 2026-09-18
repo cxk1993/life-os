@@ -1,0 +1,41 @@
+# Life-OS · 生产编排（T13）
+# 宿主机端口避开已占用：API 18000（机上 8000=model-gateway），Web 18080
+# BeeCount 同机：127.0.0.1:8870（容器内经 host.docker.internal 不一定可用 → 用宿主网络名或 extra_hosts）
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    env_file: [../.env]
+    environment:
+      DB_PATH: /app/services/api/data/lifos.db
+      BEECOUNT_BASE_URL: http://172.17.0.1:8870
+      FINANCE_UPSTREAM: mcp
+      REVIEW_UPSTREAM: mock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../data:/app/services/api/data
+    ports:
+      - "127.0.0.1:18000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    mem_limit: 512m
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "0.0.0.0:18080:80"
+    mem_limit: 128m

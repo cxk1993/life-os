@@ -1,0 +1,37 @@
+# Life-OS API image
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# 依赖层缓存
+COPY services/api/pyproject.toml ./pyproject.toml
+RUN pip install --no-cache-dir \
+  fastapi==0.115.6 \
+  "uvicorn[standard]==0.34.0" \
+  pydantic-settings==2.7.0 \
+  sqlmodel==0.0.22 \
+  alembic==1.14.0 \
+  apscheduler==3.11.0 \
+  httpx==0.28.1 \
+  argon2-cffi==23.1.0 \
+  pyjwt==2.10.1 \
+  pyotp==2.9.0
+
+# 保留 services/api 路径结构（config 用 parents[3] 找项目根 .env）
+COPY services/api /app/services/api
+COPY contracts /app/contracts
+RUN mkdir -p /app/services/api/data /app/data
+
+WORKDIR /app/services/api
+ENV PYTHONPATH=/app/services/api \
+    DB_PATH=/app/services/api/data/lifos.db \
+    BACKUP_DIR=/app/services/api/data/backups \
+    APP_ENV=production \
+    TZ=Asia/Shanghai
+
+EXPOSE 8000
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port 8000"]
