@@ -1,65 +1,5 @@
 [
   {
-    "id": "mod-alpha",
-    "name": "演示模块 · 甲",
-    "version": "0.1.0",
-    "kind": "builtin",
-    "icon": "甲",
-    "description": "占位演示模块，用于验证窗口系统的开窗 / 拖拽 / 缩放 / 聚焦 / 关闭。",
-    "entry": "@mocks/alpha",
-    "window": { "w": 720, "h": 460, "minW": 420, "minH": 300 }
-  },
-  {
-    "id": "mod-beta",
-    "name": "演示模块 · 乙",
-    "version": "0.1.0",
-    "kind": "builtin",
-    "icon": "乙",
-    "description": "占位演示模块，用于验证多窗聚焦置顶。",
-    "entry": "@mocks/beta",
-    "window": { "w": 640, "h": 420, "minW": 400, "minH": 280 }
-  },
-  {
-    "id": "mod-gamma",
-    "name": "演示模块 · 丙",
-    "version": "0.1.0",
-    "kind": "builtin",
-    "icon": "丙",
-    "description": "占位演示模块，用于验证几何持久化（刷新恢复）。",
-    "entry": "@mocks/gamma",
-    "window": { "w": 560, "h": 380, "minW": 360, "minH": 260 }
-  },
-  {
-    "id": "mod-delta",
-    "name": "演示模块 · 丁",
-    "version": "0.1.0",
-    "kind": "builtin",
-    "icon": "丁",
-    "description": "单例演示模块，重复点击坞图标应聚焦而非重复开窗。",
-    "entry": "@mocks/delta",
-    "window": { "w": 800, "h": 520, "minW": 480, "minH": 320, "singleton": true }
-  },
-  {
-    "id": "mod-broken",
-    "name": "故障模块",
-    "version": "0.1.0",
-    "kind": "builtin",
-    "icon": "!",
-    "description": "入口在求值阶段抛异常，用于验证「只该窗口占位、桌面不白屏」。",
-    "entry": "@mocks/broken",
-    "window": { "w": 480, "h": 300, "minW": 360, "minH": 240 }
-  },
-  {
-    "id": "mod-ghost",
-    "name": "缺失模块",
-    "version": "0.1.0",
-    "kind": "builtin",
-    "icon": "?",
-    "description": "entry 指向不存在的文件，用于验证「模块缺失」时的容错占位。",
-    "entry": "@mocks/ghost",
-    "window": { "w": 480, "h": 300, "minW": 360, "minH": 240 }
-  },
-  {
     "id": "dashboard",
     "name": "成长罗盘",
     "version": "0.1.0",
@@ -67,7 +7,13 @@
     "icon": "盘",
     "description": "首屏聚合：今日 / 钱 / 复盘 / 系统健康 + dashboard.card 扩展位。",
     "entry": "@/apps/dashboard",
-    "window": { "w": 960, "h": 680, "minW": 640, "minH": 420, "singleton": true }
+    "window": {
+      "w": 960,
+      "h": 680,
+      "minW": 640,
+      "minH": 420,
+      "singleton": true
+    }
   },
   {
     "id": "review",
@@ -77,7 +23,12 @@
     "icon": "复",
     "description": "Work-Review 只读复盘：日报 / 趋势 / 批注。",
     "entry": "@/apps/review",
-    "window": { "w": 900, "h": 640, "minW": 560, "minH": 400 }
+    "window": {
+      "w": 900,
+      "h": 640,
+      "minW": 560,
+      "minH": 400
+    }
   },
   {
     "id": "calendar",
@@ -87,7 +38,12 @@
     "icon": "历",
     "description": "周视图日程色块。",
     "entry": "@/apps/calendar",
-    "window": { "w": 1000, "h": 700, "minW": 720, "minH": 480 }
+    "window": {
+      "w": 1000,
+      "h": 700,
+      "minW": 720,
+      "minH": 480
+    }
   },
   {
     "id": "todo",
@@ -97,7 +53,12 @@
     "icon": "待",
     "description": "今日 / 全部 / 周期待办。",
     "entry": "@/apps/todo",
-    "window": { "w": 720, "h": 560, "minW": 480, "minH": 360 }
+    "window": {
+      "w": 720,
+      "h": 560,
+      "minW": 480,
+      "minH": 360
+    }
   },
   {
     "id": "habits",
@@ -107,7 +68,12 @@
     "icon": "惯",
     "description": "习惯打卡与连击。",
     "entry": "@/apps/habits",
-    "window": { "w": 720, "h": 560, "minW": 480, "minH": 360 }
+    "window": {
+      "w": 720,
+      "h": 560,
+      "minW": 480,
+      "minH": 360
+    }
   },
   {
     "id": "finance",
@@ -117,7 +83,12 @@
     "icon": "财",
     "description": "本地流水 + BeeCount 快照同步面板。",
     "entry": "@/apps/finance",
-    "window": { "w": 880, "h": 620, "minW": 560, "minH": 400 }
+    "window": {
+      "w": 880,
+      "h": 620,
+      "minW": 560,
+      "minH": 400
+    }
   },
   {
     "id": "notes",
@@ -127,7 +98,12 @@
     "icon": "记",
     "description": "本机笔记索引与预览（桥相关）。",
     "entry": "@/apps/notes",
-    "window": { "w": 800, "h": 600, "minW": 520, "minH": 380 }
+    "window": {
+      "w": 800,
+      "h": 600,
+      "minW": 520,
+      "minH": 380
+    }
   },
   {
     "id": "agents",
@@ -137,6 +113,11 @@
     "icon": "智",
     "description": "Agent 注册与任务块离线编排。",
     "entry": "@/apps/agents",
-    "window": { "w": 800, "h": 600, "minW": 520, "minH": 380 }
+    "window": {
+      "w": 800,
+      "h": 600,
+      "minW": 520,
+      "minH": 380
+    }
   }
 ]
