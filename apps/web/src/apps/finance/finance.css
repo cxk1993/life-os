@@ -145,3 +145,92 @@
   font: inherit;
   font-size: 12px;
 }
+
+/* ── T08B BeeCount 同步面板 ── */
+.beecount-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.beecount-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.beecount-panel__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.beecount-panel__badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--txt-faint);
+  background: var(--surface-3, transparent);
+}
+
+.beecount-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+
+.beecount-panel__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.beecount-panel__label {
+  color: var(--txt-faint);
+  font-size: 11px;
+}
+
+.beecount-panel__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.beecount-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.beecount-panel__hint {
+  color: var(--txt-faint);
+  font-size: 11px;
+}
+
+.beecount-panel__error {
+  margin: 0;
+  color: var(--danger, var(--txt));
+  font-size: 12px;
+}
+
+.beecount-panel__ok {
+  margin: 0;
+  color: var(--txt-faint);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .beecount-panel__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

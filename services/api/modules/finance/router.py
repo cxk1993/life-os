@@ -21,12 +21,16 @@ from sqlmodel import Session
 from core.deps import get_current_user, get_db
 from core.security import User
 
+from .beecount_sync import beecount_source, list_snapshots, sync_snapshot
 from .schema import (
+    BeeCountSourceOut,
     FinanceEntryCreate,
     FinanceEntryOut,
     FinanceEntryUpdate,
     FinanceListOut,
+    FinanceSnapshotListOut,
     FinanceSummaryOut,
+    SnapshotSyncOut,
 )
 from .service import FinanceService
 
@@ -124,3 +128,45 @@ def summary(
 ) -> FinanceSummaryOut:
     """区间收支合计 + 按分类合计（固定 schema）。"""
     return FinanceService(db).summary(date_from=date_from, date_to=date_to)
+
+
+# ───────────────── T08B BeeCount 只读联动 ─────────────────
+# 通道：POST {BEECOUNT_BASE_URL}/api/v1/mcp + Bearer PAT（见 beecount_mcp.py）
+# 本轮只读：无 delete、无 create_transaction 写路径、禁 /api/v1/sync/*
+
+
+@router.get("/snapshots", response_model=FinanceSnapshotListOut)
+def list_finance_snapshots(
+    date_from: str | None = Query(None, description="快照日下界 YYYY-MM-DD"),
+    date_to: str | None = Query(None, description="快照日上界 YYYY-MM-DD"),
+    limit: int = Query(30, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """每日快照列表（date 倒序）。供 OverviewPanel / 历史曲线。"""
+    return list_snapshots(db, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+
+
+@router.post("/snapshots/sync", response_model=SnapshotSyncOut)
+def sync_finance_snapshots(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> SnapshotSyncOut:
+    """手动触发一次 BeeCount 只读同步（幂等：同日覆盖，不翻倍）。
+
+    对外签名与任务卡 T08 契约一致；实现走 MCP 读工具（v0.2 替换）。
+    """
+    return sync_snapshot(db)
+
+
+@router.get("/beecount/source", response_model=BeeCountSourceOut)
+def get_beecount_source(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> BeeCountSourceOut:
+    """上游状态：upstream=mock|mcp、是否已配 token、最近同步时间。
+
+    **绝不返回 PAT/token 本身**，只返回 token_present 布尔。
+    """
+    return beecount_source(db)

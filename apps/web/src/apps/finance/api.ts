@@ -62,6 +62,49 @@ export interface ListParams {
   offset?: number;
 }
 
+/** BeeCount 只读快照（T08B）。金额整数分；meta 存 MCP 原始摘要。 */
+export interface FinanceSnapshot {
+  id: string;
+  date: string;
+  total_asset: number;
+  cash: number;
+  invest: number;
+  debt: number;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinanceSnapshotList {
+  items: FinanceSnapshot[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SnapshotSyncResult {
+  ok: boolean;
+  upstream: string;
+  snapshot: FinanceSnapshot | null;
+}
+
+/**
+ * 上游状态。**绝不包含 token**；token_present 仅布尔。
+ * write_enabled 本轮恒为 false（T08B 只读）。
+ */
+export interface BeeCountSource {
+  upstream: string;
+  configured: boolean;
+  base_url_configured: boolean;
+  token_present: boolean;
+  last_sync: string | null;
+  last_snapshot_date: string | null;
+  snapshot_count: number;
+  write_enabled: boolean;
+  read_tools: string[];
+  mcp_path: string;
+}
+
 const BASE = "/api/v1/finance";
 
 export const financeApi = {
@@ -88,6 +131,18 @@ export const financeApi = {
     const qs = q.toString();
     return api.get<FinanceSummary>(`${BASE}/summary${qs ? `?${qs}` : ""}`);
   },
+  /** T08B：快照列表（date 倒序）。只走 Life-OS 后端，前端不直连 BeeCount。 */
+  snapshots: (params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set("limit", String(params.limit));
+    if (params.offset != null) q.set("offset", String(params.offset));
+    const qs = q.toString();
+    return api.get<FinanceSnapshotList>(`${BASE}/snapshots${qs ? `?${qs}` : ""}`);
+  },
+  /** T08B：手动触发只读同步（调 Life-OS 后端，由后端走 BeeCount MCP）。 */
+  syncSnapshots: () => api.post<SnapshotSyncResult>(`${BASE}/snapshots/sync`, {}),
+  /** T08B：上游状态（mock|mcp / configured / last_sync）。 */
+  beeCountSource: () => api.get<BeeCountSource>(`${BASE}/beecount/source`),
 };
 
 /** 分 → 人读金额字符串（精确，不用 toFixed 舍入到分以外）。 */

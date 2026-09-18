@@ -6,8 +6,8 @@
 """
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Literal
+from datetime import date, datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -79,3 +79,63 @@ class FinanceSummaryOut(BaseModel):
     net_cents: int = 0
     count: int = 0
     by_category: list[CategoryTotal] = []
+
+
+# ───────────────── T08B BeeCount 只读快照 ─────────────────
+# 金额字段名与 ADR/字典一致（total_asset/cash/invest/debt），单位整数分。
+# BeeCount MCP 读不到细分时保持 0，原始摘要在 meta。
+
+
+class FinanceSnapshotOut(BaseModel):
+    """一条每日快照（date 全局唯一）。"""
+
+    id: str
+    date: date
+    total_asset: int = 0
+    cash: int = 0
+    invest: int = 0
+    debt: int = 0
+    meta: dict[str, Any] | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class FinanceSnapshotListOut(BaseModel):
+    """快照列表：date 倒序 + 分页字段。"""
+
+    items: list[FinanceSnapshotOut] = []
+    total: int = 0
+    limit: int = 30
+    offset: int = 0
+
+
+class SnapshotSyncOut(BaseModel):
+    """POST /snapshots/sync 响应。
+
+    upstream: mock | mcp
+    snapshot: 当日 upsert 后的快照（同日覆盖，不会翻倍）
+    """
+
+    ok: bool = True
+    upstream: str
+    snapshot: FinanceSnapshotOut | None = None
+
+
+class BeeCountSourceOut(BaseModel):
+    """GET /beecount/source：上游状态（**绝不返回 token**）。
+
+    upstream     FINANCE_UPSTREAM：mock | mcp
+    configured   mcp 模式下 base_url + token 是否齐全；mock 恒为 true
+    write_enabled 本轮只读，恒为 false
+    """
+
+    upstream: str
+    configured: bool
+    base_url_configured: bool
+    token_present: bool
+    last_sync: datetime | None = None
+    last_snapshot_date: date | None = None
+    snapshot_count: int = 0
+    write_enabled: bool = False
+    read_tools: list[str] = []
+    mcp_path: str = "/api/v1/mcp"

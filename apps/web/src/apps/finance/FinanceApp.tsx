@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePluginEvent } from "@/shared/api/events";
 import { financeApi, formatCents, type Direction } from "./api";
+import BeeCountSyncPanel from "./BeeCountSyncPanel";
 import "./finance.css";
 
-/** 理财主界面：summary 卡 + 快速记一笔 + 流水列表（带简单过滤）。 */
+/** 理财主界面：BeeCount 同步面板 + summary 卡 + 快速记一笔 + 流水列表。 */
 export default function FinanceApp() {
   const qc = useQueryClient();
   const [direction, setDirection] = useState<Direction>("expense");
@@ -19,6 +20,7 @@ export default function FinanceApp() {
   usePluginEvent("finance.entry.created", invalidate);
   usePluginEvent("finance.entry.updated", invalidate);
   usePluginEvent("finance.entry.deleted", invalidate);
+  usePluginEvent("finance.snapshot.updated", invalidate);
 
   const { data: summary } = useQuery({
     queryKey: ["finance", "summary"],
@@ -82,6 +84,8 @@ export default function FinanceApp() {
 
   return (
     <div className="finance-root">
+      <BeeCountSyncPanel />
+
       <section className="finance-summary" aria-label="收支汇总">
         <div className="finance-summary__item">
           <span className="finance-summary__label">支出</span>

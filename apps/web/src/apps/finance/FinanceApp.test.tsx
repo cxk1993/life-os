@@ -68,6 +68,20 @@ vi.mock("./api", async () => {
         count: 0,
         by_category: [],
       }),
+      snapshots: vi.fn().mockResolvedValue({ items: [], total: 0, limit: 5, offset: 0 }),
+      syncSnapshots: vi.fn().mockResolvedValue({ ok: true, upstream: "mock", snapshot: null }),
+      beeCountSource: vi.fn().mockResolvedValue({
+        upstream: "mock",
+        configured: true,
+        base_url_configured: true,
+        token_present: false,
+        last_sync: null,
+        last_snapshot_date: null,
+        snapshot_count: 0,
+        write_enabled: false,
+        read_tools: ["get_ledger_stats", "get_analytics_summary"],
+        mcp_path: "/api/v1/mcp",
+      }),
     },
   };
 });
@@ -97,8 +111,9 @@ describe("formatCents", () => {
 });
 
 describe("FinanceApp 冒烟", () => {
-  it("挂载显示 summary 卡、快速记一笔与空态", async () => {
+  it("挂载显示 BeeCount 同步面板、summary 卡、快速记一笔与空态", async () => {
     render(<FinanceApp />, { wrapper: makeWrapper() });
+    expect(screen.getByLabelText("BeeCount 同步")).toBeTruthy();
     expect(screen.getByLabelText("收支汇总")).toBeTruthy();
     expect(screen.getByLabelText("快速记一笔")).toBeTruthy();
     expect(screen.getByRole("button", { name: "记一笔" })).toBeTruthy();

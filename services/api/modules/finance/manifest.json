@@ -1,12 +1,12 @@
 {
   "id": "finance",
   "name": "理财",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "kind": "builtin",
   "minKernel": "0.1.0",
   "kernelApi": "^1",
   "icon": "box",
-  "description": "个人账本：流水 CRUD（金额整数分）、分类/账户/日期/方向过滤、区间收支与分类汇总。",
+  "description": "个人账本 + BeeCount MCP 只读快照同步（金额整数分，date 幂等 upsert）。",
   "author": "yunxi",
   "window": {
     "w": 720,
@@ -20,18 +20,22 @@
   },
   "provides": [
     "finance.entry.read",
-    "finance.entry.write"
+    "finance.entry.write",
+    "finance.snapshot.read",
+    "finance.beeccount.read"
   ],
   "requires": [],
   "slots": [],
   "emits": [
     "finance.entry.created",
     "finance.entry.updated",
-    "finance.entry.deleted"
+    "finance.entry.deleted",
+    "finance.snapshot.updated"
   ],
   "consumes": [],
   "permissions": [
-    "db:own"
+    "db:own",
+    "net:out:127.0.0.1"
   ],
   "migrations": "api/migrations",
   "settingsSchema": "api/settings.schema.json",
