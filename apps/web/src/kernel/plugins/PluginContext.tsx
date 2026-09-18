@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { api } from "@/shared/api/client";
+import { resolveLoader } from "../ModuleRegistry";
 import {
   contributionsForSlot,
   registerContributions,
@@ -18,11 +19,14 @@ import {
 import { syncPluginsToStore } from "./PluginRegistry";
 import type { PluginContextValue, PluginInfo, SlotContribution, SlotName } from "./types";
 
-/** 动态 import 一个插件入口，取出它导出的 slots 贡献（通用回退，支持任意 entry）。 */
+/**
+ * 动态 import 插件入口：与窗口打开共用 ModuleRegistry.resolveLoader
+ * （按 src/apps/<目录>/index.tsx 约定自动发现，不在内核写死插件名）。
+ */
 async function defaultLoadEntry(
   entry: string,
 ): Promise<{ default: { slots?: Partial<Record<SlotName, ComponentType>> } }> {
-  return import(/* @vite-ignore */ entry) as unknown as Promise<{
+  return resolveLoader(entry)() as unknown as Promise<{
     default: { slots?: Partial<Record<SlotName, ComponentType>> };
   }>;
 }

@@ -2,43 +2,75 @@ import { useDesktopStore } from "./store";
 import type { ModuleManifest, PluginModule } from "./types";
 
 /**
- * 模块注册表（T02 这一版的实现）。
+ * 模块注册表（T02 实现 · T14 洁癖约束）。
  *
  * 职责：
- *   - 把 modules.json 里的清单注册进桌面 store。
- *   - 提供「入口 → 动态 import 加载器」的解析（React.lazy 用）。
+ *   - 把 modules.json / 后端插件清单注册进桌面 store。
+ *   - 把 entry 解析成 React.lazy 可用的 loader。
  *
- * 接口形状刻意与 T14 的 PluginHost 对齐（方法名一致），
- * 将来 T14 做真实插件发现/生命周期时，可直接顶替，不需要返工。
+ * ★ 内核洁癖：本文件**不认识任何业务插件名**。
+ *   业务入口一律按**目录约定**用 `import.meta.glob` 自动发现：
+ *     `src/apps/<插件目录>/index.tsx`
+ *   加新插件 = 多一个目录 + manifest 登记 entry，**不必改本文件**。
+ *   （硬编码 `@/apps/calendar` 之类映射表会让 check_kernel_purity 失败，
+ *   且直接违反「不改内核就能加插件」的总纲判据。）
  *
- * 注意：本文件只加载「入口」，不认识任何业务；入口抛错由 WindowFrame
- * 的错误边界兜底（只该窗口占位，桌面不白屏）。
+ * 演示 mock 仍保留显式表：它们属于内核自测夹具，不是业务插件。
+ * 入口抛错由 WindowFrame 错误边界兜底（只该窗口占位，桌面不白屏）。
  */
 
-/** 显式 entry → loader（确定性、可被 Tree-shaking 分析）。 */
-const ENTRY_LOADERS: Record<string, () => Promise<{ default: PluginModule }>> = {
-  "@mocks/alpha": () => import("@/shared/mocks/alpha"),
-  "@mocks/beta": () => import("@/shared/mocks/beta"),
-  "@mocks/gamma": () => import("@/shared/mocks/gamma"),
-  "@mocks/delta": () => import("@/shared/mocks/delta"),
-  "@mocks/broken": () => import("@/shared/mocks/broken"),
-  // 业务插件：必须走显式 import，运行时 import("@/apps/...") 打包器无法解析
-  "@/apps/calendar": () => import("@/apps/calendar"),
-  "@/apps/todo": () => import("@/apps/todo"),
-  "@/apps/habits": () => import("@/apps/habits"),
-  "@/apps/finance": () => import("@/apps/finance"),
-  "@/apps/notes": () => import("@/apps/notes"),
-  "@/apps/agents": () => import("@/apps/agents"),
-  "@/apps/review": () => import("@/apps/review"),
-  "@/apps/dashboard": () => import("@/apps/dashboard"),
+type ModLoader = () => Promise<{ default: PluginModule }>;
+
+/** 相对本文件（src/kernel → src/apps、src/shared）。Vite 可静态分析、可分包。 */
+const APP_ENTRY_GLOB = import.meta.glob("../apps/*/index.tsx");
+const MOCK_ENTRY_GLOB = import.meta.glob("../shared/mocks/*.tsx");
+
+function fromGlob(map: Record<string, () => Promise<unknown>>, key: string): ModLoader | undefined {
+  const fn = map[key];
+  if (!fn) return undefined;
+  return () => fn() as Promise<{ default: PluginModule }>;
+}
+
+/** 内核演示夹具（非业务）：entry 说明符 → glob 键。 */
+const DEMO_ENTRY_KEYS: Record<string, string> = {
+  "@mocks/alpha": "../shared/mocks/alpha.tsx",
+  "@mocks/beta": "../shared/mocks/beta.tsx",
+  "@mocks/gamma": "../shared/mocks/gamma.tsx",
+  "@mocks/delta": "../shared/mocks/delta.tsx",
+  "@mocks/broken": "../shared/mocks/broken.tsx",
 };
 
-/** 把 entry 说明符解析成 React.lazy 可用的 loader。 */
-export function resolveLoader(entry: string): () => Promise<{ default: PluginModule }> {
-  const explicit = ENTRY_LOADERS[entry];
-  if (explicit) return explicit;
-  // 通用回退：允许运行时给定的任意 entry（@vite-ignore 告诉打包器不要静态分析）。
-  return () => import(/* @vite-ignore */ entry) as Promise<{ default: PluginModule }>;
+function demoLoader(entry: string): ModLoader | undefined {
+  const key = DEMO_ENTRY_KEYS[entry];
+  return key ? fromGlob(MOCK_ENTRY_GLOB, key) : undefined;
+}
+
+/**
+ * 把 entry 解析成 loader。
+ * 支持约定路径：
+ *   `@/apps/<dir>` / `@/apps/<dir>/index.tsx` / `/src/apps/<dir>/index.tsx`
+ *   `@mocks/<name>`
+ * 找不到时返回 rejected Promise（由窗口错误边界展示）。
+ */
+export function resolveLoader(entry: string): ModLoader {
+  const demo = demoLoader(entry);
+  if (demo) return demo;
+
+  const appMatch =
+    /^(?:@\/apps\/|\/src\/apps\/)([^/]+?)(?:\/index\.tsx)?$/.exec(entry) ??
+    /^\.\.\/apps\/([^/]+?)(?:\/index\.tsx)?$/.exec(entry);
+  if (appMatch) {
+    const loader = fromGlob(APP_ENTRY_GLOB, `../apps/${appMatch[1]}/index.tsx`);
+    if (loader) return loader;
+  }
+
+  const mockMatch = /^@mocks\/([^/]+)$/.exec(entry);
+  if (mockMatch) {
+    const loader = fromGlob(MOCK_ENTRY_GLOB, `../shared/mocks/${mockMatch[1]}.tsx`);
+    if (loader) return loader;
+  }
+
+  return () => Promise.reject(new Error(`未找到插件入口：${entry}`));
 }
 
 export interface PluginHost {
