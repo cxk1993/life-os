@@ -31,9 +31,7 @@ export default function AgentRow({ agent }: Props) {
           {agent.capabilities.length > 0 ? (
             <span>{agent.capabilities.map((c) => `#${c}`).join(" ")}</span>
           ) : null}
-          <span className="agent-row__badge">
-            {agent.enabled ? "启用" : "停用"}
-          </span>
+          <span className="agent-row__badge">{agent.enabled ? "启用" : "停用"}</span>
         </div>
       </div>
       <button

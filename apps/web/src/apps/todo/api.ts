@@ -78,16 +78,13 @@ export const todoApi = {
   createStructured: (body: Partial<TodoItem> & { due_at?: string | null }) =>
     api.post<TodoItem>(`${BASE}/items`, body),
 
-  update: (id: string, body: Partial<TodoItem>) =>
-    api.patch<TodoItem>(`${BASE}/items/${id}`, body),
+  update: (id: string, body: Partial<TodoItem>) => api.patch<TodoItem>(`${BASE}/items/${id}`, body),
 
   remove: (id: string) => api.delete<void>(`${BASE}/items/${id}`),
 
-  toggle: (id: string) =>
-    api.post<TodoItem>(`${BASE}/items/${id}/toggle`),
+  toggle: (id: string) => api.post<TodoItem>(`${BASE}/items/${id}/toggle`),
 
-  importMarkdown: (content: string) =>
-    api.post<ImportResult>(`${BASE}/import`, { content }),
+  importMarkdown: (content: string) => api.post<ImportResult>(`${BASE}/import`, { content }),
 
   exportMarkdown: (status?: "done" | "todo" | "all") =>
     api.post<ExportResult>(`${BASE}/export`, { status: status ?? "all" }),

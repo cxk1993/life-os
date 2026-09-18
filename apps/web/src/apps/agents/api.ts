@@ -53,8 +53,7 @@ const BASE = "/api/v1/agents";
 export const agentsApi = {
   list: () => api.get<Agent[]>(`${BASE}/agents`),
   create: (body: AgentCreate) => api.post<Agent>(`${BASE}/agents`, body),
-  update: (id: string, body: Partial<Agent>) =>
-    api.patch<Agent>(`${BASE}/agents/${id}`, body),
+  update: (id: string, body: Partial<Agent>) => api.patch<Agent>(`${BASE}/agents/${id}`, body),
   remove: (id: string) => api.delete<void>(`${BASE}/agents/${id}`),
   listTasks: () => api.get<AgentTask[]>(`${BASE}/tasks`),
   summary: () => api.get<Summary>(`${BASE}/summary`),

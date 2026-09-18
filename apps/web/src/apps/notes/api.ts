@@ -44,8 +44,7 @@ const BASE = "/api/v1/notes";
 
 export const notesApi = {
   libs: () => api.get<NoteLib[]>(`${BASE}/libs`),
-  createLib: (body: { key: string; name?: string }) =>
-    api.post<NoteLib>(`${BASE}/libs`, body),
+  createLib: (body: { key: string; name?: string }) => api.post<NoteLib>(`${BASE}/libs`, body),
   syncLib: (libId: string) => api.post<SyncResult>(`${BASE}/libs/${libId}/sync`),
   search: (q?: string, libId?: string) => {
     const p = new URLSearchParams();

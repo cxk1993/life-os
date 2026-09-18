@@ -25,24 +25,14 @@ export default function TodoApp() {
   const setView = useTodoUI((s) => s.setView);
 
   // 后端写入会推 todo.item.* 事件，收到即失效本地缓存（SSE 自动重连）。
-  usePluginEvent("todo.item.created", () =>
-    qc.invalidateQueries({ queryKey: ["todo"] }),
-  );
-  usePluginEvent("todo.item.updated", () =>
-    qc.invalidateQueries({ queryKey: ["todo"] }),
-  );
-  usePluginEvent("todo.item.completed", () =>
-    qc.invalidateQueries({ queryKey: ["todo"] }),
-  );
+  usePluginEvent("todo.item.created", () => qc.invalidateQueries({ queryKey: ["todo"] }));
+  usePluginEvent("todo.item.updated", () => qc.invalidateQueries({ queryKey: ["todo"] }));
+  usePluginEvent("todo.item.completed", () => qc.invalidateQueries({ queryKey: ["todo"] }));
 
   return (
     <div className="todo-root">
       <QuickAdd />
-      <Tabs
-        tabs={TABS}
-        active={view}
-        onChange={(id) => setView(id as TodoView)}
-      />
+      <Tabs tabs={TABS} active={view} onChange={(id) => setView(id as TodoView)} />
       {view === "today" && <TodayView />}
       {view === "all" && <AllView />}
       {view === "recurring" && <RecurringView />}

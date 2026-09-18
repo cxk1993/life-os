@@ -45,12 +45,10 @@ const BASE = "/api/v1/habits";
 export const habitsApi = {
   list: () => api.get<Habit[]>(`${BASE}/habits`),
   create: (body: HabitCreate) => api.post<Habit>(`${BASE}/habits`, body),
-  update: (id: string, body: Partial<Habit>) =>
-    api.patch<Habit>(`${BASE}/habits/${id}`, body),
+  update: (id: string, body: Partial<Habit>) => api.patch<Habit>(`${BASE}/habits/${id}`, body),
   remove: (id: string) => api.delete<void>(`${BASE}/habits/${id}`),
   checkin: (id: string, body: { value?: string; note?: string } = {}) =>
     api.post<Habit>(`${BASE}/habits/${id}/checkin`, body),
-  uncheck: (id: string, day: string) =>
-    api.delete<Habit>(`${BASE}/habits/${id}/checkin/${day}`),
+  uncheck: (id: string, day: string) => api.delete<Habit>(`${BASE}/habits/${id}/checkin/${day}`),
   summary: () => api.get<Summary>(`${BASE}/summary`),
 };

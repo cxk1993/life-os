@@ -36,9 +36,7 @@ vi.mock("./api", () => ({
     remove: vi.fn().mockResolvedValue(undefined),
     checkin: vi.fn().mockResolvedValue({}),
     uncheck: vi.fn().mockResolvedValue({}),
-    summary: vi
-      .fn()
-      .mockResolvedValue({ total: 0, done: 0, pending: 0, rest: 0, best_streak: 0 }),
+    summary: vi.fn().mockResolvedValue({ total: 0, done: 0, pending: 0, rest: 0, best_streak: 0 }),
   },
 }));
 

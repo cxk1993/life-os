@@ -43,9 +43,7 @@ vi.mock("./api", () => ({
     toggle: vi.fn().mockResolvedValue({ id: "t1", done: true, done_at: "now" }),
     importMarkdown: vi.fn(),
     exportMarkdown: vi.fn(),
-    summary: vi
-      .fn()
-      .mockResolvedValue({ today: 0, overdue: 0, week_done: 0 }),
+    summary: vi.fn().mockResolvedValue({ today: 0, overdue: 0, week_done: 0 }),
   },
 }));
 

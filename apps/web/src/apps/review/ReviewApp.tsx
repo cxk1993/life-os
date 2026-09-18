@@ -1,13 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePluginEvent } from "@/shared/api/events";
-import {
-  formatSeconds,
-  reviewApi,
-  type DayDetail,
-  type NamedRow,
-  type SourceInfo,
-} from "./api";
+import { formatSeconds, reviewApi, type DayDetail, type NamedRow, type SourceInfo } from "./api";
 import "./review.css";
 
 function sourceLine(src: SourceInfo | null | undefined): string {
@@ -15,7 +9,10 @@ function sourceLine(src: SourceInfo | null | undefined): string {
   const pathLabel = src.path === "bridge" ? "bridge" : src.path === "mock" ? "mock" : "direct";
   let sync = "尚无同步";
   if (src.last_sync_at) {
-    const mins = Math.max(0, Math.floor((Date.now() - new Date(src.last_sync_at).getTime()) / 60000));
+    const mins = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(src.last_sync_at).getTime()) / 60000),
+    );
     sync = mins < 1 ? "最后同步 刚刚" : `最后同步 ${mins} 分钟前`;
   }
   return `数据源：Work-Review · 模式：${pathLabel} · ${sync}`;

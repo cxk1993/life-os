@@ -19,9 +19,7 @@ export default function DashboardCard() {
       <div className="card__body">
         <div className="habits-dash__stats">
           <div className="habits-dash__stat">
-            <span className="habits-dash__num">
-              {total ? `${done}/${total}` : "—"}
-            </span>
+            <span className="habits-dash__num">{total ? `${done}/${total}` : "—"}</span>
             <span className="habits-dash__lbl">今日</span>
           </div>
           <div className="habits-dash__stat">

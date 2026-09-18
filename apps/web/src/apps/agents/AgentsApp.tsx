@@ -84,9 +84,7 @@ export default function AgentsApp() {
               ◎
             </div>
             <div className="empty__text">还没有 agent</div>
-            <div className="empty__hint">
-              在上方注册一个 agent，任务块才能派发出去
-            </div>
+            <div className="empty__hint">在上方注册一个 agent，任务块才能派发出去</div>
           </div>
         ) : (
           list.map((a) => <AgentRow key={a.id} agent={a} />)

@@ -19,8 +19,7 @@ function endOfTodayISO(): string {
 export default function TodayView() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["todo", "today"],
-    queryFn: () =>
-      todoApi.list({ status: "todo", due_before: endOfTodayISO(), limit: 200 }),
+    queryFn: () => todoApi.list({ status: "todo", due_before: endOfTodayISO(), limit: 200 }),
   });
 
   if (isLoading) {
@@ -35,10 +34,7 @@ export default function TodayView() {
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!data || data.items.length === 0) {
     return (
-      <EmptyState
-        text="今天没有待办"
-        hint="在上方快速添加一句，支持 @日期 #标签 !优先级 语法糖"
-      />
+      <EmptyState text="今天没有待办" hint="在上方快速添加一句，支持 @日期 #标签 !优先级 语法糖" />
     );
   }
 

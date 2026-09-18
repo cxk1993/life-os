@@ -2,15 +2,7 @@
 import type { TodayBlock } from "./api";
 import { isDegraded } from "./api";
 
-function Stat({
-  label,
-  value,
-  degraded,
-}: {
-  label: string;
-  value: string;
-  degraded?: boolean;
-}) {
+function Stat({ label, value, degraded }: { label: string; value: string; degraded?: boolean }) {
   return (
     <div className="dash-stat">
       <span className="dash-stat__num" data-testid={`today-${label}`}>

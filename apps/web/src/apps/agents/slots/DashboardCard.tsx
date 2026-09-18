@@ -13,8 +13,7 @@ export default function DashboardCard() {
   const agentsTotal = data?.agents_total ?? 0;
   const tasksTotal = data?.tasks_total ?? 0;
   const done = data?.done ?? 0;
-  const pending =
-    (data?.draft ?? 0) + (data?.queued ?? 0) + (data?.running ?? 0);
+  const pending = (data?.draft ?? 0) + (data?.queued ?? 0) + (data?.running ?? 0);
 
   return (
     <div className="card">
@@ -28,9 +27,7 @@ export default function DashboardCard() {
             <span className="agents-dash__lbl">启用 agent</span>
           </div>
           <div className="agents-dash__stat">
-            <span className="agents-dash__num">
-              {tasksTotal ? `${done}/${tasksTotal}` : "—"}
-            </span>
+            <span className="agents-dash__num">{tasksTotal ? `${done}/${tasksTotal}` : "—"}</span>
             <span className="agents-dash__lbl">任务完成</span>
           </div>
           <div className="agents-dash__stat">

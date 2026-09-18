@@ -73,9 +73,7 @@ export default function HabitsApp() {
               ○
             </div>
             <div className="empty__text">还没有习惯</div>
-            <div className="empty__hint">
-              在上方输入一个想坚持的小事，点圆钮打卡
-            </div>
+            <div className="empty__hint">在上方输入一个想坚持的小事，点圆钮打卡</div>
           </div>
         ) : (
           list.map((h) => <HabitRow key={h.id} habit={h} />)

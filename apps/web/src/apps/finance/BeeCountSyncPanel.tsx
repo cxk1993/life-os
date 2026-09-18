@@ -56,11 +56,7 @@ export default function BeeCountSyncPanel() {
         <div className="beecount-panel__item">
           <span className="beecount-panel__label">状态</span>
           <span className="beecount-panel__value" data-testid="bc-status">
-            {sourceLoading
-              ? "加载中…"
-              : configured
-                ? "已就绪"
-                : "未配置凭据（请检查后端 .env）"}
+            {sourceLoading ? "加载中…" : configured ? "已就绪" : "未配置凭据（请检查后端 .env）"}
           </span>
         </div>
         <div className="beecount-panel__item">
@@ -93,9 +89,7 @@ export default function BeeCountSyncPanel() {
         >
           {syncMut.isPending ? "同步中…" : "手动同步"}
         </button>
-        <span className="beecount-panel__hint">
-          只读快照 · 同日覆盖不翻倍 · 不写 BeeCount
-        </span>
+        <span className="beecount-panel__hint">只读快照 · 同日覆盖不翻倍 · 不写 BeeCount</span>
       </div>
 
       {syncMut.isError ? (

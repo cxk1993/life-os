@@ -101,7 +101,9 @@ describe("NotesApp", () => {
     await waitFor(() => {
       // content 整段在 <pre> 里，text 节点是 "# 周报\n正文"，不能精确匹配「正文」
       expect(
-        screen.getByText((_, el) => el?.tagName === "PRE" && el.textContent?.includes("正文") === true),
+        screen.getByText(
+          (_, el) => el?.tagName === "PRE" && el.textContent?.includes("正文") === true,
+        ),
       ).toBeTruthy();
     });
     expect(notesApi.get).toHaveBeenCalledWith("n1");
@@ -122,9 +124,7 @@ describe("NotesApp", () => {
     vi.mocked(notesApi.search).mockResolvedValue({ items: [], total: 0 });
     render(<NotesApp />, { wrapper: makeWrapper() });
     await waitFor(() => {
-      expect(
-        screen.getByText("还没有索引，点右上角「同步」从本机桥拉取"),
-      ).toBeTruthy();
+      expect(screen.getByText("还没有索引，点右上角「同步」从本机桥拉取")).toBeTruthy();
     });
   });
 
@@ -158,9 +158,7 @@ describe("NotesApp", () => {
     await waitFor(() => screen.getByText("周报"));
     fireEvent.click(screen.getByText("周报"));
     await waitFor(() => {
-      expect(
-        screen.getByText("（全文暂不可用——本机桥未连接）"),
-      ).toBeTruthy();
+      expect(screen.getByText("（全文暂不可用——本机桥未连接）")).toBeTruthy();
     });
   });
 

@@ -32,11 +32,7 @@ export default function QuickAdd() {
         placeholder="快速添加：写周报 @周五 !高 #副业"
         aria-label="快速添加待办"
       />
-      <button
-        className="btn btn--primary"
-        type="submit"
-        disabled={mut.isPending || !text.trim()}
-      >
+      <button className="btn btn--primary" type="submit" disabled={mut.isPending || !text.trim()}>
         添加
       </button>
     </form>

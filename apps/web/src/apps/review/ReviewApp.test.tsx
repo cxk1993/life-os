@@ -27,9 +27,7 @@ const dayItem = {
   has_ai: true,
   has_raw: true,
   raw_path: "work-review:2026-09-13",
-  top_categories: [
-    { name: "编码", seconds: 11632, duration_text: "3小时13分52秒" },
-  ],
+  top_categories: [{ name: "编码", seconds: 11632, duration_text: "3小时13分52秒" }],
   synced_at: new Date().toISOString(),
 };
 
@@ -45,15 +43,9 @@ const dayDetail: DayDetail = {
   date: "2026-09-13",
   is_empty: false,
   empty_hint: "",
-  categories: [
-    { name: "编码", seconds: 11632, duration_text: "3小时13分52秒" },
-  ],
-  apps: [
-    { name: "Code.exe", seconds: 7200, duration_text: "2小时0分0秒" },
-  ],
-  domains: [
-    { name: "github.com", seconds: 1800, duration_text: "30分0秒" },
-  ],
+  categories: [{ name: "编码", seconds: 11632, duration_text: "3小时13分52秒" }],
+  apps: [{ name: "Code.exe", seconds: 7200, duration_text: "2小时0分0秒" }],
+  domains: [{ name: "github.com", seconds: 1800, duration_text: "30分0秒" }],
   hourly: [
     { hour: 9, seconds: 3600, duration_text: "1小时0分0秒" },
     { hour: 10, seconds: 0, duration_text: "0秒" },
@@ -63,7 +55,9 @@ const dayDetail: DayDetail = {
   raw_path: "work-review:2026-09-13",
   has_raw: true,
   synced_at: new Date().toISOString(),
-  notes: [{ id: "n1", date: "2026-09-13", content_md: "手写批注", created_at: new Date().toISOString() }],
+  notes: [
+    { id: "n1", date: "2026-09-13", content_md: "手写批注", created_at: new Date().toISOString() },
+  ],
   source,
 };
 

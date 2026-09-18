@@ -211,9 +211,7 @@ export default function FinanceApp() {
                     {it.account ? ` · ${it.account}` : ""}
                   </span>
                 </div>
-                <div className="finance-row__meta">
-                  {it.note || it.occurred_at}
-                </div>
+                <div className="finance-row__meta">{it.note || it.occurred_at}</div>
               </div>
               <span className="finance-row__amount" data-testid="row-amount">
                 {formatCents(it.amount_cents, it.direction)}

@@ -57,7 +57,9 @@
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: var(--surface);
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
 .todo-row:hover {
   border-color: var(--line-strong);

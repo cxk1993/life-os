@@ -62,17 +62,11 @@ export default function NotesApp() {
             <li key={n.id}>
               <button
                 type="button"
-                className={
-                  selected?.id === n.id
-                    ? "notes-item notes-item--active"
-                    : "notes-item"
-                }
+                className={selected?.id === n.id ? "notes-item notes-item--active" : "notes-item"}
                 onClick={() => setSelected(n)}
               >
                 <span className="notes-item__title">{n.title || n.rel_path}</span>
-                {n.excerpt && (
-                  <span className="notes-item__excerpt">{n.excerpt}</span>
-                )}
+                {n.excerpt && <span className="notes-item__excerpt">{n.excerpt}</span>}
               </button>
             </li>
           ))}

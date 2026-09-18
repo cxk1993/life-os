@@ -63,11 +63,7 @@ export default function DashboardApp() {
         <GrowthPanel growth={data.growth} />
       </div>
 
-      <SystemHealth
-        system={data.system}
-        cards={data.cards}
-        cardsHint={data.cards_hint}
-      />
+      <SystemHealth system={data.system} cards={data.cards} cardsHint={data.cards_hint} />
 
       <section className="dash-card" aria-label="插件卡片">
         <div className="dash-card__title">扩展卡片（dashboard.card）</div>
@@ -77,8 +73,8 @@ export default function DashboardApp() {
             className="dash-slot-host"
             fallback={
               <div className="dash-muted" data-testid="slot-empty">
-                暂无插件卡片挂载（calendar / todo / habits / agents 声明了该扩展点；
-                需 PluginProvider 加载入口后出现）
+                暂无插件卡片挂载（calendar / todo / habits / agents 声明了该扩展点； 需
+                PluginProvider 加载入口后出现）
               </div>
             }
           />

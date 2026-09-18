@@ -9,9 +9,7 @@ export default function ReviewPanel({ review }: { review: ReviewBlock }) {
   const path = typeof source.path === "string" ? source.path : "—";
   const online = source.upstream_online === true;
   const lastSync =
-    typeof source.last_sync_at === "string" && source.last_sync_at
-      ? source.last_sync_at
-      : null;
+    typeof source.last_sync_at === "string" && source.last_sync_at ? source.last_sync_at : null;
   const message = typeof source.message === "string" ? source.message : "";
 
   return (

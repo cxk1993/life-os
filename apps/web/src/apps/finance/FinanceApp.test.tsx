@@ -28,9 +28,7 @@ const summary: FinanceSummary = {
   income_cents: 10000,
   net_cents: 8616,
   count: 3,
-  by_category: [
-    { category: "餐饮", expense_cents: 1334, income_cents: 0, count: 2 },
-  ],
+  by_category: [{ category: "餐饮", expense_cents: 1334, income_cents: 0, count: 2 }],
 };
 
 const emptyList: FinanceList = { items: [], total: 0, limit: 50, offset: 0 };

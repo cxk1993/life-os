@@ -54,11 +54,7 @@ export default function HabitRow({ habit }: Props) {
 
   return (
     <div
-      className={
-        "habit-row" +
-        (done ? " habit-row--done" : "") +
-        (rest ? " habit-row--rest" : "")
-      }
+      className={"habit-row" + (done ? " habit-row--done" : "") + (rest ? " habit-row--rest" : "")}
     >
       <button
         type="button"

@@ -29,8 +29,7 @@ export default function AllView() {
   }
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
 
-  const items =
-    data?.items.filter((it) => !filterTag || it.tags.includes(filterTag)) ?? [];
+  const items = data?.items.filter((it) => !filterTag || it.tags.includes(filterTag)) ?? [];
 
   if (items.length === 0) {
     return (
