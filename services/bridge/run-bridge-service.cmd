@@ -1,10 +1,10 @@
 @echo off
-REM Life-OS note bridge as Windows service (nssm Application = this cmd)
-REM BRIDGE_PSK must be set by nssm AppEnvironmentExtra — do not hardcode here.
+REM Life-OS note bridge (nssm Application points here)
+REM BRIDGE_PSK comes from nssm AppEnvironmentExtra
 setlocal
 cd /d "E:\ai work\work\life\services\bridge"
 if not defined BRIDGE_PSK (
-  echo BRIDGE_PSK is not set in service environment. 1>&2
+  echo BRIDGE_PSK is not set. 1>&2
   exit /b 1
 )
 if not defined BRIDGE_PORT set BRIDGE_PORT=8790
