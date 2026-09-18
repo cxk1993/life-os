@@ -49,4 +49,5 @@ deploy/tools/frp/*.err
 deploy/tools/frp/frpc-out.txt
 deploy/tools/nssm/*
 !deploy/tools/nssm/install-services.ps1
+!deploy/tools/nssm/install-services.cmd
 deploy/tools/**/*.exe
