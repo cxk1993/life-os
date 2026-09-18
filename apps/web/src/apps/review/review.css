@@ -1,0 +1,241 @@
+/*
+ * 复盘样式。只使用设计令牌 var(--xxx)，不写死颜色。
+ * 视觉克制：给自己看的，不是 KPI 面板；负面变化不标红。
+ */
+
+.review-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+}
+
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.review-source {
+  font-size: 11px;
+  color: var(--txt-faint);
+  flex: 1;
+  min-width: 160px;
+}
+
+.review-source--offline {
+  color: var(--warn, #b8860b);
+}
+
+.review-body {
+  display: flex;
+  gap: var(--sp-3);
+  flex: 1;
+  min-height: 0;
+}
+
+.review-days {
+  width: 200px;
+  flex-shrink: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+}
+
+.review-day-item {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.review-day-item:hover {
+  background: var(--surface-3, var(--surface));
+}
+
+.review-day-item--active {
+  border-left: 3px solid var(--accent);
+  background: var(--surface-3, var(--surface));
+}
+
+.review-day-item__date {
+  font-weight: 600;
+}
+
+.review-day-item__meta {
+  font-size: 11px;
+  color: var(--txt-faint);
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.review-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  padding: var(--sp-3);
+}
+
+.review-panel__title {
+  font-weight: 600;
+  margin-bottom: var(--sp-2);
+  font-size: 13px;
+}
+
+.review-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-bar-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 90px;
+  gap: var(--sp-2);
+  align-items: center;
+  font-size: 12px;
+}
+
+.review-bar-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.review-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  opacity: 0.75;
+}
+
+.review-bar-row__val {
+  text-align: right;
+  color: var(--txt-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.review-hourly {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 64px;
+}
+
+.review-hourly__col {
+  flex: 1;
+  min-width: 4px;
+  background: var(--accent);
+  opacity: 0.55;
+  border-radius: 2px 2px 0 0;
+}
+
+.review-ai {
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--txt);
+}
+
+.review-note-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.review-note-item {
+  padding: var(--sp-2);
+  border-left: 2px solid var(--line);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.review-note-form {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.review-note-form textarea {
+  flex: 1;
+  min-height: 48px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--txt);
+  font: inherit;
+  padding: var(--sp-2);
+}
+
+.review-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.review-drawer {
+  width: min(480px, 90vw);
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  padding: var(--sp-3);
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.review-drawer pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  margin: 0;
+}
+
+.review-empty {
+  color: var(--txt-faint);
+  font-size: 12px;
+}
+
+.review-tiny {
+  font-size: 11px;
+  color: var(--txt-faint);
+}
+
+.review-src-line {
+  font-size: 11px;
+  color: var(--txt-faint);
+  margin-top: var(--sp-2);
+}
