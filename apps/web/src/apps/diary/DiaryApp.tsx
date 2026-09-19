@@ -8,6 +8,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { usePluginEvent } from "@/shared/api/events";
+import { toast } from "@/shared/components/Toast";
+import { ApiError } from "@/shared/api/client";
 import { docsApi, type DocsNodeDetail } from "../docs/api";
 import { DocsViewer } from "../docs/DocsViewer";
 import { diaryApi } from "./api";
@@ -78,7 +80,20 @@ export default function DiaryApp() {
 
   const captureMut = useMutation({
     mutationFn: () => diaryApi.capture(),
-    onSuccess: invalidateAll,
+    onSuccess: () => {
+      toast("ok", "已记入收件箱");
+      invalidateAll();
+    },
+    // ★ T17#4 修复：失败不再静默，人话提示（对齐 T19 口径）
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof ApiError
+          ? err.detail || err.title
+          : err instanceof Error
+            ? err.message
+            : "随手记失败，请稍后重试";
+      toast("danger", msg);
+    },
   });
 
   const consolidateMut = useMutation({

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import App from "../App";
 import { registerModules } from "@/kernel/ModuleRegistry";
 import { makeWorkspace, useDesktopStore, type DesktopState } from "@/kernel/store";
+import { setToken } from "@/shared/api/client";
 import type { ModuleManifest } from "@/kernel/types";
 
 const mods: ModuleManifest[] = [
@@ -43,6 +44,8 @@ const mods: ModuleManifest[] = [
 
 beforeEach(() => {
   localStorage.clear();
+  // ★ T30：桌面壳有鉴权门 —— 本文件测的是登录后的桌面行为，先种 token
+  setToken("test-token");
   useDesktopStore.setState({
     modules: {},
     windows: [],

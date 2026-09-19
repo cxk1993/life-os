@@ -160,11 +160,18 @@ function fullGeo(): WinGeo {
 
 function defaultGeo(manifest: ModuleManifest, seq: number): WinGeo {
   const spec = manifest.window;
+  // ★ T30（顺修 T02 疑点②）：视口比 manifest 要的窗还窄/矮时，把**新窗**钳进视口 ——
+  //   否则窗口右缘/下缘永远在屏幕外，够不着（ACCEPT-T02 实测）。
+  //   只钳"新窗"的初始尺寸，不动用户自己缩放出来的几何。
+  const minW = spec.minW ?? 360;
+  const minH = spec.minH ?? 240;
+  const w = Math.min(spec.w, Math.max(minW, vw() - 2 * SNAP));
+  const h = Math.min(spec.h, Math.max(minH, vh() - TOPBAR - DOCK));
   if (typeof spec.x === "number" && typeof spec.y === "number") {
-    return clampGeo({ x: spec.x, y: spec.y, w: spec.w, h: spec.h }, manifest);
+    return clampGeo({ x: spec.x, y: spec.y, w, h }, manifest);
   }
   const off = 48 + (seq % 6) * 28;
-  return clampGeo({ x: off, y: TOPBAR + off, w: spec.w, h: spec.h }, manifest);
+  return clampGeo({ x: off, y: TOPBAR + off, w, h }, manifest);
 }
 
 function loadPersisted(): PersistedShape | null {

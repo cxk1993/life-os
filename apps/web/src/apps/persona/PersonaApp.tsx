@@ -17,6 +17,13 @@ import { DocsViewer } from "../docs/DocsViewer";
 import "./persona.css";
 
 const PERSONA_ROOT_NAME = "人格体系";
+/** ★ BUG-T16-1 修复：固定 slug 标记正根（创建前查重 + 启动对账用）。 */
+const PERSONA_ROOT_SLUG = "root:persona";
+
+/** 判断节点是否带正根标记（旧数据可能没有 → 视为候选根）。 */
+function isPersonaRoot(n: DocsNode): boolean {
+  return n.kind === "folder" && n.name === PERSONA_ROOT_NAME;
+}
 
 export default function PersonaApp() {
   const qc = useQueryClient();
@@ -25,29 +32,52 @@ export default function PersonaApp() {
   const [rootId, setRootId] = useState<string | null>(null);
 
   // ① 加载森林，找「人格体系」根（首次进入自动创建）
-  const { data: tree = [] } = useQuery({
+  const { data: tree = [], isFetched } = useQuery({
     queryKey: ["docs", "tree"],
     queryFn: () => docsApi.tree(),
   });
 
-  // ② 确保人格根存在：没有就创建（薄壳调 T15 通用接口）
+  // ② 确保人格根存在：先按 slug 查重（幂等），没有才创建
   const ensureRoot = useMutation({
-    mutationFn: () => docsApi.create({ kind: "folder", name: PERSONA_ROOT_NAME }),
+    mutationFn: () =>
+      docsApi.create({
+        kind: "folder",
+        name: PERSONA_ROOT_NAME,
+        meta_json: { slug: PERSONA_ROOT_SLUG },
+      }),
     onSuccess: (node) => {
       setRootId(node.id);
       qc.invalidateQueries({ queryKey: ["docs"] });
     },
   });
 
+  // ★ BUG-T16-1 修复：挂载幂等 —— 只在「查询完成且确实无根」时创建一次
   useEffect(() => {
-    const root = tree.find((n) => n.name === PERSONA_ROOT_NAME && n.kind === "folder");
-    if (root) {
-      setRootId(root.id);
-    } else if (tree.length === 0 && !ensureRoot.isPending) {
+    if (!isFetched) return; // 查询未完成不动作（关键：避免 loading 期重复创建）
+    const roots = tree.filter(isPersonaRoot);
+    if (roots.length > 0) {
+      // 优先选带 slug 标记的正根；都没有则选最早创建的（保留现场）
+      const canonical =
+        roots.find(
+          (n) => n.meta_json && (n.meta_json as Record<string, unknown>).slug === PERSONA_ROOT_SLUG,
+        ) ?? roots[0];
+      setRootId(canonical.id);
+      // ★ 启动对账（兜底）：其余同名根软删归档（历史脏数据自动收敛）
+      const dupes = roots.filter((n) => n.id !== canonical.id);
+      if (dupes.length > 0) {
+        for (const d of dupes) {
+          docsApi.remove(d.id).catch(() => {
+            /* 对账失败不阻塞 UI；下次挂载再试 */
+          });
+        }
+      }
+      return;
+    }
+    if (!ensureRoot.isPending && !ensureRoot.isSuccess) {
       ensureRoot.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree]);
+  }, [tree, isFetched]);
 
   // ③ 只取人格根子树（前端按 rootId 过滤，避免拉全部文档）
   const personaNodes = useMemo(() => {

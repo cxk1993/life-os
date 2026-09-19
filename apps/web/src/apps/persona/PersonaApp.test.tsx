@@ -119,4 +119,52 @@ describe("PersonaApp", () => {
       expect(screen.getByText("价值观")).toBeTruthy();
     });
   });
+
+  // ───────── BUG-T16-1 回归测试 ─────────
+  it("★ 空森林连续挂载 N 次只创建 1 个根（挂载幂等）", async () => {
+    // 模拟连续挂载：每次 tree 都返回空（第一次查询可能还没完成）
+    (docsApi.tree as ReturnType<typeof vi.fn>).mockResolvedValue(mocks.emptyTree);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    // 挂载 - 卸载 - 再挂载，模拟切走切回
+    const first = render(
+      <QueryClientProvider client={qc}>
+        <PersonaApp />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(docsApi.create).toHaveBeenCalledTimes(1);
+    });
+    first.unmount();
+
+    // 第二次挂载：tree 仍空（create 成功后 invalidate 但 mock 仍返回空）
+    render(
+      <QueryClientProvider client={qc}>
+        <PersonaApp />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      // 关键断言：create 只被调用 1 次（第二次挂载应复用已有根，不重复创建）
+      expect(docsApi.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("★ 存在重复根时启动对账：保正根、其余软删", async () => {
+    const dupTree = [
+      { ...mocks.rootNode, id: "p-root-1", meta_json: { slug: "root:persona" } },
+      { ...mocks.rootNode, id: "p-root-2", meta_json: null },
+      { ...mocks.rootNode, id: "p-root-3", meta_json: null },
+    ];
+    (docsApi.tree as ReturnType<typeof vi.fn>).mockResolvedValue(dupTree);
+    (docsApi.remove as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    wrap(<PersonaApp />);
+    await waitFor(() => {
+      // 保留带 slug 的正根 p-root-1，软删 p-root-2 / p-root-3
+      expect(docsApi.remove).toHaveBeenCalledTimes(2);
+    });
+    const removedIds = (docsApi.remove as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    expect(removedIds).toContain("p-root-2");
+    expect(removedIds).toContain("p-root-3");
+    expect(removedIds).not.toContain("p-root-1");
+  });
 });
