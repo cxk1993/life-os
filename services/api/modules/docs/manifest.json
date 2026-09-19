@@ -1,0 +1,50 @@
+{
+  "id": "docs",
+  "name": "文档",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "box",
+  "description": "文档树内核：通用文档树（树节点 + 正文 + 元数据 JSON + 版本历史 + FTS5 检索），供人格体系/日记等外壳零改动复用。",
+  "author": "yunxi",
+  "window": {
+    "w": 720,
+    "h": 520
+  },
+  "entry": "@apps/docs",
+  "api": {
+    "base": "/api/v1/docs",
+    "openapi": "/api/v1/docs/openapi.json",
+    "health": "/api/v1/docs/health"
+  },
+  "provides": [
+    "docs.node.read",
+    "docs.node.write",
+    "docs.search"
+  ],
+  "requires": [],
+  "slots": [
+    "desktop.dock",
+    "dashboard.card",
+    "search.provider"
+  ],
+  "emits": [
+    "docs.node.created",
+    "docs.node.updated",
+    "docs.node.deleted",
+    "docs.node.restored"
+  ],
+  "consumes": [],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

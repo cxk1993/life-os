@@ -1,0 +1,395 @@
+/* 文档树插件样式 —— 只用设计令牌（var(--accent) 等），不写死色值 */
+.docs-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-size: 13px;
+}
+
+.docs-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px;
+}
+
+.docs-pane {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+}
+
+.docs-pane-tree {
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+.docs-pane-viewer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── 树 ── */
+.docs-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.docs-tree-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.docs-tree-toolbar button,
+.docs-tree-new-root,
+.docs-tree-menu button {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.docs-tree-toolbar button:hover,
+.docs-tree-menu button:hover {
+  border-color: var(--accent, #4da3ff);
+  color: var(--accent, #4da3ff);
+}
+
+.docs-tree-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-dim, rgba(255, 255, 255, 0.5));
+}
+
+.docs-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.docs-tree-row:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.06));
+}
+
+.docs-tree-row.selected {
+  background: var(--accent-dim, rgba(77, 163, 255, 0.18));
+}
+
+.docs-tree-caret {
+  width: 14px;
+  text-align: center;
+  color: var(--text-dim, rgba(255, 255, 255, 0.4));
+  flex-shrink: 0;
+}
+
+.docs-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docs-tree-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--accent, #4da3ff);
+  color: var(--text, #eee);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 12px;
+}
+
+.docs-tree-children {
+  margin-left: 6px;
+}
+
+.docs-tree-menu {
+  position: absolute;
+  right: 4px;
+  top: 100%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-raised, #222);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.docs-tree-menu .danger {
+  color: #ff6b6b;
+}
+
+.docs-tree-node.dragging .docs-tree-row {
+  opacity: 0.5;
+}
+
+/* ── 查看器 ── */
+.docs-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
+.docs-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.docs-viewer-back {
+  background: transparent;
+  border: none;
+  color: var(--text, #eee);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.docs-viewer-name {
+  flex: 1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docs-viewer-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.docs-viewer-format {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.docs-viewer-save {
+  background: var(--accent, #4da3ff);
+  border: none;
+  color: #fff;
+  border-radius: 6px;
+  padding: 3px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.docs-viewer-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.docs-viewer-textarea {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text, #eee);
+  resize: none;
+  padding: 12px;
+  font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  outline: none;
+}
+
+/* ── md ── */
+.docs-md {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.docs-md-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.docs-md-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim, rgba(255, 255, 255, 0.5));
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.docs-md-btn.active {
+  border-color: var(--accent, #4da3ff);
+  color: var(--accent, #4da3ff);
+}
+
+.docs-md-source {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.docs-md-render {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 16px;
+  line-height: 1.7;
+}
+
+.docs-md-render h1,
+.docs-md-render h2,
+.docs-md-render h3 {
+  margin: 0.6em 0 0.3em;
+}
+
+.docs-md-render table {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+
+.docs-md-render th,
+.docs-md-render td {
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
+  padding: 4px 10px;
+}
+
+.docs-md-loading {
+  padding: 20px;
+  color: var(--text-dim, rgba(255, 255, 255, 0.5));
+}
+
+/* ── 搜索 / 回收站 ── */
+.docs-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.docs-search-input {
+  flex: 1;
+  background: var(--surface, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.docs-footer button {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.docs-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim, rgba(255, 255, 255, 0.4));
+  padding: 20px;
+}
+
+.docs-trash,
+.docs-search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.docs-trash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  font-weight: 600;
+}
+
+.docs-trash-header button {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.docs-trash-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+.docs-trash-item span {
+  flex: 1;
+}
+
+.docs-trash-item button {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.docs-trash-item button.danger {
+  color: #ff6b6b;
+}
+
+.docs-search-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text, #eee);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.docs-search-hit:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.06));
+}

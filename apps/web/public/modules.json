@@ -134,5 +134,35 @@
       "minW": 640,
       "minH": 440
     }
+  },
+  {
+    "id": "docs",
+    "name": "文档",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "文",
+    "description": "文档树内核：树 + 正文 + 版本历史 + FTS5 检索，供人格/日记等外壳复用。",
+    "entry": "@/apps/docs",
+    "window": {
+      "w": 720,
+      "h": 520,
+      "minW": 480,
+      "minH": 360
+    }
+  },
+  {
+    "id": "persona",
+    "name": "人格",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "人",
+    "description": "人格体系：文档树薄壳——文件管理器形态，不写死任何人格概念。",
+    "entry": "@/apps/persona",
+    "window": {
+      "w": 880,
+      "h": 640,
+      "minW": 560,
+      "minH": 400
+    }
   }
 ]
