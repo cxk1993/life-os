@@ -97,6 +97,8 @@ class Settings(BaseSettings):
         ...,  # 必填：TOTP 二步密钥（base32）
         description="TOTP 二步验证密钥（base32）",
     )
+    # ★ 主人 2026-09-20 指示：两步验证暂时关闭（未来按需启用）——服务器 .env 设 TOTP_REQUIRED=false
+    totp_required: bool = Field(default=True, description="登录是否强制校验 TOTP；false = 仅密码登录")
 
     # ── 数据 ──
     db_path: str = Field(default="./data/lifos.db")

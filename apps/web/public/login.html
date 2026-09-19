@@ -44,8 +44,8 @@
     <form id="f">
       <label for="password">密码</label>
       <input id="password" type="password" autocomplete="current-password" required />
-      <label for="totp">两步验证码（6 位动态码）</label>
-      <input id="totp" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" required />
+      <label for="totp">两步验证码（未启用可留空）</label>
+      <input id="totp" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" />
       <div class="err" id="err"></div>
       <button id="btn" type="submit">登 录</button>
     </form>

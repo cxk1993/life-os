@@ -12,7 +12,11 @@ class LoginIn(BaseModel):
         max_length=200,
         description="管理员密码（明文只在请求中，绝不落盘/不离服务器）",
     )
-    totp: str = Field(min_length=6, max_length=8, description="TOTP 二步验证码")
+    totp: str = Field(
+        default="",
+        max_length=8,
+        description="TOTP 二步验证码；TOTP_REQUIRED=false 时可省略",
+    )
     username: str | None = Field(default=None, description="单用户系统可省略，默认 admin")
 
 

@@ -26,7 +26,8 @@ class AuthService:
         s = get_settings()
         if not verify_password(password, s.admin_password_hash):
             raise UnauthorizedError("密码错误")
-        if not verify_totp(s.totp_secret, totp):
+        # ★ TOTP_REQUIRED=false 时仅密码登录（主人 2026-09-20 指示：两步验证暂时关闭，未来按需启用）
+        if s.totp_required and not verify_totp(s.totp_secret, totp):
             raise UnauthorizedError("TOTP 校验失败")
         return {
             "access": create_access_token(USER_SUB),
