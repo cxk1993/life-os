@@ -119,5 +119,20 @@
       "minW": 520,
       "minH": 380
     }
+  },
+  {
+    "id": "web",
+    "name": "网页",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "网",
+    "description": "网页工作台：内嵌任意网页、固定成快捷入口，并声明其 API/MCP 能力。",
+    "entry": "@/apps/web",
+    "window": {
+      "w": 1080,
+      "h": 720,
+      "minW": 640,
+      "minH": 440
+    }
   }
 ]
