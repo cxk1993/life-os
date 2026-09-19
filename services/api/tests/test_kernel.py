@@ -23,9 +23,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 
 from core.app import create_app
+from core.config import Settings
 from core.errors import ManifestError
 from core.logging import redact_obj, redact_text
 from core.manifest import discover_modules
@@ -230,3 +232,36 @@ def test_log_redaction_masks_secrets() -> None:
     assert obj["password"] != "hunter2"
     assert obj["token"] != "abcdef123456"
     assert obj["keep"] == "ok"
+
+
+# ─────────────────── 7. CORS 合法性（第 0 批清障）───────────────────
+def test_cors_wildcard_forces_no_credentials() -> None:
+    """CORS 规范：通配符 `*` 不得与凭据并用。默认 `*` 时必须强制关闭凭据。"""
+    settings = Settings(
+        secret_key="t", admin_password_hash="t", totp_secret="t", cors_allow_origins="*"
+    )
+
+    assert settings.cors_allow_credentials is False
+    assert settings.cors_origins_list == ["*"]
+
+
+def test_cors_explicit_origins_allow_credentials() -> None:
+    """显式列出来源时才允许凭据型 CORS，且按逗号切分、去空白。"""
+    settings = Settings(
+        secret_key="t",
+        admin_password_hash="t",
+        totp_secret="t",
+        cors_allow_origins="https://a.example, https://b.example",
+    )
+
+    assert settings.cors_allow_credentials is True
+    assert settings.cors_origins_list == ["https://a.example", "https://b.example"]
+
+
+def test_cors_middleware_wiring_disables_credentials_by_default() -> None:
+    """内核装配层：默认配置（`*`）下 CORSMiddleware 不允许凭据，防任意站凭据放行。"""
+    app = create_app()
+    cors = [m for m in app.user_middleware if m.cls is CORSMiddleware]
+
+    assert len(cors) == 1
+    assert cors[0].kwargs["allow_credentials"] is False

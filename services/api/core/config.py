@@ -123,6 +123,13 @@ class Settings(BaseSettings):
             return ["*"]
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
+    @property
+    def cors_allow_credentials(self) -> bool:
+        # CORS 规范：通配符 `*` 不得与凭据并用 —— 浏览器会直接拒绝，而 Starlette 会退化成
+        # "回显任意 Origin 并放行凭据"，等于向所有站点开放 cookie 级请求。本项目鉴权走
+        # Authorization 头（非 cookie），无需凭据型 CORS；确需凭据请显式列出来源。
+        return self.cors_allow_origins.strip() != "*"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

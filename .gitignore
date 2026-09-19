@@ -43,6 +43,7 @@ nul
 services/bridge/start-bridge.cmd
 services/bridge/*.err
 deploy/tools/frp/frpc.toml
+deploy/tools/frp/*.bak*
 deploy/tools/frp/start-frpc.cmd
 deploy/tools/frp/*.log
 deploy/tools/frp/*.err
