@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>登录 · Life-OS</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #0f1115; color: #e8eaf0;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  .card {
+    width: min(360px, 92vw); padding: 32px 28px; border-radius: 14px;
+    background: #171a21; border: 1px solid #2a2f3a;
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #8b93a5; margin-bottom: 22px; }
+  label { display: block; font-size: 12px; color: #8b93a5; margin: 14px 0 6px; }
+  input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; font-size: 14px;
+    background: #0f1115; color: #e8eaf0; border: 1px solid #2a2f3a; outline: none;
+  }
+  input:focus { border-color: #5b8cff; }
+  button {
+    width: 100%; margin-top: 22px; padding: 11px; border: 0; border-radius: 8px;
+    background: #5b8cff; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: wait; }
+  .err {
+    display: none; margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+    background: #3a1f24; color: #ff9aa8; font-size: 13px; white-space: pre-wrap;
+  }
+  .tip { margin-top: 16px; font-size: 11px; color: #5d6474; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Life-OS</h1>
+    <div class="sub">个人工作台 · 请登录</div>
+    <form id="f">
+      <label for="password">密码</label>
+      <input id="password" type="password" autocomplete="current-password" required />
+      <label for="totp">两步验证码（6 位动态码）</label>
+      <input id="totp" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" required />
+      <div class="err" id="err"></div>
+      <button id="btn" type="submit">登 录</button>
+    </form>
+    <div class="tip">
+      登录后本浏览器将记住你，无需重复操作。<br />
+      验证码来自你的验证器应用；拿不到验证码时在 ZCode 会话里喊一声即可。
+    </div>
+  </main>
+<script>
+  // 已有 token 直接进桌面
+  if (localStorage.getItem("lifeos.token")) location.replace("/");
+
+  const $ = (id) => document.getElementById(id);
+  const errBox = $("err");
+  function human(status, detail) {
+    if (status === 401) return "密码或验证码不对，请重试";
+    if (status === 429) return "尝试太频繁了，歇一分钟再来";
+    if (status === 0) return "连不上服务器——检查网络后重试";
+    return detail || ("登录失败（" + status + "）");
+  }
+  $("f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errBox.style.display = "none";
+    $("btn").disabled = true;
+    try {
+      const r = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: $("password").value, totp: $("totp").value.trim() }),
+      });
+      if (!r.ok) {
+        let detail = "";
+        try { detail = (await r.json()).detail || ""; } catch {}
+        errBox.textContent = human(r.status, detail);
+        errBox.style.display = "block";
+        return;
+      }
+      const data = await r.json();
+      localStorage.setItem("lifeos.token", data.access_token);
+      location.replace("/");
+    } catch (ex) {
+      errBox.textContent = human(0);
+      errBox.style.display = "block";
+    } finally {
+      $("btn").disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
