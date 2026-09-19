@@ -28,6 +28,7 @@ from core.deps import get_current_user, get_db
 from core.errors import NotFoundError, ValidationError
 from core.security import User
 
+from . import health_link as _health_link  # noqa: E402,F401  ISSUE-007
 from .schema import (
     ExportIn,
     ExportOut,
