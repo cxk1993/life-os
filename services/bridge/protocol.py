@@ -82,7 +82,7 @@ def check_timestamp(ts_raw: str | int | None) -> int:
     try:
         ts = int(ts_raw)
     except (TypeError, ValueError):
-        raise ValueError("时间戳不是整数")
+        raise ValueError("时间戳不是整数") from None
     now = int(time.time())
     if abs(now - ts) > TS_TOLERANCE_S:
         raise ValueError(f"时间戳偏差超过 {TS_TOLERANCE_S}s（now={now}, ts={ts}）")

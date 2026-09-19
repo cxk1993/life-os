@@ -55,13 +55,22 @@ def _notify_winotify(title: str, body: str, app_id: str) -> NotifyResult:
 
 
 def _notify_powershell(title: str, body: str, app_id: str) -> NotifyResult:
+    # WinRT 类型加载行是 PowerShell 单行语句（不许换行），太长 → 抽成常量用隐式拼接保持源行 <100
+    _winrt_toast = (
+        "[Windows.UI.Notifications.ToastNotificationManager,"
+        " Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null"
+    )
+    _winrt_xml = (
+        "[Windows.Data.Xml.Dom.XmlDocument,"
+        " Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null"
+    )
     t = _xml_escape(title)
     b = _xml_escape(body)
     a = _xml_escape(app_id)
     # ToastGeneric 模板；AppId 需与注册的 AUMID 一致，未注册时系统仍可能显示
     ps = f"""
-[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
+{_winrt_toast}
+{_winrt_xml}
 $template = @"
 <toast>
   <visual>
