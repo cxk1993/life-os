@@ -96,8 +96,10 @@ HTTP 契约（全项目统一，不许自创）：
   失败 → 由内核统一转成 RFC7807 application/problem+json
 
 ★ 加数据库路由时，照 `docs/示例/calendar_event_示例.py` 的写法；
-  注意 models.py 与 router.py 都是被内核**按文件路径**加载的，
-  所以两者之间**不能用 `from .models import ...` 相对导入**（见下面的写法）。
+  内置插件的 models.py / router.py 由内核**按包导入**（`importlib.import_module("modules.<id>.router")`，
+  见 core/plugins/discover.py），两者之间**可以正常用 `from .models import ...` 相对导入**
+  （现有全部内置插件皆如此）。
+  ★「按文件路径加载、不能用相对导入」的只有两处：**迁移文件**与**第三方插件**。
 """
 from __future__ import annotations
 
