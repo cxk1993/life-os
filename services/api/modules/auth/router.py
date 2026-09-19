@@ -5,9 +5,9 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Cookie, Depends, Response
+from fastapi import APIRouter, Cookie, Depends, Request, Response
 
-from core.config import get_settings
+from core.config import get_settings, read_setting
 from core.deps import get_current_user
 from core.errors import UnauthorizedError
 from core.events import event_bus
@@ -21,8 +21,33 @@ router = APIRouter()
 REFRESH_COOKIE = "lifos_refresh"
 
 
-def _cookie_secure() -> bool:
-    return get_settings().app_env == "production"
+def _cookie_secure(request: Request) -> bool:
+    """refresh cookie 是否带 Secure 属性（BUG-T30-1 修复，Zcode 2026-09-20 裁决方案 a）。
+
+    背景：旧实现 `app_env == "production"` 一律 Secure —— 生产是明文 http 直连
+    （http://IP:18080），浏览器在 http 源**拒存 Secure cookie**，refresh 链路永远
+    拿不到凭证，access 过期（30 分钟）即被踢回登录页。
+
+    配置项 AUTH_COOKIE_SECURE（经 read_setting，BEECOUNT_* 运行期开关同款先例，
+    不进 pydantic Settings、不动 core/config.py）：
+
+    - ``auto``（默认）：按请求实际 scheme 判定——https（含反代头
+      ``X-Forwarded-Proto: https``）→ true；明文 http → false。
+      上 HTTPS（T28/域名线）后无需改代码自动回到 Secure。
+    - ``true`` / ``false``：显式覆盖（优先于 scheme 判定）。
+      显式 true 时 http 下服务器仍会下发带 Secure 的 Set-Cookie（浏览器不存），
+      这是显式配置者自己的选择，见 .env.example 说明。
+    """
+    raw = (read_setting("AUTH_COOKIE_SECURE", "auto") or "auto").strip().lower()
+    if raw in ("true", "1", "yes", "on"):
+        return True
+    if raw in ("false", "0", "no", "off"):
+        return False
+    # auto：请求 scheme 优先；明文连接再看反代头（https 直连无需信任任何头）
+    if request.url.scheme == "https":
+        return True
+    forwarded = (request.headers.get("x-forwarded-proto") or "").split(",")[0]
+    return forwarded.strip().lower() == "https"
 
 
 @router.get("/health")
@@ -31,14 +56,14 @@ def health() -> dict[str, bool]:
 
 
 @router.post("/login", response_model=TokenOut)
-def login(body: LoginIn, response: Response) -> TokenOut:
+def login(body: LoginIn, request: Request, response: Response) -> TokenOut:
     tokens = AuthService().login(body.password, body.totp, body.username)
     # refresh 走 httpOnly Cookie（不进 JS，防 XSS 窃取）
     response.set_cookie(
         key=REFRESH_COOKIE,
         value=tokens["refresh"],
         httponly=True,
-        secure=_cookie_secure(),
+        secure=_cookie_secure(request),
         samesite="lax",
         path="/api/v1/auth",
         max_age=get_settings().jwt_refresh_days * 86400,
@@ -53,6 +78,7 @@ def login(body: LoginIn, response: Response) -> TokenOut:
 
 @router.post("/refresh", response_model=TokenOut)
 def refresh(
+    request: Request,
     response: Response,
     refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
 ) -> TokenOut:
@@ -64,7 +90,7 @@ def refresh(
         key=REFRESH_COOKIE,
         value=refresh_token,
         httponly=True,
-        secure=_cookie_secure(),
+        secure=_cookie_secure(request),
         samesite="lax",
         path="/api/v1/auth",
         max_age=get_settings().jwt_refresh_days * 86400,
