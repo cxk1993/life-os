@@ -174,3 +174,49 @@ def free_slots(
     tz = ZoneInfo(get_settings().tz)
     day_start = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=tz)
     return CalendarService(db).free_slots(day_start, min_hours)
+
+
+# ── T25 提醒调度（默认关；详见 modules/calendar/reminder_scheduler.py）──
+from .reminder_scheduler import (  # noqa: E402
+    list_reminder_logs,
+    run_reminder_tick,
+    scheduler_status,
+    start_scheduler,
+)
+
+
+@router.get("/reminders/scheduler")
+def get_reminder_scheduler_status(
+    _user: UserDep = Depends(get_current_user),
+) -> dict:
+    """T25：提醒调度状态（enabled/running/lead/poll）。不暴露密钥。"""
+    return scheduler_status()
+
+
+@router.post("/reminders/tick")
+def post_reminder_tick(
+    lead_minutes: int = Query(default=None, ge=0, le=1440),
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict:
+    """T25：手动触发一轮到期扫描（验收/排障用；不依赖定时是否开启）。"""
+    items = run_reminder_tick(db, lead_minutes=lead_minutes)
+    return {"ok": True, "count": len(items), "items": items}
+
+
+@router.get("/reminders/logs")
+def get_reminder_logs(
+    limit: int = Query(default=50, ge=1, le=200),
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> list[dict]:
+    """T25：最近提醒投递日志（持久化去重证据）。"""
+    return list_reminder_logs(db, limit=limit)
+
+
+try:
+    start_scheduler()
+except Exception as _rs_exc:  # noqa: BLE001
+    import logging
+
+    logging.getLogger("calendar.reminder").warning("calendar 提醒调度启动失败: %s", _rs_exc)

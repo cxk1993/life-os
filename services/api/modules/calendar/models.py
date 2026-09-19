@@ -48,3 +48,16 @@ class CalendarEvent(PkMixin, TimestampMixin, SQLModel, table=True):
     # 长文本备注：用 sa_type=（类型本身），不用 sa_column=（要 Column 实例，
     # 且多表继承时会撞 "Column object already assigned to Table"）。
     note: str | None = Field(default=None, sa_type=SAText)
+
+
+class CalendarReminderLog(PkMixin, TimestampMixin, SQLModel, table=True):
+    """T25：提醒投递日志（进程重启后的持久化去重）。"""
+
+    __tablename__ = "calendar_reminder_log"
+
+    event_id: str = Field(index=True)
+    fired_at: datetime = Field(sa_type=TimestampTZ, index=True)
+    title: str = Field(max_length=200)
+    channel: str = Field(default="auto", max_length=20)
+    ok: bool = Field(default=True)
+    detail: str | None = Field(default=None, max_length=500)

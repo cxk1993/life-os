@@ -33,7 +33,8 @@
   "emits": [
     "calendar.event.created",
     "calendar.event.updated",
-    "calendar.event.deleted"
+    "calendar.event.deleted",
+    "calendar.reminder.fired"
   ],
   "consumes": [],
   "permissions": [
