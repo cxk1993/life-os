@@ -47,7 +47,14 @@ export function MarkdownView({ content, defaultMode = "render" }: MarkdownViewPr
         .then((mod) => {
           if (cancelled) return;
           const fn = (mod as unknown as { default?: GfmPlugin }).default ?? mod;
-          setGfm(typeof fn === "function" ? fn : null);
+          // ★ BUG-T15-2（Qoder CN 真机复验锁定）：React 的 setter 收到函数会当 updater 调用
+          //   fn(prevState) —— remark-gfm 的插件宏在"存入 state"这步就被执行而炸。
+          //   必须包一层箭头函数：React 调用它取返回值 fn 存入 state。
+          if (typeof fn === "function") {
+            setGfm(() => fn);
+          } else {
+            setGfm(null);
+          }
         })
         .catch((err: unknown) => {
           if (cancelled) return;
