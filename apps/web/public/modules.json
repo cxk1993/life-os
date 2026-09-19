@@ -194,5 +194,20 @@
       "minW": 480,
       "minH": 380
     }
+  },
+  {
+    "id": "catalog",
+    "name": "能力目录",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "录",
+    "description": "接口说明页：四源汇总目录（插件/网页/内核/手动）。",
+    "entry": "@/apps/catalog",
+    "window": {
+      "w": 920,
+      "h": 600,
+      "minW": 560,
+      "minH": 400
+    }
   }
 ]

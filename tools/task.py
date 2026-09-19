@@ -451,7 +451,12 @@ def cmd_verify(_: argparse.Namespace) -> None:
     cmd_test( argparse.Namespace() )
     log("── 前端构建 ──")
     run(npm_cmd(["run", "build"]), cwd=WEB)
-    log("verify 通过：lint + test + build 全绿。")
+    # T18 唯一判据守门：发现脚本存在即自动运行（同 check_kernel_purity 的接入模式）。
+    criterion = API / "scripts" / "verify_t18_criterion.py"
+    if criterion.exists():
+        log("── T18 唯一判据（加工具 = manifest 多一行 provides）──")
+        run([str(venv_python()), str(criterion)], cwd=API)
+    log("verify 通过：lint + test + build + T18 判据全绿。")
 
 
 def cmd_build(_: argparse.Namespace) -> None:
