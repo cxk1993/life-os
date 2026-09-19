@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  SNAP_MIN,
   snapMinutes,
+  snapToGrid,
   spanDaysOf,
   segmentEvent,
   applyMove,
@@ -20,17 +22,18 @@ import {
 const MON = new Date(2026, 8, 14, 0, 0, 0);
 const TUE_08 = new Date(2026, 8, 15, 8, 0, 0);
 const TUE_10 = new Date(2026, 8, 15, 10, 0, 0);
+const TUE_12 = new Date(2026, 8, 15, 12, 0, 0);
 const FRI_20 = new Date(2026, 8, 18, 20, 0, 0);
 const SAT_02 = new Date(2026, 8, 19, 2, 0, 0);
 const bounds = { weekStart: MON, weekDays: 7 };
 
 describe("snapMinutes", () => {
-  it("吸附到最近的 30 分钟", () => {
+  it("吸附到最近的 15 分钟（T27 卡要求）", () => {
     expect(snapMinutes(7)).toBe(0);
-    expect(snapMinutes(18)).toBe(30);
-    expect(snapMinutes(45)).toBe(60);
-    expect(snapMinutes(70)).toBe(60);
-    expect(snapMinutes(80)).toBe(90);
+    expect(snapMinutes(18)).toBe(15);
+    expect(snapMinutes(45)).toBe(45);
+    expect(snapMinutes(70)).toBe(75);
+    expect(snapMinutes(80)).toBe(75);
   });
 });
 
@@ -173,5 +176,76 @@ describe("东八区窗口助手（formatSH / shMonday）", () => {
     const to = formatSH(new Date(mon.getTime() + 7 * DAY_MS));
     expect(from).toBe("2026-09-14T00:00:00.000+08:00");
     expect(to).toBe("2026-09-21T00:00:00.000+08:00");
+  });
+});
+
+// ───────────────────────── T27 增补：15 分钟吸附 + 嵌套 clamp 边界 ─────────────────────────
+describe("T27 · 15 分钟吸附粒度", () => {
+  it("snapMinutes 按 15 分钟网格（含半格偏移）", () => {
+    expect(SNAP_MIN).toBe(15);
+    expect(snapMinutes(0)).toBe(0);
+    expect(snapMinutes(14)).toBe(15);
+    expect(snapMinutes(16)).toBe(15);
+    expect(snapMinutes(22)).toBe(15);
+    expect(snapMinutes(23)).toBe(30);
+    expect(snapMinutes(37)).toBe(30); // 37 距 30=7、距 45=8 → 30
+    expect(snapMinutes(38)).toBe(45); // 38 距 45=7 → 45
+    expect(snapMinutes(52)).toBe(45); // 52 距 45=7 → 45
+    expect(snapMinutes(53)).toBe(60); // 53 距 60=7 → 60
+  });
+  it("snapToGrid 把时刻吸附到最近 15 分钟", () => {
+    const dayStart = shWallClock(2026, 9, 14, 0, 0, 0, 0); // 周一 00:00
+    // 09:07 → 09:00（7<7.5）
+    const r1 = snapToGrid(
+      new Date(dayStart.getTime() + 9 * 60 * 60 * 1000 + 7 * 60 * 1000),
+      dayStart,
+    );
+    expect(r1.getHours()).toBe(9);
+    expect(r1.getMinutes()).toBe(0);
+    // 09:08 → 09:15（8>7.5）
+    const r2 = snapToGrid(
+      new Date(dayStart.getTime() + 9 * 60 * 60 * 1000 + 8 * 60 * 1000),
+      dayStart,
+    );
+    expect(r2.getHours()).toBe(9);
+    expect(r2.getMinutes()).toBe(15);
+  });
+});
+
+describe("T27 · 嵌套 clamp 边界（子块拖/拉越界不产生孤儿块）", () => {
+  const parent = { s: TUE_08, e: TUE_12 }; // 08:00–12:00
+
+  it("子块下边缘越出父块 → 整体上移保持时长（不截断、不越界）", () => {
+    // 子块 11:00–13:00：越出父块下界 1h，时长 2h
+    const child = { s: new Date(2026, 8, 15, 11, 0, 0), e: new Date(2026, 8, 15, 13, 0, 0) };
+    const r = clampChild(parent.s, parent.e, child.s, child.e);
+    // 实现语义：时长保留、整体平移回父块内 → 10:00–12:00
+    expect(r.start.getHours()).toBe(10);
+    expect(r.end.getTime()).toBe(parent.e.getTime());
+    expect(r.end.getTime() - r.start.getTime()).toBe(2 * 60 * 60 * 1000);
+  });
+
+  it("子块上边缘越出父块 → start 被夹到父 start（时长保留）", () => {
+    // 子块 07:00–08:30：越出父块上界，时长 1.5h
+    const child = { s: new Date(2026, 8, 15, 7, 0, 0), e: new Date(2026, 8, 15, 8, 30, 0) };
+    const r = clampChild(parent.s, parent.e, child.s, child.e);
+    expect(r.start.getTime()).toBe(parent.s.getTime()); // 起点夹到 08:00
+    expect(r.end.getTime() - r.start.getTime()).toBe(90 * 60 * 1000); // 时长 1.5h 保留
+  });
+
+  it("子块完全在父块下方 → 整体平移回父块内（时长保留）", () => {
+    const child = { s: new Date(2026, 8, 15, 12, 30, 0), e: new Date(2026, 8, 15, 14, 0, 0) };
+    const r = clampChild(parent.s, parent.e, child.s, child.e);
+    // 时长 1.5h 保留，整体上移 → 10:30–12:00
+    expect(r.end.getTime()).toBe(parent.e.getTime());
+    expect(r.end.getTime() - r.start.getTime()).toBe(90 * 60 * 1000);
+    expect(r.start.getTime()).toBeGreaterThanOrEqual(parent.s.getTime());
+  });
+
+  it("比父还长的子块 → 截断为父跨度", () => {
+    const child = { s: TUE_08, e: addDays(TUE_08, 1) }; // 24h > 父 4h
+    const r = clampChild(parent.s, parent.e, child.s, child.e);
+    expect(r.start.getTime()).toBe(parent.s.getTime());
+    expect(r.end.getTime()).toBe(parent.e.getTime());
   });
 });

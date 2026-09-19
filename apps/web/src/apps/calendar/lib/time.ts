@@ -53,8 +53,8 @@ export function shMonday(utc: Date): Date {
   return shWallClock(y, mo, d - ((wd + 6) % 7), 0, 0, 0, 0);
 }
 
-/** 纵向吸附粒度：30 分钟。 */
-export const SNAP_MIN = 30;
+/** 纵向吸附粒度：15 分钟（T27 卡要求；T05 原为 30，已按卡收窄）。 */
+export const SNAP_MIN = 15;
 
 export function startOfDay(d: Date): Date {
   const n = new Date(d);
@@ -77,7 +77,7 @@ export function snapMinutes(totalMin: number): number {
   return Math.round(totalMin / SNAP_MIN) * SNAP_MIN;
 }
 
-/** 把任意时刻吸附到当天 30 分钟网格。 */
+/** 把任意时刻吸附到当天 15 分钟网格。 */
 export function snapToGrid(date: Date, dayStart: Date): Date {
   const offMin = (date.getTime() - dayStart.getTime()) / MIN_MS;
   return addMs(dayStart, snapMinutes(offMin) * MIN_MS);

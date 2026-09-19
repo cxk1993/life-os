@@ -13,7 +13,7 @@ function fireWindow(type: string, props: Record<string, unknown>) {
 }
 
 describe("useBlockDrag", () => {
-  it("纵向吸附 30min、横向吸附 1 天", () => {
+  it("纵向吸附 15min、横向吸附 1 天（T27 卡要求）", () => {
     const onCommit = vi.fn();
     function H() {
       const { start } = useBlockDrag({ hourHeight: 60, dayWidth: 100, onCommit });
@@ -28,10 +28,11 @@ describe("useBlockDrag", () => {
     act(() => firePointer(el, "pointerdown", { clientX: 10, clientY: 10, button: 0 }));
     act(() => fireWindow("pointermove", { clientX: 110, clientY: 100 }));
     act(() => fireWindow("pointerup", { clientX: 110, clientY: 100 }));
+    // dy=90px / 60px/h = 1.5h = 90min，本来就是 15min 倍数 → 吸附后仍是 1.5
     expect(onCommit).toHaveBeenCalledWith({ dDays: 1, dHours: 1.5 });
   });
 
-  it("亚格子位移仍吸附到最近 30min", () => {
+  it("亚格子位移仍吸附到最近 15min", () => {
     const onCommit = vi.fn();
     function H() {
       const { start } = useBlockDrag({ hourHeight: 60, dayWidth: 100, onCommit });
@@ -40,15 +41,15 @@ describe("useBlockDrag", () => {
     const { getByTestId } = render(<H />);
     const el = getByTestId("b");
     act(() => firePointer(el, "pointerdown", { clientX: 0, clientY: 0, button: 0 }));
-    act(() => fireWindow("pointermove", { clientX: 0, clientY: 73 })); // ~1.216h → 1.0h? 73/60=1.216→round(2.43)*0.5=1.0? 实际 1.216/0.5=2.43→round2→1.0h
+    act(() => fireWindow("pointermove", { clientX: 0, clientY: 73 })); // ~1.216h → 1.216/0.25=4.87→round5→1.25h
     act(() => fireWindow("pointerup", { clientX: 0, clientY: 73 }));
     const d = onCommit.mock.calls[0][0] as { dHours: number };
-    expect(d.dHours).toBe(1);
+    expect(d.dHours).toBe(1.25);
   });
 });
 
 describe("useBlockResize", () => {
-  it("下缘拉伸：吸附 0.5h", () => {
+  it("下缘拉伸：吸附 15min 粒度（90px=1.5h 仍成立）", () => {
     const onCommit = vi.fn();
     function H() {
       const { start } = useBlockResize({ hourHeight: 60, dayWidth: 100, onCommit });
@@ -77,7 +78,7 @@ describe("useBlockResize", () => {
 });
 
 describe("useCreateDrag", () => {
-  it("空白处拖拽换算成本地时间（吸附 30min）", () => {
+  it("空白处拖拽换算成本地时间（吸附 15min）", () => {
     const onCommit = vi.fn();
     const rect = {
       left: 0,

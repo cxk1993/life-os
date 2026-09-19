@@ -41,7 +41,7 @@ class CalendarEvent(PkMixin, TimestampMixin, SQLModel, table=True):
     # 跨自然天数（如周五 20:00 → 周六 02:00 跨 2 天）。查询侧不依赖它，仅用于展示。
     span_days: int = Field(default=1)
 
-    # manual | obsidian | ai
+    # manual | external | ai（T27 判据合规：不出现外部品牌名）
     source: str = Field(default="manual", max_length=16, index=True)
     external_ref: str | None = Field(default=None, max_length=200)
     location: str | None = Field(default=None, max_length=200)
