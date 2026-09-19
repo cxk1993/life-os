@@ -1,14 +1,28 @@
 """T15 文档树内核后端测试（只跑这一个文件，不影响别的卡）。
 
-数据库隔离：用临时库 ./data/tmp_t15.db，绝不碰主库 lifos.db。
+数据库隔离：用临时库 ./data/tmp_t15_<随机>.db（★ 2026-09-20 Qoder 建议：
+固定名 tmp_t15.db 会被并发 pytest 进程互踩，改唯一名），绝不碰主库 lifos.db。
 表只在当前进程内由模型直接建（create_app 不自动跑迁移）。
 """
 from __future__ import annotations
 
+import atexit
 import os
+import uuid
+from contextlib import suppress
 
 # ★ 必须在 import 任何内核/模块之前设置临时库，init_engine 只认一次。
-os.environ["DB_PATH"] = "./data/tmp_t15.db"
+_TMP_DB = f"./data/tmp_t15_{uuid.uuid4().hex[:8]}.db"
+os.environ["DB_PATH"] = _TMP_DB
+
+
+def _cleanup_tmp_db() -> None:
+    with suppress(FileNotFoundError, PermissionError):
+        # Windows 上 SQLite 引擎句柄可能未释放，删不掉就算了（名字唯一不互踩即可）
+        os.remove(_TMP_DB)
+
+
+atexit.register(_cleanup_tmp_db)
 
 from datetime import timedelta, timezone  # noqa: E402
 
