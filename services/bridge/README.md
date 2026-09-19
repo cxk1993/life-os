@@ -3,16 +3,49 @@
 跑在主人 **Windows 本机** 上的独立 FastAPI 服务，只监听 `127.0.0.1`，
 经 **frpc 隧道**暴露到云服务器。云服务器侧 `services/api/modules/notes/` 通过签名请求拉取索引与全文。
 
+**T24 起定位扩展**：从「笔记桥」升级为「通用本机代理」——笔记读写之外，
+增加 **桌面通知**（场景 B / 晨昏简报 / 健康提醒的投递通道）。
+
 ## 端点（内网隧道，仅服务器可访问）
 
 | 方法 | 路径 | 说明 |
 |:--|:--|:--|
-| GET  | `/bridge/healthz` | 存活 + 版本 + 库列表 |
+| GET  | `/bridge/healthz` | 存活 + 版本 + **capabilities** + 库列表 |
 | GET  | `/bridge/libs` | 库配置（含 md 数量） |
 | GET  | `/bridge/scan?lib=&limit=` | 全量索引（流式 ndjson，大库不 OOM） |
 | GET  | `/bridge/read?lib=&path=` | 读全文（content + mtime + hash） |
 | GET  | `/bridge/changes?since=` | 增量变化（供增量索引） |
 | POST | `/bridge/write` | 写回（v0.1 默认 403，仅 mode=rw 放行） |
+| POST | `/bridge/notify` | **T24** 桌面通知。JSON `{title, body, app_id?, channel?}` |
+| GET  | `/bridge/notifications?since=` | **T24** 通知投递历史（环形，约 200 条） |
+
+### notify 请求体
+
+| 字段 | 说明 |
+|:--|:--|
+| `title` | 标题，默认 `Life-OS`，最长 120 |
+| `body` | 正文，**必填非空**，最长 2000 |
+| `app_id` | Toast 应用名，默认 `Life-OS` |
+| `channel` | `auto`（默认）\| `winotify` \| `powershell` \| `log`（测试用，不弹窗） |
+
+通知通道优先级：`winotify`（若安装）→ `PowerShell Toast` → 日志降级。
+签名规则与笔记端点完全一致（云侧 `modules/notes/bridge_client.py` 同算法）。
+
+## 自定义笔记夹（B2）
+
+`config.yaml` 的 `libs[]` 即全部笔记库。增加主人自定义文件夹：
+
+```yaml
+  - id: my-notes
+    name: 我的笔记夹
+    path: "./vault/笔记软件/obsidian/主仓库/某文件夹"
+    mode: ro
+    enabled: true
+    include: ["**/*.md"]
+```
+
+改完 `config.yaml` 后重启 nssm 服务 `lifeos-bridge` 生效。`enabled: false` 可先关着。
+路径穿越被 `reader.py` 拒绝；响应只回 lib + POSIX 相对路径。
 
 ## 鉴权（所有 /bridge/* 必须带）
 

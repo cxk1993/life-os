@@ -62,11 +62,16 @@ def verify_sig(
     path: str,
     ts: str | int,
     nonce: str,
-    signature: str,
+    signature: str | bytes,
     body: bytes | str = b"",
 ) -> bool:
-    """常量时间比较，避免时序侧信道。"""
+    """常量时间比较，避免时序侧信道。
+
+    ★ Header 在部分 ASGI/TestClient 路径下可能是 bytes，这里统一成 str 再比。
+    """
     expected = sign(psk, method, path, ts, nonce, body)
+    if isinstance(signature, bytes):
+        signature = signature.decode("utf-8", "replace")
     return hmac.compare_digest(expected, signature)
 
 

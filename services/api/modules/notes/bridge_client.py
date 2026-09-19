@@ -2,15 +2,18 @@
 
 ★ 签名算法必须与 services/bridge/protocol.py **逐字节一致**：
       f"{METHOD}|{path}|{ts}|{nonce}|{body}"
-★ 只在 notes 插件内部使用；不 import 别的插件。
+★ notes 插件内部使用；`notify()` 为 T24/T25 通用桥能力（桌面通知），
+  其他插件**不要 import 本模块**——T25 日程侧待 ISSUE-005 适配器落地后再接。
 ★ 超时要短（桥在本机，frp 隧道也应在秒级）；失败抛 BridgeError，由 service 转成 AppError。
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import time
 import uuid
+from collections.abc import Callable, Iterable
 from typing import Any
 
 import httpx
@@ -123,3 +126,79 @@ class BridgeClient:
 
     def read(self, lib: str, path: str) -> dict[str, Any]:
         return self._request("GET", "/bridge/read", params={"lib": lib, "path": path})
+
+    def notify(
+        self,
+        title: str,
+        body: str,
+        *,
+        app_id: str = "Life-OS",
+        channel: str = "auto",
+    ) -> dict[str, Any]:
+        """T24/T25：经本机桥弹 Windows 桌面通知。
+
+        body JSON 参与 HMAC 签名（与桥侧 protocol 一致）。
+        channel: auto|winotify|powershell|log。
+        """
+        if not self.base_url:
+            raise BridgeError("未配置 BRIDGE_URL", status=503)
+        payload = {
+            "title": title,
+            "body": body,
+            "app_id": app_id,
+            "channel": channel,
+        }
+        raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        path = "/bridge/notify"
+        headers = self._headers("POST", path, raw)
+        headers["Content-Type"] = "application/json; charset=utf-8"
+        try:
+            resp = httpx.post(
+                self.base_url + path,
+                headers=headers,
+                content=raw,
+                timeout=self.timeout,
+            )
+        except httpx.HTTPError as exc:
+            raise BridgeError(f"桥不可达：{exc}") from exc
+        if resp.status_code >= 400:
+            raise BridgeError(
+                f"桥返回 {resp.status_code}：{resp.text[:200]}",
+                status=502 if resp.status_code >= 500 else resp.status_code,
+            )
+        data = resp.json()
+        return data if isinstance(data, dict) else {"ok": False, "detail": "bad response"}
+
+
+def dispatch_due_notifies(
+    items: Iterable[dict[str, Any]],
+    client: BridgeClient,
+    *,
+    title_prefix: str = "Life-OS 提醒",
+    channel: str = "auto",
+    on_error: Callable[[dict[str, Any], Exception], None] | None = None,
+) -> list[dict[str, Any]]:
+    """T25 调度骨架：把「到期提醒项」推到本机桥。
+
+    items 每项：{"id": ..., "title": str, "body": str?}
+    ★ 不 import calendar/todo —— 调用方自己查库或打 API 后注入列表（ADR-0002）。
+    ★ 单条失败不中断整批；默认吞错记在结果里。
+    """
+    results: list[dict[str, Any]] = []
+    for item in items:
+        title = str(item.get("title") or "提醒").strip()[:120]
+        body = str(item.get("body") or title).strip()[:2000]
+        row: dict[str, Any] = {"id": item.get("id"), "title": title}
+        try:
+            out = client.notify(
+                f"{title_prefix}: {title}" if title_prefix else title,
+                body,
+                channel=channel,
+            )
+            row.update({"ok": bool(out.get("ok")), "bridge": out})
+        except BridgeError as exc:
+            row.update({"ok": False, "error": exc.detail})
+            if on_error is not None:
+                on_error(item, exc)
+        results.append(row)
+    return results

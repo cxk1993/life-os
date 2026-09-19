@@ -8,6 +8,8 @@
     GET  /bridge/read?lib=&path=     读全文（content + mtime + hash）
     GET  /bridge/changes?since=      增量变化（供增量索引）
     POST /bridge/write               写回（v0.1 默认 403，mode=rw 才放行）
+    POST /bridge/notify              桌面通知（T24；通用本机代理能力）
+    GET  /bridge/notifications       通知投递历史（环形，T24）
 
 ★ 所有 /bridge/* 请求必须带：X-Bridge-PSK / X-Bridge-Ts / X-Bridge-Nonce / X-Bridge-Sign
 ★ 绝不监听 0.0.0.0（见 __main__ 与 run.ps1，均写死 127.0.0.1）。
@@ -16,13 +18,14 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
-from typing import Any
 
 from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .config import BridgeConfig, load_config
+from .notify import send_windows_notification
 from .protocol import NONCE_TTL_S, NonceStore, check_timestamp, verify_sig
 from .reader import read_note
 from .scanner import count_md, scan_lib
@@ -30,7 +33,7 @@ from .scanner import count_md, scan_lib
 log = logging.getLogger("bridge")
 logging.basicConfig(level=logging.INFO)
 
-BRIDGE_VERSION = "0.1.0"
+BRIDGE_VERSION = "0.2.0"
 
 
 def _canonical_path(request: Request) -> str:
@@ -47,6 +50,8 @@ class BridgeState:
         self.nonces = NonceStore(ttl=NONCE_TTL_S)
         self._changes: list[dict] = []
         self._seq = 0
+        self._notifications: list[dict] = []
+        self._notify_seq = 0
 
     def push_change(self, entry: dict) -> None:
         self._seq += 1
@@ -56,6 +61,17 @@ class BridgeState:
 
     def changes_since(self, since: int) -> list[dict]:
         return [c for c in self._changes if c["seq"] > since]
+
+    def push_notification(self, entry: dict) -> dict:
+        self._notify_seq += 1
+        row = {"id": self._notify_seq, **entry}
+        self._notifications.append(row)
+        if len(self._notifications) > 200:
+            self._notifications = self._notifications[-200:]
+        return row
+
+    def notifications_since(self, since: int = 0) -> list[dict]:
+        return [n for n in self._notifications if n["id"] > since]
 
 
 class BridgeError(Exception):
@@ -92,7 +108,7 @@ def _auth(
     x_bridge_psk: str | None = Header(default=None, alias="X-Bridge-PSK"),
     x_bridge_ts: str | None = Header(default=None, alias="X-Bridge-Ts"),
     x_bridge_nonce: str | None = Header(default=None, alias="X-Bridge-Nonce"),
-    x_bridge_sign: str | None = Header(default=None, alias="X-Bridge-Sign"),
+    x_bridge_sign: str | bytes | None = Header(default=None, alias="X-Bridge-Sign"),
 ) -> None:
     cfg = request.app.state.bridge.config
     nonces: NonceStore = request.app.state.bridge.nonces
@@ -104,18 +120,24 @@ def _auth(
     try:
         ts = check_timestamp(x_bridge_ts)
     except ValueError as exc:
-        raise Unauthorized(str(exc))
+        raise Unauthorized(str(exc)) from exc
     # ③ nonce 重放
     if not x_bridge_nonce:
         raise Unauthorized("缺少 nonce")
     if nonces.seen(x_bridge_nonce):
         raise Unauthorized("nonce 已使用（疑似重放）")
-    # ④ 签名
+    # ④ 签名 —— body 从 middleware 缓存读；★ 必须把 x_bridge_sign 传给 verify_sig
     body = request.scope.get("_bridge_body") or b""
     if not x_bridge_sign or not verify_sig(
-        cfg.psk, request.method, _canonical_path(request), ts, x_bridge_nonce, body
+        cfg.psk,
+        request.method,
+        _canonical_path(request),
+        ts,
+        x_bridge_nonce,
+        x_bridge_sign,
+        body,
     ):
-        log.warning("桥请求被拒：签名错误", extra={"nonce": x_bridge_nonce[:8]})
+        log.warning("桥请求被拒：签名错误", extra={"nonce": str(x_bridge_nonce)[:8]})
         raise Unauthorized("签名校验失败")
     nonces.add(x_bridge_nonce)
 
@@ -132,12 +154,48 @@ def create_bridge_app(
 
     @app.middleware("http")
     async def _cache_body(request: Request, call_next):
-        # 鉴权前把 body 读出来缓存（仅 /bridge/*），供签名校验使用
+        # 鉴权前把 body 读出来缓存（仅 /bridge/*），供签名校验使用。
+        # ★ 兼容 BaseHTTPMiddleware：用 receive 通道拼装，避免 body 被吃掉。
         if request.url.path.startswith("/bridge/"):
+            raw = b""
             try:
-                request.scope["_bridge_body"] = await request.body()
+                if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+                    chunks: list[bytes] = []
+                    receive = request.receive
+
+                    async def _recv():
+                        message = await receive()
+                        if message["type"] == "http.request":
+                            chunks.append(message.get("body", b""))
+                        return message
+
+                    request._receive = _recv  # type: ignore[attr-defined]
+                    # 先走一遍 receive 拿 body（ASGI 消息可能分片）
+                    more = True
+                    while more:
+                        message = await _recv()
+                        if message["type"] != "http.request":
+                            break
+                        more = message.get("more_body", False)
+                    raw = b"".join(chunks)
+                    # 重置 receive，让下游仍能读 body
+                    body_sent = False
+
+                    async def _replay():
+                        nonlocal body_sent
+                        if not body_sent:
+                            body_sent = True
+                            return {
+                                "type": "http.request",
+                                "body": raw,
+                                "more_body": False,
+                            }
+                        return {"type": "http.disconnect"}
+
+                    request._receive = _replay  # type: ignore[attr-defined]
             except Exception:  # noqa: BLE001
-                request.scope["_bridge_body"] = b""
+                raw = b""
+            request.scope["_bridge_body"] = raw
         return await call_next(request)
 
     @app.get("/healthz")
@@ -149,6 +207,7 @@ def create_bridge_app(
         return {
             "ok": True,
             "version": BRIDGE_VERSION,
+            "capabilities": ["notes", "notify"],
             "libs": [
                 {"id": lib.id, "name": lib.name, "enabled": lib.enabled, "mode": lib.mode}
                 for lib in cfg.libs
@@ -177,12 +236,12 @@ def create_bridge_app(
         limit: int = Query(5000, ge=1, le=5000),
         _: None = Depends(_auth),
     ) -> StreamingResponse:
-        l = cfg.lib(lib)
-        if l is None:
+        lib_cfg = cfg.lib(lib)
+        if lib_cfg is None:
             raise NotFound(f"未知库：{lib}")
-        if not l.enabled:
+        if not lib_cfg.enabled:
             raise NotFound(f"库已禁用：{lib}")
-        entries = scan_lib(l, limit=limit)
+        entries = scan_lib(lib_cfg, limit=limit)
 
         def _gen():
             for e in entries:
@@ -200,17 +259,17 @@ def create_bridge_app(
         path: str = Query(..., alias="path"),
         _: None = Depends(_auth),
     ) -> dict:
-        l = cfg.lib(lib)
-        if l is None:
+        lib_cfg = cfg.lib(lib)
+        if lib_cfg is None:
             raise NotFound(f"未知库：{lib}")
-        if not l.enabled:
+        if not lib_cfg.enabled:
             raise NotFound(f"库已禁用：{lib}")
         try:
-            note = read_note(l, path)
+            note = read_note(lib_cfg, path)
         except ValueError as exc:  # 路径穿越 / 越界
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except FileNotFoundError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
         return note
 
     @app.get("/bridge/changes")
@@ -227,17 +286,56 @@ def create_bridge_app(
         path: str = Query(..., alias="path"),
         _: None = Depends(_auth),
     ) -> dict:
-        l = cfg.lib(lib)
-        if l is None:
+        lib_cfg = cfg.lib(lib)
+        if lib_cfg is None:
             raise NotFound(f"未知库：{lib}")
-        if l.mode != "rw":
+        if lib_cfg.mode != "rw":
             raise Forbidden("该库为只读（mode=ro），写回已禁用")
         body = await request.body()
-        target = l.abs_path() / path
+        target = lib_cfg.abs_path() / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)
         log.info("桥写回成功", extra={"lib": lib, "path": path})
         return {"ok": True, "rel_path": path}
+
+    @app.post("/bridge/notify")
+    async def bridge_notify(request: Request, _: None = Depends(_auth)) -> dict:
+        """桌面通知（T24）。JSON: {title, body, app_id?, channel?}。"""
+        raw = request.scope.get("_bridge_body") or b""
+        try:
+            payload = json.loads(raw.decode("utf-8") or "{}")
+        except json.JSONDecodeError as exc:
+            raise BadRequest("notify body 必须是 JSON") from exc
+        if not isinstance(payload, dict):
+            raise BadRequest("notify body 必须是 JSON 对象")
+        title = str(payload.get("title") or "Life-OS").strip()[:120]
+        body = str(payload.get("body") or "").strip()[:2000]
+        if not body:
+            raise BadRequest("notify 需要非空 body")
+        app_id = str(payload.get("app_id") or "Life-OS").strip()[:80]
+        channel = str(payload.get("channel") or "auto").strip()[:20]
+        result = send_windows_notification(title, body, app_id=app_id, channel=channel)
+        row = state.push_notification(
+            {
+                "ts": int(time.time()),
+                "title": title,
+                "body_len": len(body),
+                "channel": result.channel,
+                "ok": result.ok,
+                "detail": result.detail[:200],
+            }
+        )
+        if not result.ok:
+            log.warning("桥通知失败 id=%s channel=%s", row["id"], result.channel)
+        return {"ok": result.ok, "id": row["id"], **result.as_dict()}
+
+    @app.get("/bridge/notifications")
+    def bridge_notifications(
+        since: int = Query(0, ge=0),
+        _: None = Depends(_auth),
+    ) -> dict:
+        items = state.notifications_since(since)
+        return {"since": since, "items": items}
 
     _install_error_handlers(app)
     return app
@@ -263,6 +361,7 @@ def _install_error_handlers(app: FastAPI) -> None:
 if __name__ == "__main__":
     # 只监听本机回环；端口由 run.ps1 / 部署决定（默认 8790，自测用 8791）。
     import os
+
     import uvicorn
 
     _app = create_bridge_app(config_path=os.environ.get("BRIDGE_CONFIG") or None)

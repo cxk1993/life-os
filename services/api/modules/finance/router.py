@@ -22,6 +22,7 @@ from core.deps import get_current_user, get_db
 from core.security import User
 
 from .beecount_sync import beecount_source, list_snapshots, sync_snapshot
+from .scheduler import scheduler_status, start_scheduler
 from .schema import (
     BeeCountSourceOut,
     FinanceEntryCreate,
@@ -170,3 +171,21 @@ def get_beecount_source(
     **绝不返回 PAT/token 本身**，只返回 token_present 布尔。
     """
     return beecount_source(db)
+
+
+@router.get("/snapshots/scheduler")
+def get_finance_scheduler_status(
+    _user: UserDep = Depends(get_current_user),
+) -> dict:
+    """A2：定时同步调度状态（enabled / running / last_run）。不暴露密钥。"""
+    return scheduler_status()
+
+
+# A2：模块挂载时尝试启动定时同步。默认 FINANCE_SYNC_ENABLED!=true 时为空操作，
+# 测试与未配置环境不会拉起后台线程。
+try:
+    start_scheduler()
+except Exception as _sched_exc:  # noqa: BLE001 — 启动失败不阻断 API 进程
+    import logging
+
+    logging.getLogger("finance.scheduler").warning("finance 调度器启动失败: %s", _sched_exc)
