@@ -15,6 +15,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/shared/components/Button";
+import { useDesktopStore } from "@/kernel/store";
+import { useWindowInstance } from "@/kernel/windowInstance";
 import type { WebEntry } from "./api";
 
 /** 加载超时（毫秒）——超过即认为"内嵌不成功"。 */
@@ -30,6 +32,19 @@ export default function WebFrame({ entry }: Props) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [nonce, setNonce] = useState(0);
   const timerRef = useRef<number | null>(null);
+
+  // ★ T22：这两按钮要操作"本窗" —— 从内核上下文拿 instanceId（同模块可能开多窗，不能靠 moduleId 反查）
+  const instanceId = useWindowInstance();
+  const pinned = useDesktopStore((s) =>
+    instanceId ? (s.windows.find((w) => w.instanceId === instanceId)?.pinned ?? false) : false,
+  );
+  const fixedGeometry = useDesktopStore((s) =>
+    instanceId
+      ? (s.windows.find((w) => w.instanceId === instanceId)?.fixedGeometry ?? false)
+      : false,
+  );
+  const setPinned = useDesktopStore((s) => s.setPinned);
+  const setFixedGeometry = useDesktopStore((s) => s.setFixedGeometry);
 
   // 换条目 / 手动刷新 → 重走加载流程
   useEffect(() => {
@@ -89,11 +104,35 @@ export default function WebFrame({ entry }: Props) {
         <Button onClick={copyUrl} title="复制地址">
           复制地址
         </Button>
-        {/* ★ 这两个按钮是"接口预留"：窗口能力（置顶 / 固定几何）属 T22 领地 */}
-        <Button disabled title="待 T22 窗口能力">
+        {/* ★ T22 已交付：这两个按钮接真开关，状态与窗口标题栏那两个按钮双向同步 */}
+        <Button
+          onClick={() => instanceId && setPinned(instanceId, !pinned)}
+          disabled={!instanceId}
+          aria-pressed={pinned}
+          className={pinned ? "is-on" : ""}
+          title={
+            !instanceId
+              ? "本窗不在桌面窗口中，无法置顶"
+              : pinned
+                ? "取消置顶"
+                : "置顶（始终盖过普通窗口）"
+          }
+        >
           ⭐ 置顶
         </Button>
-        <Button disabled title="待 T22 窗口能力">
+        <Button
+          onClick={() => instanceId && setFixedGeometry(instanceId, !fixedGeometry)}
+          disabled={!instanceId}
+          aria-pressed={fixedGeometry}
+          className={fixedGeometry ? "is-on" : ""}
+          title={
+            !instanceId
+              ? "本窗不在桌面窗口中，无法固定几何"
+              : fixedGeometry
+                ? "解除固定几何"
+                : "固定位置与大小（锁定，不可拖拽缩放）"
+          }
+        >
           📌 固定几何
         </Button>
       </div>

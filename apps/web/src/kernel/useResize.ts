@@ -10,14 +10,20 @@ export type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
  *
  * 与拖动同理：过程只改 `el.style` 的 left/top/width/height，松手才提交 store。
  * 最大化态下 WindowFrame 不会挂载手柄，因此这里无需额外判断。
+ *
+ * ★ T22：新增 `enabled`。为 false 时**在任何副作用之前返回**
+ *   （不 preventDefault/stopPropagation、不 setPointerCapture、不挂监听）——
+ *   固定几何的窗口因此完全缩放不了。调用点在固定几何时**干脆不渲染手柄**，这里是第二道保险。
  */
 export function useResize(
   instanceId: string,
   elRef: React.RefObject<HTMLElement | null>,
   manifest: ModuleManifest,
+  enabled = true,
 ) {
   return useCallback(
     (e: React.PointerEvent, dir: ResizeDir) => {
+      if (!enabled) return; // ★ 先于 e.preventDefault()，不留任何副作用
       const el = elRef.current;
       if (!el) return;
       e.preventDefault();
@@ -71,7 +77,7 @@ export function useResize(
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
     },
-    [instanceId, elRef, manifest],
+    [instanceId, elRef, manifest, enabled],
   );
 }
 

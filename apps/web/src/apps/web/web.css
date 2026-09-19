@@ -162,6 +162,12 @@
   flex: 1;
 }
 
+/* ★ T22：工具条上的置顶 / 固定几何按钮 —— 已开启态（语义与窗口标题栏那两个按钮相同） */
+.web-frame__bar .btn.is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .web-frame__body {
   position: relative;
   flex: 1;

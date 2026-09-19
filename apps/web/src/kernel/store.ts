@@ -29,6 +29,15 @@ export interface WindowState {
   geo: WinGeo;
   /** 最大化前的几何，用于还原。 */
   _prev?: WinGeo;
+  /**
+   * ★ T22 置顶：进「置顶层」，渲染时始终盖过普通层。
+   * `z` 仍只在普通层语义内维护 —— 两层计数不混算（见 PIN_BASE）。
+   */
+  pinned: boolean;
+  /** ★ T22 固定几何：位置与大小锁定，不可拖拽、不可缩放。 */
+  fixedGeometry: boolean;
+  /** ★ 置顶层内的序号（由 topPinZ 分配）。未置顶时为 undefined。 */
+  pinZ?: number;
 }
 
 export interface ModuleReg {
@@ -42,9 +51,18 @@ const DOCK = 64;
 const SNAP = 8;
 const STORE_KEY = "lifeos.windows.v1";
 
+/**
+ * ★ T22：置顶层的 zIndex 偏移基数。
+ * 取值远大于普通层可能达到的 z（普通层从 10 起、每操作 +1），
+ * 从而保证「任何置顶窗的 zIndex > 任何普通窗的 zIndex」，两层**永不混算**。
+ */
+const PIN_BASE = 10000;
+
 interface PersistedShape {
   windows: WindowState[];
   topZ: number;
+  /** ★ 置顶层计数器（旧快照无此字段 → 默认 0）。 */
+  topPinZ?: number;
   seq: number;
   enabled: Record<string, boolean>;
 }
@@ -101,6 +119,7 @@ function savePersisted(s: DesktopState): void {
     const data: PersistedShape = {
       windows: s.windows,
       topZ: s.topZ,
+      topPinZ: s.topPinZ,
       seq: s.seq,
       enabled,
     };
@@ -114,6 +133,8 @@ export interface DesktopState {
   modules: Record<string, ModuleReg>;
   windows: WindowState[];
   topZ: number;
+  /** ★ T22：置顶层计数器（与 topZ 各管一层，互不干扰）。 */
+  topPinZ: number;
   seq: number;
 
   registerModule: (m: ModuleManifest) => void;
@@ -129,6 +150,10 @@ export interface DesktopState {
   toggleMaximize: (instanceId: string) => void;
   setGeo: (instanceId: string, patch: Partial<WinGeo>) => void;
   tidyDesktop: () => void;
+  /** ★ T22：置顶开关（进/出置顶层）。 */
+  setPinned: (instanceId: string, pinned: boolean) => void;
+  /** ★ T22：固定几何开关（锁定位置与大小）。 */
+  setFixedGeometry: (instanceId: string, fixed: boolean) => void;
 
   hydrate: () => void;
 }
@@ -137,6 +162,7 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   modules: {},
   windows: [],
   topZ: 10,
+  topPinZ: 0,
   seq: 0,
 
   registerModule: (m) => {
@@ -202,6 +228,8 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
       minimized: false,
       maximized: false,
       geo,
+      pinned: false,
+      fixedGeometry: false,
     };
     set((st) => ({ windows: [...st.windows, inst], topZ, seq }));
     savePersisted(get());
@@ -293,18 +321,119 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     savePersisted(get());
   },
 
+  /**
+   * ★ T22 置顶开关。
+   * - **置顶**：进置顶层，取一个新的 `pinZ`（`topPinZ + 1`）→ 置顶层内部「后钉的在上」，
+   *   且这个相对顺序**不会被后续点击聚焦打乱**（验收 #5）。
+   * - **取消置顶**：回普通层。★ 同时把它在普通层的 `z` 提到最前 ——
+   *   否则它按旧 `z` 沉到别的窗后面，"取消钉住"一按窗口当场消失，很困惑。
+   */
+  setPinned: (instanceId, pinned) => {
+    set((s) => {
+      const w = s.windows.find((x) => x.instanceId === instanceId);
+      if (!w) return {};
+      if (pinned) {
+        const topPinZ = s.topPinZ + 1;
+        return {
+          topPinZ,
+          windows: s.windows.map((x) =>
+            x.instanceId === instanceId ? { ...x, pinned: true, pinZ: topPinZ } : x,
+          ),
+        };
+      }
+      const topZ = s.topZ + 1;
+      return {
+        topZ,
+        windows: s.windows.map((x) =>
+          x.instanceId === instanceId ? { ...x, pinned: false, pinZ: undefined, z: topZ } : x,
+        ),
+      };
+    });
+    savePersisted(get());
+  },
+
+  /**
+   * ★ T22 固定几何开关。只改标记 ——
+   * 拖拽/缩放由 `WindowFrame` 据此**条件不挂**（手柄不渲染、onPointerDown 不给）。
+   */
+  setFixedGeometry: (instanceId, fixed) => {
+    set((s) => ({
+      windows: s.windows.map((x) =>
+        x.instanceId === instanceId ? { ...x, fixedGeometry: fixed } : x,
+      ),
+    }));
+    savePersisted(get());
+  },
+
   hydrate: () => {
     const persisted = loadPersisted();
     if (!persisted) return;
+    // 快照损坏（windows 不是数组）→ 当作没有，不要崩
+    if (!Array.isArray(persisted.windows)) return;
     const s = get();
     // 只恢复仍注册且启用的模块的窗口
-    const windows = persisted.windows.filter((w) => {
-      const reg = s.modules[w.moduleId];
-      return reg && reg.enabled;
+    // ★ 向后兼容（验收 #4）：旧快照没有 pinned / fixedGeometry / pinZ / topPinZ ——
+    //   缺字段一律安全降级（false / undefined / 0），**绝不因缺字段丢窗口或抛错**。
+    const windows = persisted.windows
+      .filter((w) => {
+        const reg = s.modules[w.moduleId];
+        return reg && reg.enabled;
+      })
+      .map((w) => ({
+        ...w,
+        pinned: w.pinned === true,
+        fixedGeometry: w.fixedGeometry === true,
+        pinZ: typeof w.pinZ === "number" ? w.pinZ : undefined,
+      }));
+    // topPinZ 缺失时按已恢复窗口的最大 pinZ 兜底，保证置顶层顺序能接着排
+    const maxPinZ = windows.reduce(
+      (mx, w) => (typeof w.pinZ === "number" ? Math.max(mx, w.pinZ) : mx),
+      0,
+    );
+    set({
+      windows,
+      topZ: persisted.topZ ?? 10,
+      topPinZ: persisted.topPinZ ?? maxPinZ,
+      seq: persisted.seq ?? 0,
     });
-    set({ windows, topZ: persisted.topZ, seq: persisted.seq });
   },
 }));
+
+/**
+ * ★ T22 渲染用 zIndex。
+ * 置顶窗落在 `[PIN_BASE, …)`，普通窗仍是原来的 `z` —— **两层永不混算**：
+ * 任何置顶窗的 zIndex 都大于任何普通窗的 zIndex。
+ */
+export function zIndexOf(w: WindowState): number {
+  return w.pinned ? PIN_BASE + (w.pinZ ?? 0) : w.z;
+}
+
+/**
+ * ★ T22：「当前窗」判定 —— **普通层**里 z 最高的那扇（置顶窗不参与）。
+ *
+ * `closeTopmost()` 与 `cycleWindow()` 共用这一条规则，避免两处各写一份而走偏。
+ * 置顶窗常驻最前，若参与"当前窗"判定，快捷键会永远命中置顶那个而不是用户在看的那扇。
+ */
+export function topmostNormalId(windows: WindowState[]): string | null {
+  let topId: string | null = null;
+  let topZ = -Infinity;
+  for (const w of windows) {
+    if (w.pinned) continue;
+    if (w.z > topZ) {
+      topZ = w.z;
+      topId = w.instanceId;
+    }
+  }
+  return topId;
+}
+
+/** ★ T22：普通层按 z 升序（最底在前）。供 `cycleWindow()` 用。 */
+export function normalStack(windows: WindowState[]): WindowState[] {
+  return windows
+    .filter((w) => !w.pinned)
+    .slice()
+    .sort((a, b) => a.z - b.z);
+}
 
 function fallbackManifest(moduleId: string, s: DesktopState): ModuleManifest {
   const reg = s.modules[moduleId];
@@ -319,4 +448,4 @@ function fallbackManifest(moduleId: string, s: DesktopState): ModuleManifest {
   };
 }
 
-export { snap, TOPBAR, DOCK };
+export { snap, TOPBAR, DOCK, PIN_BASE };

@@ -14,6 +14,8 @@ import type { ReactNode } from "react";
 import WebApp from "./WebApp";
 import WebFrame, { FRAME_TIMEOUT_MS } from "./WebFrame";
 import WebEntriesPanel from "./WebEntriesPanel";
+import { useDesktopStore } from "@/kernel/store";
+import { WindowInstanceContext } from "@/kernel/windowInstance";
 import type { CapabilityEntry, WebEntry } from "./api";
 
 vi.mock("@/shared/api/events", () => ({ usePluginEvent: () => {} }));
@@ -108,17 +110,57 @@ describe("WebFrame", () => {
     expect(screen.getAllByText(/在新窗口打开/).length).toBeGreaterThanOrEqual(2);
   });
 
-  it("工具条始终提供退路，且置顶/固定几何按钮是 disabled（属 T22）", () => {
+  it("★ T22 点亮后：不在窗口内时两个按钮安全降级为 disabled（给人话原因，不报错）", () => {
     render(<WebFrame entry={entry()} />);
-    // 置顶 / 固定几何两个按钮都是"接口预留"，必须 disabled
+    // 本用例没包 WindowInstanceContext.Provider → instanceId 为 null → 安全降级
     // ★ 本项目未启用 jest-dom 匹配器，用原生断言
-    const reserved = screen.getAllByTitle("待 T22 窗口能力");
-    expect(reserved.length).toBe(2);
-    for (const btn of reserved) expect((btn as HTMLButtonElement).disabled).toBe(true);
+    const pin = screen.getByRole("button", { name: /置顶/ });
+    const fix = screen.getByRole("button", { name: /固定几何/ });
+    expect((pin as HTMLButtonElement).disabled).toBe(true);
+    expect((fix as HTMLButtonElement).disabled).toBe(true);
+    expect(pin.getAttribute("title")).toContain("不在桌面窗口中");
     // 退路始终存在（工具条 1 个 + 底部兜底 1 个）
     expect(screen.getAllByRole("button", { name: /在新窗口打开/ }).length).toBeGreaterThanOrEqual(
       2,
     );
+  });
+
+  it("★ T22：在窗口上下文内，点「置顶」/「固定几何」真的写进桌面 store", () => {
+    const snapshot = useDesktopStore.getState().windows;
+    useDesktopStore.setState({
+      windows: [
+        {
+          instanceId: "web#1",
+          moduleId: "web",
+          z: 11,
+          minimized: false,
+          maximized: false,
+          geo: { x: 0, y: 48, w: 800, h: 600 },
+          pinned: false,
+          fixedGeometry: false,
+        },
+      ],
+      topZ: 11,
+      topPinZ: 0,
+    });
+    try {
+      render(
+        <WindowInstanceContext.Provider value="web#1">
+          <WebFrame entry={entry()} />
+        </WindowInstanceContext.Provider>,
+      );
+      const pin = screen.getByRole("button", { name: /置顶/ });
+      expect((pin as HTMLButtonElement).disabled).toBe(false);
+
+      fireEvent.click(pin);
+      expect(useDesktopStore.getState().windows[0].pinned).toBe(true);
+      expect(useDesktopStore.getState().windows[0].pinZ).toBe(1);
+
+      fireEvent.click(screen.getByRole("button", { name: /固定几何/ }));
+      expect(useDesktopStore.getState().windows[0].fixedGeometry).toBe(true);
+    } finally {
+      useDesktopStore.setState({ windows: snapshot });
+    }
   });
 });
 

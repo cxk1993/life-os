@@ -255,6 +255,29 @@
   background: var(--danger);
   color: var(--danger-fg);
 }
+
+/* —— ★ T22：置顶 / 固定几何的视觉指示（只用设计令牌，不写死色值）—— */
+/*
+ * 置顶态：用强调色描边。放在 .win--inactive 之后 —— 同优先级后者胜，
+ * 于是置顶窗即便被判为 inactive 也保持强调色描边，一眼可辨"这扇钉在最前"。
+ */
+.win--pinned {
+  border-color: var(--accent);
+}
+/* 固定几何态：标题栏不再是"可拖拽"的暗示 */
+.win--fixed .win__bar {
+  cursor: default;
+}
+/* 两个新按钮的"已开启"态 */
+.win__btn--pin.is-on,
+.win__btn--fix.is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+/* 双保险：固定几何时缩放手柄不该存在于 DOM（见 WindowFrame），这里再兜一层 */
+.win--fixed .win__rz {
+  display: none;
+}
 .win__body {
   flex: 1;
   position: relative;
