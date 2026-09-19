@@ -3,14 +3,19 @@
 ★ T04 未就绪：core 只依赖接口（Protocol），不 import db/。
   get_db 在没有引擎时明确报错（"数据库未就绪"），不许静默成功。
   T04 就绪后调用 set_engine(engine) 注入真实引擎即可，无需改其它代码。
+
+★ ISSUE-005 A 案（2026-09-20，hermes）：get_plugin_client —— 插件间内部调用通道。
+  ADR-0002「声明即授权」机器强制：caller 的 manifest.requires 必须包含
+  目标能力，否则 403。消除各插件自签 token / 自管 httpx 的样板成本。
 """
 from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
+from fastapi import Request
 from sqlmodel import Session
 
-from core.errors import ServiceUnavailableError
+from core.errors import ForbiddenError, ServiceUnavailableError
 from core.security import get_current_user, require_scope
 
 __all__ = [
@@ -19,6 +24,8 @@ __all__ = [
     "require_scope",
     "set_engine",
     "DatabaseProvider",
+    "get_plugin_client",
+    "InternalHttpClient",
 ]
 
 
@@ -49,3 +56,127 @@ def get_db() -> Session:
             "数据库未就绪：等待 T04 注入引擎（core.deps.set_engine）"
         )
     return _engine_factory()
+
+
+# ───────────────────────── ISSUE-005 A 案：插件间内部调用 ─────────────────────────
+
+import httpx  # noqa: E402
+
+
+# 内部 API 基址：同进程内直接打本服务（测试/本地/生产都是 127.0.0.1:18000）。
+# 可被 INTERNAL_API_BASE 覆盖（如测试时指向 TestClient 不可行，仍走真实服务）。
+def _internal_base() -> str:
+    import os
+
+    return os.environ.get("INTERNAL_API_BASE", "http://127.0.0.1:18000")
+
+
+class InternalHttpClient:
+    """插件间内部调用 client（自动带 token / 错误映射 / base_url）。
+
+    由 get_plugin_client() 创建，插件侧只拿它调目标插件的 API：
+        client = get_plugin_client(request, ["docs.node.read"])
+        client.get("/api/v1/docs/nodes")
+    错误统一抛 ValidationError（与 RFC7807 对齐）。
+    """
+
+    def __init__(self, token: str, base: str | None = None) -> None:
+        self._headers = {"Authorization": f"Bearer {token}"}
+        self._base = base or _internal_base()
+
+    def _req(self, method: str, path: str, **kw: Any) -> Any:
+        with httpx.Client(base_url=self._base, headers=self._headers, timeout=10) as c:
+            r = c.request(method, path, **kw)
+            if r.status_code >= 400:
+                from core.errors import ValidationError
+
+                raise ValidationError(
+                    f"内部 API {method} {path} → HTTP {r.status_code}: {r.text[:200]}"
+                )
+            if r.status_code == 204 or not r.content:
+                return None
+            return r.json()
+
+    def get(self, path: str, **kw: Any) -> Any:
+        return self._req("GET", path, **kw)
+
+    def post(self, path: str, **kw: Any) -> Any:
+        return self._req("POST", path, **kw)
+
+    def patch(self, path: str, **kw: Any) -> Any:
+        return self._req("PATCH", path, **kw)
+
+    def delete(self, path: str, **kw: Any) -> Any:
+        return self._req("DELETE", path, **kw)
+
+
+def _caller_plugin_id(request: Request) -> str:
+    """从请求路径反查调用者插件 id（真实路径，伪造不了）。
+
+    内核挂载路由时 prefix=manifest.api.base（如 /api/v1/diary）。
+    反查 app.state.modules：哪个模块的 api.base 是当前路径的前缀。
+    内核自己的 /api/v1/modules 等不算插件调用，无 caller → 返回空。
+    """
+    path = request.url.path
+    modules: dict[str, dict[str, Any]] = getattr(request.app.state, "modules", {})
+    best: tuple[int, str] | None = None
+    for pid, manifest in modules.items():
+        base = (manifest.get("api") or {}).get("base", "")
+        if base and path.startswith(base) and (best is None or len(base) > best[0]):
+            best = (len(base), pid)
+    return best[1] if best else ""
+
+
+def get_plugin_client(
+    request: Request,
+    target_capabilities: list[str],
+) -> InternalHttpClient:
+    """★ ISSUE-005 A 案：发放作用域受限的内部调用 client。
+
+    机器强制「声明即授权」（ADR-0002）：
+      1. 反查 caller 插件（由请求路径决定）
+      2. 读 caller manifest.requires
+      3. target_capabilities 必须 ⊆ requires，否则 403 Forbidden
+    通过则返回带当前用户 token 的 client（口径统一，消除自签样板）。
+
+    用法（插件路由内）：
+        from core.deps import get_plugin_client
+        client = get_plugin_client(request, ["docs.node.read", "docs.node.write"])
+        nodes = client.get("/api/v1/docs/nodes")
+    """
+    caller = _caller_plugin_id(request)
+    if not caller:
+        raise ForbiddenError(
+            "内部调用未授权：无法识别调用方插件（仅插件路由内可调用）"
+        )
+    modules: dict[str, dict[str, Any]] = getattr(request.app.state, "modules", {})
+    manifest = modules.get(caller) or {}
+    requires: list[str] = manifest.get("requires", []) or []
+
+    missing = [cap for cap in target_capabilities if cap not in requires]
+    if missing:
+        raise ForbiddenError(
+            f"内部调用未授权：插件「{caller}」requires={requires}，"
+            f"未声明能力 {missing}（ADR-0002 声明即授权）"
+        )
+
+    # 当前用户 token：从请求 Authorization 头解析当前 user（插件路由必经
+    # Depends(get_current_user)，头必然有合法 token），签发短时内部调用 token。
+    token = _issue_token_for_request(request)
+    return InternalHttpClient(token)
+
+
+def _issue_token_for_request(request: Request) -> str:
+    """从当前请求的 Authorization 头取 user，签发短时内部调用 token。
+
+    get_current_user 不写 request.state，所以这里直接从原始请求头解析。
+    插件路由必经 Depends(get_current_user)，头必然带合法 Bearer token。
+    """
+    from core.security import USER_SUB, create_access_token, decode_token
+
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer "):
+        raise ForbiddenError("内部调用未授权：请求头缺少 Bearer token")
+    payload = decode_token(auth[7:].strip(), expected_type="access")
+    sub = payload.get("sub", USER_SUB)
+    return create_access_token(sub)

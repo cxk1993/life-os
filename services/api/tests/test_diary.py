@@ -1,13 +1,27 @@
 """T17 日记后端测试（薄壳：路径换算/幂等/时区/收件箱/归纳/零表）。
 
 ★ 本卡不建表，测试用 FakeDocsAdapter 模拟 T15 的 docs API，验证 service 纯逻辑。
-★ 数据库隔离：临时库 ./data/tmp_t17.db（只为 TestClient 起服务，不建 diary_ 表）。
+★ 数据库隔离：临时库 ./data/tmp_t17_<随机>.db（★ 2026-09-20 唯一名防并发互踩；
+  只为 TestClient 起服务，不建 diary_ 表）。
 """
 from __future__ import annotations
 
+import atexit
 import os
+import uuid
+from contextlib import suppress
 
-os.environ["DB_PATH"] = "./data/tmp_t17.db"
+_TMP_DB = f"./data/tmp_t17_{uuid.uuid4().hex[:8]}.db"
+os.environ["DB_PATH"] = _TMP_DB
+
+
+def _cleanup_tmp_db() -> None:
+    with suppress(FileNotFoundError, PermissionError):
+        # Windows 上 SQLite 引擎句柄可能未释放，删不掉就算了（名字唯一不互踩即可）
+        os.remove(_TMP_DB)
+
+
+atexit.register(_cleanup_tmp_db)
 
 from datetime import UTC, date  # noqa: E402
 

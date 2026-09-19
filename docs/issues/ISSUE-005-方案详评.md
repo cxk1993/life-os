@@ -117,6 +117,8 @@ def get_plugin_client(db: Session, target_plugin: str) -> PluginClient:
 ## 5. 结论回写
 
 - [x] 方案详评完成（2026-09-19 深夜，hermes）
-- [ ] 主人裁决：A / B / C / A+C
-- [ ] 若 A：立 T03 增补卡（或 ISSUE-005 承接卡）→ 实装 → 验收
-- [ ] 无论选哪个：模板包 5 加「跨插件 HTTP 调用参考」（C 案产物，我起草，交 Zcode 审）
+- [x] 主人裁决：**A + C**（2026-09-20，主人授权动 T03 内核）
+- [x] **A 案实装**：`core/deps.py` 新增 `get_plugin_client` + `InternalHttpClient`；diary 平滑切换；单测 6/6（`tests/test_plugin_client.py`）；真链路探测卡点已发帖求助
+- [x] **C 案落地**：模板包5 §4「跨插件 HTTP 调用参考」（2026-09-20，hermes）
+- [ ] A 案真链路探测通过 + Zcode 复测提交
+- [ ] 若后续插件跨调用：一律走 `get_plugin_client`（模板 §4.2）
