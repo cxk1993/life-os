@@ -1,0 +1,200 @@
+/* 日记插件样式 —— 只用设计令牌（var(--accent) 等），不写死色值 */
+.diary-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-size: 13px;
+}
+
+.diary-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.diary-tabs button {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 3px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.diary-tabs button.active {
+  border-color: var(--accent, #4da3ff);
+  color: var(--accent, #4da3ff);
+}
+
+.diary-capture {
+  margin-left: auto;
+}
+
+.diary-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px;
+}
+
+.diary-pane {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+}
+
+.diary-pane-cal {
+  flex: 0 0 300px;
+}
+
+.diary-pane-viewer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 月历 */
+.diary-cal {
+  padding: 10px;
+}
+
+.diary-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.diary-cal-head button {
+  background: transparent;
+  border: none;
+  color: var(--text, #eee);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+
+.diary-cal-title {
+  font-weight: 600;
+}
+
+.diary-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  color: var(--text-dim, rgba(255, 255, 255, 0.4));
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.diary-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.diary-cal-empty {
+  aspect-ratio: 1;
+}
+
+.diary-cal-day {
+  position: relative;
+  aspect-ratio: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text, #eee);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.diary-cal-day:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.06));
+}
+
+.diary-cal-day.has-entry::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--accent, #4da3ff);
+}
+
+.diary-cal-day.selected {
+  border-color: var(--accent, #4da3ff);
+}
+
+.diary-cal-day.today {
+  color: var(--accent, #4da3ff);
+  font-weight: 700;
+}
+
+/* 收件箱 */
+.diary-inbox {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.diary-inbox-hint {
+  color: var(--text-dim, rgba(255, 255, 255, 0.5));
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.diary-inbox-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+.diary-inbox-name {
+  flex: 1;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+.diary-inbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diary-inbox-actions button {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.diary-consolidate-date {
+  background: var(--surface, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.diary-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim, rgba(255, 255, 255, 0.4));
+  padding: 20px;
+}

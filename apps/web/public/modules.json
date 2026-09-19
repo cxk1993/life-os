@@ -164,5 +164,20 @@
       "minW": 560,
       "minH": 400
     }
+  },
+  {
+    "id": "diary",
+    "name": "日记",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "日",
+    "description": "日记：按日期索引 + 收件箱归纳（文档树薄壳，零表）。",
+    "entry": "@/apps/diary",
+    "window": {
+      "w": 900,
+      "h": 640,
+      "minW": 560,
+      "minH": 400
+    }
   }
 ]
