@@ -179,5 +179,20 @@
       "minW": 560,
       "minH": 400
     }
+  },
+  {
+    "id": "health",
+    "name": "健康",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "康",
+    "description": "症状/用药/复诊/体检记录，需跟进时经事件总线联动待办。",
+    "entry": "@/apps/health",
+    "window": {
+      "w": 800,
+      "h": 580,
+      "minW": 480,
+      "minH": 380
+    }
   }
 ]

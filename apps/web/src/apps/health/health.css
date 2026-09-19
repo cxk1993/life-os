@@ -1,0 +1,120 @@
+.health-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  color: var(--txt);
+}
+
+.health-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.health-add__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.health-add__title {
+  flex: 1 1 160px;
+  min-width: 120px;
+}
+
+.health-add__note {
+  flex: 2 1 180px;
+}
+
+.health-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.health-list {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.health-row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border, color-mix(in srgb, var(--txt) 12%, transparent));
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.health-row:hover {
+  border-color: var(--accent);
+}
+
+.health-row__kind {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.health-row__title {
+  font-weight: 500;
+}
+
+.health-row__meta {
+  font-size: 12px;
+  color: var(--txt-faint);
+}
+
+.health-drawer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(360px, 90%);
+  background: var(--panel, var(--bg));
+  border-left: 1px solid var(--border, color-mix(in srgb, var(--txt) 12%, transparent));
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 5;
+}
+
+.health-drawer__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.health-drawer__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.health-drawer__body textarea {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.health-drawer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.health-root {
+  position: relative;
+}

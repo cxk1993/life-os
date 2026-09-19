@@ -1,0 +1,49 @@
+{
+  "id": "health",
+  "name": "健康",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "box",
+  "description": "症状/用药/复诊/体检记录，需跟进时经事件总线联动待办",
+  "author": "yunxi",
+  "window": {
+    "w": 800,
+    "h": 580,
+    "minW": 480,
+    "minH": 360,
+    "singleton": false
+  },
+  "entry": "@apps/health",
+  "api": {
+    "base": "/api/v1/health",
+    "openapi": "/api/v1/health/openapi.json",
+    "health": "/api/v1/health/health"
+  },
+  "provides": [
+    "health.record.read",
+    "health.record.write",
+    "health.care.request"
+  ],
+  "requires": [],
+  "slots": [],
+  "emits": [
+    "health.record.created",
+    "health.record.updated",
+    "health.record.deleted",
+    "health.care.requested"
+  ],
+  "consumes": [],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

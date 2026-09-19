@@ -65,6 +65,8 @@
 | finance_entry | finance | (occurred_at) 区间流水主查询；(category)(account)(direction) 过滤 |
 | growth_axis / growth_item | growth | growth_item(axis_id) 罗盘装配 |
 | agents_task / agents_agent / agents_dispatch | agents | agents_task(status, assignee)；agents_dispatch(task_id, status)；dispatch_id 唯一幂等键 |
+| health_record | health | (occurred_at) 时间线主查询；(kind) 过滤；(followup_needed) 待跟进 |
+| calendar_reminder_log | calendar | (event_id) 提醒去重；(fired_at) 投递审计 |
 
 **索引之外的建表规矩**（见 `db/base.py` 与 `docs/示例/calendar_event_示例.py`）：
 表名 = 插件 id 前缀 + 名词；必须继承 `PkMixin + TimestampMixin`；外键写明
