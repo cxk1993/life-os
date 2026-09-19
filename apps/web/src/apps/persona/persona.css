@@ -1,0 +1,97 @@
+/* 人格体系插件样式 —— 只用设计令牌（var(--accent) 等），不写死色值 */
+.persona-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-size: 13px;
+}
+
+.persona-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.persona-title {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.persona-search {
+  flex: 1;
+  max-width: 280px;
+  background: var(--surface, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text, #eee);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.persona-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px;
+}
+
+.persona-pane {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+}
+
+.persona-pane-tree {
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+.persona-pane-viewer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.persona-search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.persona-search-title {
+  font-weight: 600;
+  padding: 4px 8px;
+  color: var(--text-dim, rgba(255, 255, 255, 0.5));
+}
+
+.persona-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text, #eee);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.persona-hit:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.06));
+}
+
+.persona-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim, rgba(255, 255, 255, 0.4));
+  padding: 20px;
+}

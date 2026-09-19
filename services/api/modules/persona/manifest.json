@@ -1,0 +1,42 @@
+{
+  "id": "persona",
+  "name": "人格体系",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "box",
+  "description": "人格体系：文档树内核（T15）的薄壳入口——文件管理器形态，随时可加减任何东西，不写死任何人格概念。",
+  "author": "yunxi",
+  "window": {
+    "w": 880,
+    "h": 640
+  },
+  "entry": "@apps/persona",
+  "api": {
+    "base": "/api/v1/persona",
+    "openapi": "/api/v1/persona/openapi.json",
+    "health": "/api/v1/persona/health"
+  },
+  "provides": [],
+  "requires": [
+    "docs.node.read",
+    "docs.node.write",
+    "docs.search"
+  ],
+  "slots": [
+    "desktop.dock",
+    "dashboard.card"
+  ],
+  "emits": [],
+  "consumes": [],
+  "permissions": [],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}
