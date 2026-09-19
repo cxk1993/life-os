@@ -1,0 +1,45 @@
+{
+  "source": "kernel",
+  "entries": [
+    {
+      "id": "kernel.auth.token",
+      "name": "认证：token 签发与校验",
+      "kind": "web+rest",
+      "endpoint": "/api/v1/auth",
+      "auth_ref": "none",
+      "capabilities": ["auth.token.issue", "auth.token.verify"],
+      "enabled": true,
+      "note": "内核基础：JWT 签发/校验/续期；agent 拿 token 后从这开始"
+    },
+    {
+      "id": "kernel.modules.list",
+      "name": "模块清单（发现所有插件）",
+      "kind": "web+rest",
+      "endpoint": "/api/v1/modules",
+      "auth_ref": "none",
+      "capabilities": ["modules.list"],
+      "enabled": true,
+      "note": "内核基础：列出全部已挂载插件及其 manifest"
+    },
+    {
+      "id": "kernel.events.subscribe",
+      "name": "事件总线 SSE",
+      "kind": "web+rest",
+      "endpoint": "/api/v1/events/subscribe",
+      "auth_ref": "none",
+      "capabilities": ["events.subscribe"],
+      "enabled": true,
+      "note": "内核基础：SSE 流订阅所有模块事件"
+    },
+    {
+      "id": "kernel.catalog.read",
+      "name": "能力目录（本页）",
+      "kind": "web+rest",
+      "endpoint": "/api/v1/catalog",
+      "auth_ref": "none",
+      "capabilities": ["catalog.read"],
+      "enabled": true,
+      "note": "内核基础：agent 自举接入的入口（场景 C 前半）"
+    }
+  ]
+}

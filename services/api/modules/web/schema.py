@@ -108,7 +108,7 @@ class CapabilityEntry(BaseModel):
     capabilities: list[str] = []
     enabled: bool = True
     note: str | None = None
-    source: str = "web_entry"  # web_entry | plugin | kernel
+    source: str = "web_entry"  # web_entry | plugin | kernel | manual（T20 特批追加 manual）
 
 
 # ───────────────────────── 出参 ─────────────────────────

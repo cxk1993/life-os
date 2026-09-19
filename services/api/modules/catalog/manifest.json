@@ -1,0 +1,49 @@
+{
+  "id": "catalog",
+  "name": "能力目录",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "api",
+  "description": "能力目录：接口说明页（四源汇总 + 对外暴露）",
+  "author": "yunxi",
+  "window": {
+    "w": 920,
+    "h": 600
+  },
+  "entry": "@apps/catalog",
+  "api": {
+    "base": "/api/v1/catalog",
+    "openapi": "/api/v1/catalog/openapi.json",
+    "health": "/api/v1/catalog/health"
+  },
+  "provides": [
+    "catalog.read"
+  ],
+  "requires": [
+    "web.entry.read",
+    "web.entry.write"
+  ],
+  "slots": [
+    "desktop.dock",
+    "dashboard.card"
+  ],
+  "emits": [],
+  "consumes": [
+    "web.entry.created",
+    "web.entry.updated",
+    "web.entry.deleted"
+  ],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}
