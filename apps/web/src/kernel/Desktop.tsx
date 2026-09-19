@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ToastHost } from "@/shared/components/Toast";
 import { initTheme } from "@/shared/styles/theme";
 import { pluginHost, registerModules } from "./ModuleRegistry";
-import { useDesktopStore, normalStack, topmostNormalId } from "./store";
+import { useDesktopStore, normalStack, topmostNormalId, type WindowState } from "./store";
 import type { ModuleManifest } from "./types";
 import { Dock } from "./Dock";
 import { useShortcuts, type ShortcutHandlers } from "./Shortcuts";
@@ -13,16 +13,26 @@ import { WindowManager } from "./WindowManager";
 const MODULES_URL = "/modules.json";
 
 /**
+ * ★ T23：只取**当前工作区**的窗口 —— 快捷键作用于"你正在看的那个桌面"。
+ * 否则快捷键会命中隐藏工作区里的窗，出现"关了个看不见的东西"。
+ */
+function activeWindows(): WindowState[] {
+  const s = useDesktopStore.getState();
+  return s.windows.filter((w) => w.workspaceId === s.activeWorkspaceId);
+}
+
+/**
  * 关闭 z-index 最高的窗口（即当前聚焦窗口）。
  *
  * ★ T22：「当前窗」判定**按层**做 —— 置顶窗不参与（契约：「置顶窗不参与'当前窗'判定」）。
  * 否则置顶窗的 zIndex 恒高于普通窗，这个快捷键会永远关掉置顶那个，
  * 而不是用户正在看的那一个（症状："关窗口关错人"）。
+ * ★ T23：再加上"只在本工作区内"。
  * ★ 规则抽到 `store.topmostNormalId()`，与 `cycleWindow` 共用同一条判定。
  */
 function closeTopmost(): void {
   const s = useDesktopStore.getState();
-  const topId = topmostNormalId(s.windows);
+  const topId = topmostNormalId(activeWindows());
   if (topId) s.closeWindow(topId);
 }
 
@@ -32,10 +42,11 @@ function closeTopmost(): void {
  * ★ T22：与 `closeTopmost` 是**同一条判定的两处应用** ——
  * "把某一扇提到最前"是**普通层**的叠放操作；置顶层顺序由 `pinZ` 决定，
  * 聚焦改不动它，所以置顶层不参与循环。卡里只点名了 `closeTopmost`，此处按同一判定处理。
+ * ★ T23：同样限定在当前工作区内。
  */
 function cycleWindow(): void {
   const s = useDesktopStore.getState();
-  const stack = normalStack(s.windows);
+  const stack = normalStack(activeWindows());
   if (stack.length === 0) return;
   const below = stack.length > 1 ? stack[stack.length - 2] : stack[0];
   s.focusWindow(below.instanceId);

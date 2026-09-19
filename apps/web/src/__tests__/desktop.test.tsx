@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import App from "../App";
 import { registerModules } from "@/kernel/ModuleRegistry";
-import { useDesktopStore, type DesktopState } from "@/kernel/store";
+import { makeWorkspace, useDesktopStore, type DesktopState } from "@/kernel/store";
 import type { ModuleManifest } from "@/kernel/types";
 
 const mods: ModuleManifest[] = [
@@ -46,8 +46,8 @@ beforeEach(() => {
   useDesktopStore.setState({
     modules: {},
     windows: [],
-    topZ: 10,
-    seq: 0,
+    workspaces: [makeWorkspace(1)],
+    activeWorkspaceId: "ws1",
   } satisfies Partial<DesktopState> as unknown as DesktopState);
 });
 

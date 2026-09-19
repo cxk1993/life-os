@@ -7,7 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { useDesktopStore } from "@/kernel/store";
+import { makeWorkspace, useDesktopStore } from "@/kernel/store";
 import {
   clearContributions,
   registerContributions,
@@ -128,7 +128,12 @@ function makeWrapper() {
 
 function resetSlotState() {
   localStorage.clear();
-  useDesktopStore.setState({ modules: {}, windows: [], topZ: 10, seq: 0 });
+  useDesktopStore.setState({
+    modules: {},
+    windows: [],
+    workspaces: [makeWorkspace(1)],
+    activeWorkspaceId: "ws1",
+  });
   clearContributions();
   unregisterContributions("calendar");
   unregisterContributions("todo");

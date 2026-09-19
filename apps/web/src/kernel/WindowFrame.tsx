@@ -1,9 +1,10 @@
-import { Component, lazy, Suspense, useMemo, useRef } from "react";
+import { Component, lazy, Suspense, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { Skeleton } from "@/shared/components/Skeleton";
 import { resolveLoader } from "./ModuleRegistry";
-import { useDesktopStore, zIndexOf } from "./store";
+import { useDesktopStore, workspaceOf, zIndexOf } from "./store";
 import { useDragMove } from "./useDragMove";
 import { useResize, type ResizeDir } from "./useResize";
 import { WindowInstanceContext } from "./windowInstance";
@@ -60,14 +61,19 @@ interface Props {
 
 export function WindowFrame({ instanceId }: Props) {
   const win = useDesktopStore((s) => s.windows.find((w) => w.instanceId === instanceId));
-  const topZ = useDesktopStore((s) => s.topZ);
-  const topPinZ = useDesktopStore((s) => s.topPinZ);
+  // ★ T23：「当前窗」判定要用的两个计数器，取自**该窗所属工作区**（顶层已无全局计数器）
+  const ws = useDesktopStore((s) => workspaceOf(s, instanceId));
+  const activeWorkspaceId = useDesktopStore((s) => s.activeWorkspaceId);
   const focusWindow = useDesktopStore((s) => s.focusWindow);
   const minimizeWindow = useDesktopStore((s) => s.minimizeWindow);
   const closeWindow = useDesktopStore((s) => s.closeWindow);
   const toggleMaximize = useDesktopStore((s) => s.toggleMaximize);
   const setPinned = useDesktopStore((s) => s.setPinned);
   const setFixedGeometry = useDesktopStore((s) => s.setFixedGeometry);
+  // ★ T23：标题栏右键「移到工作区…」
+  const workspaces = useDesktopStore((s) => s.workspaces);
+  const moveWindowToWorkspace = useDesktopStore((s) => s.moveWindowToWorkspace);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
 
   const elRef = useRef<HTMLDivElement>(null);
   const manifest = win ? useDesktopStore.getState().modules[win.moduleId]?.manifest : undefined;
@@ -104,9 +110,12 @@ export function WindowFrame({ instanceId }: Props) {
   if (!win) return null;
   if (win.minimized) return null;
 
-  // ★ T22：「当前窗」改为**按层判定** —— 每层各有一个最顶窗。
-  //   置顶窗常驻最前；若沿用旧的全局 `win.z === topZ`，它会被永远算成 inactive（视觉上误判失焦）。
-  const active = win.pinned ? win.pinZ === topPinZ : win.z === topZ;
+  // ★ T22：「当前窗」按**层**判定 —— 每层各有一个最顶窗。
+  // ★ T23：再加一维 —— 两个计数器取自**该窗所属工作区**，所以是「层 × 工作区」两维判定。
+  const active = win.pinned ? win.pinZ === (ws?.topPinZ ?? -1) : win.z === (ws?.topZ ?? -1);
+  // ★ T23：不属于当前工作区的窗 **保持挂载**，只加隐藏类。
+  //   ★ 绝对不能在 WindowManager 里把它从渲染树摘掉 —— 卸载 = iframe 重载 = 登录态丢失（契约 #4 / 验收 #6）。
+  const hidden = win.workspaceId !== activeWorkspaceId;
   const name = manifest?.name ?? win.moduleId;
 
   return (
@@ -114,7 +123,7 @@ export function WindowFrame({ instanceId }: Props) {
       ref={elRef}
       className={`win${active ? "" : " win--inactive"}${win.maximized ? " win--max" : ""}${
         win.pinned ? " win--pinned" : ""
-      }${win.fixedGeometry ? " win--fixed" : ""}`}
+      }${win.fixedGeometry ? " win--fixed" : ""}${hidden ? " win--hidden" : ""}`}
       style={{
         left: win.geo.x,
         top: win.geo.y,
@@ -129,6 +138,11 @@ export function WindowFrame({ instanceId }: Props) {
         className="win__bar"
         onPointerDown={canDrag ? dragHandler : undefined}
         onDoubleClick={() => toggleMaximize(instanceId)}
+        onContextMenu={(e) => {
+          // ★ T23：右键 → 「移到工作区…」
+          e.preventDefault();
+          setMenuAt({ x: e.clientX, y: e.clientY });
+        }}
         role="toolbar"
         aria-label={`窗口：${name}`}
         tabIndex={0}
@@ -216,6 +230,49 @@ export function WindowFrame({ instanceId }: Props) {
             aria-hidden="true"
           />
         ))}
+
+      {/*
+        ★ T23：标题栏右键 → 「移到工作区…」。
+        ★ 用 portal 渲染到 body —— `.win` 上有 `overflow: hidden`，
+          菜单若留在窗内，超出窗口的部分会被裁掉（拖拽时 `.win` 还有 transform，
+          会把 fixed 的包含块也变成它自己）。portal 一次性绕开这两件事。
+        ★ 最小集：只列**其它**工作区；没有别的就提示"先新建一个"。
+      */}
+      {menuAt &&
+        createPortal(
+          <>
+            <div className="win__menu-veil" onPointerDown={() => setMenuAt(null)} />
+            <div
+              className="win__menu"
+              style={{ left: menuAt.x, top: menuAt.y }}
+              role="menu"
+              aria-label="窗口菜单"
+            >
+              <div className="win__menu-title">移到工作区…</div>
+              {workspaces.filter((k) => k.id !== win.workspaceId).length === 0 ? (
+                <div className="win__menu-empty">还没有别的工作区</div>
+              ) : (
+                workspaces
+                  .filter((k) => k.id !== win.workspaceId)
+                  .map((k) => (
+                    <button
+                      key={k.id}
+                      type="button"
+                      role="menuitem"
+                      className="win__menu-item"
+                      onClick={() => {
+                        moveWindowToWorkspace(instanceId, k.id);
+                        setMenuAt(null);
+                      }}
+                    >
+                      {k.name}
+                    </button>
+                  ))
+              )}
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

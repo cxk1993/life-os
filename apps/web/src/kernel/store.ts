@@ -38,6 +38,29 @@ export interface WindowState {
   fixedGeometry: boolean;
   /** ★ 置顶层内的序号（由 topPinZ 分配）。未置顶时为 undefined。 */
   pinZ?: number;
+  /**
+   * ★ T23 归属工作区。
+   * ★ 设计要点：`windows` **保持全量平铺**（不按工作区分成多份数组），
+   * 每扇窗只带一个 `workspaceId` —— 这样"切换工作区"才能做成**隐藏**而非卸载，
+   * 从而保住窗口内 iframe 的登录态（契约 #4）。
+   */
+  workspaceId: string;
+}
+
+/**
+ * ★ T23 工作区。
+ * ★ 每个工作区**独立**持有窗口计数器（契约 #2）：在 A 聚焦窗口不会顶起 B 的 z 序。
+ * ★ 内核零业务：`name` 默认「工作区 N」，不许预设任何业务名。
+ */
+export interface WorkspaceState {
+  id: string;
+  name: string;
+  /** 普通层 z 计数器（本工作区独立）。 */
+  topZ: number;
+  /** 置顶层计数器（本工作区独立）。 */
+  topPinZ: number;
+  /** 开窗序号（用于默认位置级联，本工作区独立）。 */
+  seq: number;
 }
 
 export interface ModuleReg {
@@ -58,13 +81,54 @@ const STORE_KEY = "lifeos.windows.v1";
  */
 const PIN_BASE = 10000;
 
+/**
+ * ★ T23 持久化形状（v2）。
+ *
+ * **向后兼容策略（契约 #3）**：
+ *   - ★ **不换 localStorage key**（仍是 `STORE_KEY`）—— 换了 key 等于遗弃旧数据，违反"零丢失"；
+ *   - v2 新增 `workspaces` / `activeWorkspaceId`，把 `topZ/topPinZ/seq` **下沉进工作区对象**；
+ *   - 顶层保留这三个字段为**可选**，**只用于读 v1 旧快照**（迁移后并入「工作区 1」）。
+ */
 interface PersistedShape {
   windows: WindowState[];
-  topZ: number;
-  /** ★ 置顶层计数器（旧快照无此字段 → 默认 0）。 */
+  /** v2：工作区列表 */
+  workspaces?: WorkspaceState[];
+  /** v2：当前工作区 id */
+  activeWorkspaceId?: string;
+  /** @deprecated v1 遗留：迁移时并入「工作区 1」 */
+  topZ?: number;
+  /** @deprecated v1 遗留 */
   topPinZ?: number;
-  seq: number;
+  /** @deprecated v1 遗留 */
+  seq?: number;
   enabled: Record<string, boolean>;
+}
+
+/** ★ T23 默认工作区 id（旧数据也迁到这里）。 */
+export const DEFAULT_WORKSPACE_ID = "ws1";
+
+/** 新建一个工作区。`index` 从 1 起 —— 名字默认「工作区 N」（内核零业务）。 */
+function newWorkspace(index: number): WorkspaceState {
+  return { id: `ws${index}`, name: `工作区 ${index}`, topZ: 10, topPinZ: 0, seq: 0 };
+}
+
+/**
+ * ★ T23：造一个工作区（可选覆盖任意字段）。
+ * 导出它是为了让 hydrate 与各处测试**共用同一份字段样板** ——
+ * 手拼字段的地方越多，"漏一个字段"的概率越大（T22 的教训）。
+ */
+export function makeWorkspace(index = 1, patch: Partial<WorkspaceState> = {}): WorkspaceState {
+  return { ...newWorkspace(index), ...patch };
+}
+
+/** 下一个可用的工作区序号（取现有 id 里的最大数字 +1，保证唯一）。 */
+function nextWorkspaceIndex(workspaces: WorkspaceState[]): number {
+  let max = 0;
+  for (const w of workspaces) {
+    const n = Number.parseInt(w.id.replace(/^ws/, ""), 10);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max + 1;
 }
 
 function vw(): number {
@@ -116,11 +180,12 @@ function savePersisted(s: DesktopState): void {
   try {
     const enabled: Record<string, boolean> = {};
     for (const id in s.modules) enabled[id] = s.modules[id].enabled;
+    // ★ T23：计数器已**下沉进工作区对象**，顶层不再写 topZ/topPinZ/seq
+    //   （顶层那三个字段留着只为读 v1 旧快照）
     const data: PersistedShape = {
       windows: s.windows,
-      topZ: s.topZ,
-      topPinZ: s.topPinZ,
-      seq: s.seq,
+      workspaces: s.workspaces,
+      activeWorkspaceId: s.activeWorkspaceId,
       enabled,
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(data));
@@ -131,11 +196,12 @@ function savePersisted(s: DesktopState): void {
 
 export interface DesktopState {
   modules: Record<string, ModuleReg>;
+  /** ★ T23：**全量平铺**（跨全部工作区），每窗自带 `workspaceId`。 */
   windows: WindowState[];
-  topZ: number;
-  /** ★ T22：置顶层计数器（与 topZ 各管一层，互不干扰）。 */
-  topPinZ: number;
-  seq: number;
+  /** ★ T23：工作区列表（每个自带独立计数器）。 */
+  workspaces: WorkspaceState[];
+  /** ★ T23：当前工作区 id。 */
+  activeWorkspaceId: string;
 
   registerModule: (m: ModuleManifest) => void;
   unregisterModule: (id: string) => void;
@@ -155,15 +221,46 @@ export interface DesktopState {
   /** ★ T22：固定几何开关（锁定位置与大小）。 */
   setFixedGeometry: (instanceId: string, fixed: boolean) => void;
 
+  /** ★ T23：新建工作区并切过去，返回新工作区 id。 */
+  createWorkspace: () => string;
+  /** ★ T23：切换工作区。 */
+  switchWorkspace: (workspaceId: string) => void;
+  /** ★ T23：把某扇窗移到另一工作区（几何与置顶状态原样带走）。 */
+  moveWindowToWorkspace: (instanceId: string, workspaceId: string) => void;
+
   hydrate: () => void;
+}
+
+/** ★ T23：取当前工作区（找不到就退回第一个，绝不返回 undefined）。 */
+export function activeWorkspace(s: DesktopState): WorkspaceState {
+  return s.workspaces.find((w) => w.id === s.activeWorkspaceId) ?? s.workspaces[0];
+}
+
+/** ★ T23：不可变地给某个工作区打补丁（计数器自增用）。 */
+function patchWorkspace(
+  workspaces: WorkspaceState[],
+  id: string,
+  patch: Partial<WorkspaceState>,
+): WorkspaceState[] {
+  return workspaces.map((w) => (w.id === id ? { ...w, ...patch } : w));
+}
+
+/** ★ T23：某扇窗属于哪个工作区（渲染与 active 判定都要用）。 */
+export function workspaceOf(
+  s: DesktopState,
+  instanceId: string | null,
+): WorkspaceState | undefined {
+  if (!instanceId) return undefined;
+  const w = s.windows.find((x) => x.instanceId === instanceId);
+  return w ? s.workspaces.find((k) => k.id === w.workspaceId) : undefined;
 }
 
 export const useDesktopStore = create<DesktopState>((set, get) => ({
   modules: {},
   windows: [],
-  topZ: 10,
-  topPinZ: 0,
-  seq: 0,
+  // ★ T23：默认一个「工作区 1」；v1 旧数据 hydrate 时也整体迁到这里
+  workspaces: [newWorkspace(1)],
+  activeWorkspaceId: DEFAULT_WORKSPACE_ID,
 
   registerModule: (m) => {
     const persisted = loadPersisted();
@@ -208,9 +305,11 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     const reg = s.modules[moduleId];
     if (!reg || !reg.enabled) return;
     const manifest = reg.manifest;
+    const ws = activeWorkspace(s);
 
     if (manifest.window.singleton) {
-      const existing = s.windows.find((w) => w.moduleId === moduleId);
+      // ★ T23：singleton 只在**当前工作区**内去重 —— 不同工作区可以各开一扇
+      const existing = s.windows.find((w) => w.moduleId === moduleId && w.workspaceId === ws.id);
       if (existing) {
         get().restoreWindow(existing.instanceId);
         get().focusWindow(existing.instanceId);
@@ -218,11 +317,13 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
       }
     }
 
-    const seq = s.seq + 1;
-    const topZ = s.topZ + 1;
+    const seq = ws.seq + 1;
+    const topZ = ws.topZ + 1;
     const geo = defaultGeo(manifest, seq);
     const inst: WindowState = {
-      instanceId: `${moduleId}#${seq}`,
+      // ★ T23：instanceId 必须**全局唯一**——带上工作区前缀，
+      //   否则两个工作区各自的 `m1#1` 会撞 key、撞查找。
+      instanceId: `${ws.id}:${moduleId}#${seq}`,
       moduleId,
       z: topZ,
       minimized: false,
@@ -230,8 +331,12 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
       geo,
       pinned: false,
       fixedGeometry: false,
+      workspaceId: ws.id,
     };
-    set((st) => ({ windows: [...st.windows, inst], topZ, seq }));
+    set((st) => ({
+      windows: [...st.windows, inst],
+      workspaces: patchWorkspace(st.workspaces, ws.id, { topZ, seq }),
+    }));
     savePersisted(get());
   },
 
@@ -244,9 +349,11 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     set((s) => {
       const w = s.windows.find((x) => x.instanceId === instanceId);
       if (!w) return {};
-      const topZ = s.topZ + 1;
+      // ★ T23：自增的是**该窗所属工作区**的计数器 —— 在 A 聚焦不会顶起 B 的 z 序（验收 #3）
+      const ws = s.workspaces.find((k) => k.id === w.workspaceId) ?? activeWorkspace(s);
+      const topZ = ws.topZ + 1;
       return {
-        topZ,
+        workspaces: patchWorkspace(s.workspaces, ws.id, { topZ }),
         windows: s.windows.map((x) =>
           x.instanceId === instanceId ? { ...x, z: topZ, minimized: false } : x,
         ),
@@ -273,17 +380,20 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     set((s) => {
       const w = s.windows.find((x) => x.instanceId === instanceId);
       if (!w) return {};
-      const topZ = s.topZ + 1;
+      // ★ T23：同 focusWindow —— 只动**该窗所属工作区**的计数器
+      const ws = s.workspaces.find((k) => k.id === w.workspaceId) ?? activeWorkspace(s);
+      const topZ = ws.topZ + 1;
+      const bump = patchWorkspace(s.workspaces, ws.id, { topZ });
       if (w.maximized && w._prev) {
         return {
-          topZ,
+          workspaces: bump,
           windows: s.windows.map((x) =>
             x.instanceId === instanceId ? { ...x, maximized: false, geo: w._prev!, z: topZ } : x,
           ),
         };
       }
       return {
-        topZ,
+        workspaces: bump,
         windows: s.windows.map((x) =>
           x.instanceId === instanceId
             ? { ...x, maximized: true, _prev: x.geo, geo: fullGeo(), z: topZ }
@@ -309,14 +419,18 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
 
   tidyDesktop: () => {
     set((s) => {
-      let seq = s.seq;
+      // ★ T23：只整理**当前工作区**的窗口 —— 其它工作区的窗不可见，
+      //   动它们只会制造"切过去发现布局被莫名其妙改过"的意外。
+      const ws = activeWorkspace(s);
+      let seq = ws.seq;
       const windows = s.windows.map((w) => {
+        if (w.workspaceId !== ws.id) return w;
         seq += 1;
         const manifest = s.modules[w.moduleId]?.manifest;
         const geo = manifest ? defaultGeo(manifest, seq) : w.geo;
         return { ...w, minimized: false, maximized: false, _prev: undefined, geo };
       });
-      return { windows, seq };
+      return { windows, workspaces: patchWorkspace(s.workspaces, ws.id, { seq }) };
     });
     savePersisted(get());
   },
@@ -332,18 +446,20 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     set((s) => {
       const w = s.windows.find((x) => x.instanceId === instanceId);
       if (!w) return {};
+      // ★ T23：置顶层计数器也是 **per-workspace**（契约 #2）
+      const ws = s.workspaces.find((k) => k.id === w.workspaceId) ?? activeWorkspace(s);
       if (pinned) {
-        const topPinZ = s.topPinZ + 1;
+        const topPinZ = ws.topPinZ + 1;
         return {
-          topPinZ,
+          workspaces: patchWorkspace(s.workspaces, ws.id, { topPinZ }),
           windows: s.windows.map((x) =>
             x.instanceId === instanceId ? { ...x, pinned: true, pinZ: topPinZ } : x,
           ),
         };
       }
-      const topZ = s.topZ + 1;
+      const topZ = ws.topZ + 1;
       return {
-        topZ,
+        workspaces: patchWorkspace(s.workspaces, ws.id, { topZ }),
         windows: s.windows.map((x) =>
           x.instanceId === instanceId ? { ...x, pinned: false, pinZ: undefined, z: topZ } : x,
         ),
@@ -365,37 +481,116 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     savePersisted(get());
   },
 
+  /** ★ T23：新建工作区并切过去（名字「工作区 N」，内核零业务）。 */
+  createWorkspace: () => {
+    const ws = newWorkspace(nextWorkspaceIndex(get().workspaces));
+    set((s) => ({ workspaces: [...s.workspaces, ws], activeWorkspaceId: ws.id }));
+    savePersisted(get());
+    return ws.id;
+  },
+
+  switchWorkspace: (workspaceId) => {
+    if (!get().workspaces.some((w) => w.id === workspaceId)) return;
+    set({ activeWorkspaceId: workspaceId });
+    savePersisted(get());
+  },
+
+  /**
+   * ★ T23：把某扇窗移到另一工作区。
+   *
+   * ★ 窗口对象**原样搬走**（几何 / 置顶 / 固定几何 / z 全不动）——
+   *   这正是"隐藏而非卸载"的前提：只改归属，组件不卸载，**iframe 不重载**。
+   */
+  moveWindowToWorkspace: (instanceId, workspaceId) => {
+    set((s) => {
+      const w = s.windows.find((x) => x.instanceId === instanceId);
+      if (!w || w.workspaceId === workspaceId) return {};
+      if (!s.workspaces.some((k) => k.id === workspaceId)) return {};
+      return {
+        windows: s.windows.map((x) => (x.instanceId === instanceId ? { ...x, workspaceId } : x)),
+      };
+    });
+    savePersisted(get());
+  },
+
   hydrate: () => {
     const persisted = loadPersisted();
     if (!persisted) return;
     // 快照损坏（windows 不是数组）→ 当作没有，不要崩
     if (!Array.isArray(persisted.windows)) return;
     const s = get();
+
+    // ── ★ T23 迁移：v1（单工作区）→ v2（多工作区）──────────────────────
+    // ★ 判据：快照里有没有 `workspaces`。没有 = v1。
+    //   策略：**整体迁进「工作区 1」，一个窗口都不许丢**（契约 #3 / 验收 #5）。
+    //   v1 的三个计数器原样带过来，保证 z 序与开窗级联接着排，不出现"重开一片"。
+    const rawWs =
+      Array.isArray(persisted.workspaces) && persisted.workspaces.length > 0
+        ? persisted.workspaces
+        : null;
+    const workspaces: WorkspaceState[] =
+      rawWs === null
+        ? [
+            {
+              ...newWorkspace(1),
+              topZ: persisted.topZ ?? 10,
+              topPinZ: persisted.topPinZ ?? 0,
+              seq: persisted.seq ?? 0,
+            },
+          ]
+        : rawWs.map((w) => ({
+            id: typeof w.id === "string" && w.id ? w.id : DEFAULT_WORKSPACE_ID,
+            name: typeof w.name === "string" && w.name ? w.name : "工作区 1",
+            topZ: typeof w.topZ === "number" ? w.topZ : 10,
+            topPinZ: typeof w.topPinZ === "number" ? w.topPinZ : 0,
+            seq: typeof w.seq === "number" ? w.seq : 0,
+          }));
+
+    const fallbackWsId = workspaces[0].id;
+    const knownIds = new Set(workspaces.map((w) => w.id));
+
     // 只恢复仍注册且启用的模块的窗口
-    // ★ 向后兼容（验收 #4）：旧快照没有 pinned / fixedGeometry / pinZ / topPinZ ——
-    //   缺字段一律安全降级（false / undefined / 0），**绝不因缺字段丢窗口或抛错**。
+    // ★ 向后兼容（T22 验收 #4 / T23 验收 #5）：旧快照缺字段一律安全降级，
+    //   **绝不因缺字段丢窗口或抛错**。
     const windows = persisted.windows
       .filter((w) => {
         const reg = s.modules[w.moduleId];
         return reg && reg.enabled;
       })
-      .map((w) => ({
-        ...w,
-        pinned: w.pinned === true,
-        fixedGeometry: w.fixedGeometry === true,
-        pinZ: typeof w.pinZ === "number" ? w.pinZ : undefined,
-      }));
-    // topPinZ 缺失时按已恢复窗口的最大 pinZ 兜底，保证置顶层顺序能接着排
-    const maxPinZ = windows.reduce(
-      (mx, w) => (typeof w.pinZ === "number" ? Math.max(mx, w.pinZ) : mx),
-      0,
-    );
-    set({
-      windows,
-      topZ: persisted.topZ ?? 10,
-      topPinZ: persisted.topPinZ ?? maxPinZ,
-      seq: persisted.seq ?? 0,
+      .map((w) => {
+        // ★ v1 窗口没有 workspaceId → 归「工作区 1」；
+        //   若指向一个不存在的工作区（快照被手改过）→ 也退回第一个，不让窗口悬空。
+        const wid =
+          typeof w.workspaceId === "string" && knownIds.has(w.workspaceId)
+            ? w.workspaceId
+            : fallbackWsId;
+        return {
+          ...w,
+          workspaceId: wid,
+          pinned: w.pinned === true,
+          fixedGeometry: w.fixedGeometry === true,
+          pinZ: typeof w.pinZ === "number" ? w.pinZ : undefined,
+        };
+      });
+
+    // ★ 每个工作区的计数器至少要 ≥ 它名下窗口的极值，否则 z 序 / 置顶层顺序会错乱
+    const patched = workspaces.map((ws) => {
+      let maxPin = 0;
+      let maxZ = 0;
+      for (const w of windows) {
+        if (w.workspaceId !== ws.id) continue;
+        if (typeof w.pinZ === "number" && w.pinZ > maxPin) maxPin = w.pinZ;
+        if (typeof w.z === "number" && w.z > maxZ) maxZ = w.z;
+      }
+      return { ...ws, topPinZ: Math.max(ws.topPinZ, maxPin), topZ: Math.max(ws.topZ, maxZ) };
     });
+
+    const activeWorkspaceId =
+      typeof persisted.activeWorkspaceId === "string" && knownIds.has(persisted.activeWorkspaceId)
+        ? persisted.activeWorkspaceId
+        : fallbackWsId;
+
+    set({ windows, workspaces: patched, activeWorkspaceId });
   },
 }));
 

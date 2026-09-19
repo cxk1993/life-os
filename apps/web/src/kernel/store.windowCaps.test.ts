@@ -14,7 +14,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 
 import type { ModuleManifest } from "./types";
 import {
+  DEFAULT_WORKSPACE_ID,
   PIN_BASE,
+  makeWorkspace,
   normalStack,
   topmostNormalId,
   useDesktopStore,
@@ -42,6 +44,7 @@ function win(over: Partial<WindowState> & { instanceId: string }): WindowState {
     geo: { x: 0, y: 48, w: 800, h: 600 },
     pinned: false,
     fixedGeometry: false,
+    workspaceId: DEFAULT_WORKSPACE_ID,
     ...over,
   };
 }
@@ -50,9 +53,8 @@ function resetStore(windows: WindowState[] = []) {
   useDesktopStore.setState({
     modules: { m1: { manifest: MANIFEST, enabled: true } },
     windows,
-    topZ: 10,
-    topPinZ: 0,
-    seq: 0,
+    workspaces: [makeWorkspace(1, { topZ: 10 })],
+    activeWorkspaceId: DEFAULT_WORKSPACE_ID,
   });
 }
 
@@ -95,7 +97,7 @@ describe("setPinned —— 置顶 / 取消置顶", () => {
     const b = st.windows.find((w) => w.instanceId === "b")!;
     expect(a.pinZ).toBe(1);
     expect(b.pinZ).toBe(2);
-    expect(st.topPinZ).toBe(2);
+    expect(st.workspaces[0].topPinZ).toBe(2);
     // ★ 验收 #5：置顶层的相对顺序可预期
     expect(zIndexOf(b)).toBeGreaterThan(zIndexOf(a));
   });
@@ -114,7 +116,7 @@ describe("setPinned —— 置顶 / 取消置顶", () => {
   it("取消置顶：回普通层，并把 z 提到最前（不沉到别的窗后面）", () => {
     resetStore([win({ instanceId: "a", z: 11 }), win({ instanceId: "n", z: 20 })]);
     // 与 store 惯例保持一致：topZ 恒 ≥ 任何窗的 z（每次赋值都是 topZ+1）
-    useDesktopStore.setState({ topZ: 20 });
+    useDesktopStore.setState({ workspaces: [makeWorkspace(1, { topZ: 20 })] });
     useDesktopStore.getState().setPinned("a", true);
     useDesktopStore.getState().setPinned("a", false);
 
@@ -174,7 +176,7 @@ describe("hydrate —— 持久化恢复与旧数据兼容", () => {
     expect(a.pinned).toBe(true);
     expect(a.pinZ).toBe(1);
     expect(b.fixedGeometry).toBe(true);
-    expect(st.topPinZ).toBe(1);
+    expect(st.workspaces[0].topPinZ).toBe(1);
   });
 
   it("★ 旧版本快照（没有 pinned / fixedGeometry / topPinZ）→ 不丢窗、不报错、字段降级为 false", () => {
@@ -206,7 +208,7 @@ describe("hydrate —— 持久化恢复与旧数据兼容", () => {
     expect(st.windows[0].pinned).toBe(false);
     expect(st.windows[0].fixedGeometry).toBe(false);
     expect(st.windows[0].pinZ).toBeUndefined();
-    expect(st.topPinZ).toBe(0); // 缺字段 → 0
+    expect(st.workspaces[0].topPinZ).toBe(0); // 缺字段 → 0
   });
 
   it("快照损坏（windows 不是数组）→ 当作没有，不崩", () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useTheme } from "@/shared/styles/theme";
+import { useDesktopStore } from "./store";
 
 interface Props {
   onOpenSearch: () => void;
@@ -32,6 +33,11 @@ export function TopBar({ onOpenSearch, onTidy }: Props) {
   const theme = useTheme((s) => s.theme);
   const toggle = useTheme((s) => s.toggle);
   const clock = useClock();
+  // ★ T23 工作区切换器
+  const workspaces = useDesktopStore((s) => s.workspaces);
+  const activeWorkspaceId = useDesktopStore((s) => s.activeWorkspaceId);
+  const switchWorkspace = useDesktopStore((s) => s.switchWorkspace);
+  const createWorkspace = useDesktopStore((s) => s.createWorkspace);
 
   return (
     <div className="topbar">
@@ -45,6 +51,33 @@ export function TopBar({ onOpenSearch, onTidy }: Props) {
         搜索…
         <kbd>Ctrl K</kbd>
       </button>
+
+      {/* ★ T23：工作区页签 + 新建。名字一律「工作区 N」，内核零业务。 */}
+      <div className="topbar__ws" role="tablist" aria-label="工作区">
+        {workspaces.map((w) => (
+          <button
+            key={w.id}
+            type="button"
+            role="tab"
+            aria-selected={w.id === activeWorkspaceId}
+            className={`topbar__ws-tab${w.id === activeWorkspaceId ? " is-active" : ""}`}
+            title={w.name}
+            onClick={() => switchWorkspace(w.id)}
+          >
+            {w.name}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="topbar__ws-add"
+          aria-label="新建工作区"
+          title="新建工作区"
+          onClick={() => createWorkspace()}
+        >
+          ＋
+        </button>
+      </div>
+
       <span className="topbar__spacer" />
       <span className="topbar__clock" aria-label="当前时间">
         {clock}

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { useDesktopStore, type DesktopState } from "@/kernel/store";
+import { activeWorkspace, makeWorkspace, useDesktopStore, type DesktopState } from "@/kernel/store";
 import type { ModuleManifest } from "@/kernel/types";
 
 const alpha: ModuleManifest = {
@@ -28,8 +28,8 @@ function reset(): void {
   useDesktopStore.setState({
     modules: {},
     windows: [],
-    topZ: 10,
-    seq: 0,
+    workspaces: [makeWorkspace(1)],
+    activeWorkspaceId: "ws1",
   } satisfies Partial<DesktopState> as unknown as DesktopState);
 }
 
@@ -57,7 +57,7 @@ describe("窗口系统 store", () => {
     const s = useDesktopStore.getState();
     const top = s.windows.reduce((a, b) => (b.z > a.z ? b : a));
     expect(top.instanceId).toBe(ids[0]);
-    expect(top.z).toBe(s.topZ);
+    expect(top.z).toBe(activeWorkspace(s).topZ);
   });
 
   it("关闭：closeWindow 移除对应窗口", () => {
@@ -77,7 +77,7 @@ describe("窗口系统 store", () => {
     const s = useDesktopStore.getState();
     expect(s.windows.filter((w) => w.moduleId === "mod-delta")).toHaveLength(1);
     // 第二次点应该把它提到最前
-    expect(s.windows[0].z).toBe(s.topZ);
+    expect(s.windows[0].z).toBe(activeWorkspace(s).topZ);
   });
 
   it("最小化 / 还原", () => {
@@ -123,7 +123,11 @@ describe("窗口系统 store", () => {
     expect(saved.geo.y).toBe(160);
 
     // 模拟刷新：清空内存，再从 localStorage 恢复
-    useDesktopStore.setState({ windows: [], topZ: 10, seq: 0 });
+    useDesktopStore.setState({
+      windows: [],
+      workspaces: [makeWorkspace(1)],
+      activeWorkspaceId: "ws1",
+    });
     useDesktopStore.getState().hydrate();
     const after = useDesktopStore.getState().windows.find((w) => w.instanceId === id);
     expect(after).toBeDefined();

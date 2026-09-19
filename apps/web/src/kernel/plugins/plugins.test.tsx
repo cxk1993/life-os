@@ -11,12 +11,17 @@ import {
 } from "../slots/contributions";
 import { PluginProvider } from "./PluginContext";
 import { syncPluginsToStore } from "./PluginRegistry";
-import { useDesktopStore } from "../store";
+import { makeWorkspace, useDesktopStore } from "../store";
 import type { PluginInfo, SlotName } from "./types";
 
 function resetStore(): void {
   localStorage.clear();
-  useDesktopStore.setState({ modules: {}, windows: [], topZ: 10, seq: 0 });
+  useDesktopStore.setState({
+    modules: {},
+    windows: [],
+    workspaces: [makeWorkspace(1)],
+    activeWorkspaceId: "ws1",
+  });
   // ★ 插槽贡献注册表是模块级 Map，必须一起清 —— 否则上一个测试登记的组件会残留
   //   到下一个测试里（实测踩过：报错组件盖住本测试组件，表现为"找不到文本"）。
   clearContributions();

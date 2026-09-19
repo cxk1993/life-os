@@ -12,7 +12,13 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 
 import { WindowFrame } from "./WindowFrame";
-import { PIN_BASE, useDesktopStore, type WindowState } from "./store";
+import {
+  DEFAULT_WORKSPACE_ID,
+  PIN_BASE,
+  makeWorkspace,
+  useDesktopStore,
+  type WindowState,
+} from "./store";
 import type { ModuleManifest } from "./types";
 
 const MANIFEST: ModuleManifest = {
@@ -34,14 +40,14 @@ function seed(over: Partial<WindowState> = {}): WindowState {
     geo: { x: 0, y: 48, w: 800, h: 600 },
     pinned: false,
     fixedGeometry: false,
+    workspaceId: DEFAULT_WORKSPACE_ID,
     ...over,
   };
   useDesktopStore.setState({
     modules: { m1: { manifest: MANIFEST, enabled: true } },
     windows: [w],
-    topZ: 11,
-    topPinZ: 0,
-    seq: 1,
+    workspaces: [makeWorkspace(1, { topZ: 11, seq: 1 })],
+    activeWorkspaceId: DEFAULT_WORKSPACE_ID,
   });
   return w;
 }

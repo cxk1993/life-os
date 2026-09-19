@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 import WebApp from "./WebApp";
 import WebFrame, { FRAME_TIMEOUT_MS } from "./WebFrame";
 import WebEntriesPanel from "./WebEntriesPanel";
-import { useDesktopStore } from "@/kernel/store";
+import { makeWorkspace, useDesktopStore } from "@/kernel/store";
 import { WindowInstanceContext } from "@/kernel/windowInstance";
 import type { CapabilityEntry, WebEntry } from "./api";
 
@@ -138,10 +138,11 @@ describe("WebFrame", () => {
           geo: { x: 0, y: 48, w: 800, h: 600 },
           pinned: false,
           fixedGeometry: false,
+          workspaceId: "ws1",
         },
       ],
-      topZ: 11,
-      topPinZ: 0,
+      workspaces: [makeWorkspace(1, { topZ: 11 })],
+      activeWorkspaceId: "ws1",
     });
     try {
       render(

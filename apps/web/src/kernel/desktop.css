@@ -278,6 +278,115 @@
 .win--fixed .win__rz {
   display: none;
 }
+
+/* ═══════════ ★ T23：多工作区 ═══════════ */
+
+/*
+ * 非当前工作区的窗口：**只隐藏，不卸载。**
+ * ★ 绝对不要改成"从渲染树摘掉"—— 卸载会销毁窗口里的 iframe 浏览上下文，
+ *   内嵌网页会重新加载、**登录态丢失**（契约 #4 / 验收 #6）。
+ *   `display: none` 只是不渲染，iframe 仍然活着。
+ */
+.win--hidden {
+  display: none;
+}
+
+/* 工作区页签（顶栏） */
+.topbar__ws {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--sp-2);
+  overflow-x: auto;
+  max-width: 40vw;
+}
+.topbar__ws-tab {
+  height: 24px;
+  padding: 0 var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--txt-dim);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.topbar__ws-tab:hover {
+  background: var(--surface-3);
+  color: var(--txt);
+}
+.topbar__ws-tab.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.topbar__ws-add {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--txt-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.topbar__ws-add:hover {
+  background: var(--surface-3);
+  color: var(--txt);
+}
+
+/*
+ * 窗口标题栏右键菜单（由 WindowFrame 用 portal 渲染到 body）。
+ * ★ 遮罩的 z-index 必须高于置顶层（PIN_BASE = 10000 + pinZ），否则点不到菜单。
+ */
+.win__menu-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+}
+.win__menu {
+  position: fixed;
+  z-index: 100001;
+  min-width: 168px;
+  padding: var(--sp-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  font-size: 13px;
+}
+.win__menu-title {
+  padding: var(--sp-1) var(--sp-2);
+  color: var(--txt-faint);
+  font-size: 11px;
+}
+.win__menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--sp-2);
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--txt);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.win__menu-item:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.win__menu-empty {
+  padding: var(--sp-2);
+  color: var(--txt-faint);
+  font-size: 12px;
+}
 .win__body {
   flex: 1;
   position: relative;
