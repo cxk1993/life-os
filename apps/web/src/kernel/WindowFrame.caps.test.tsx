@@ -102,12 +102,8 @@ describe("WindowFrame · T22 窗框行为", () => {
   it("★ 验收#6：置顶 / 固定几何的按钮态与 store 双向一致（is-on）", () => {
     seed({ pinned: true, pinZ: 1, fixedGeometry: true });
     render(<WindowFrame instanceId="m1#1" />);
-    expect(
-      (document.querySelector(".win__btn--pin") as HTMLElement).className,
-    ).toContain("is-on");
-    expect(
-      (document.querySelector(".win__btn--fix") as HTMLElement).className,
-    ).toContain("is-on");
+    expect((document.querySelector(".win__btn--pin") as HTMLElement).className).toContain("is-on");
+    expect((document.querySelector(".win__btn--fix") as HTMLElement).className).toContain("is-on");
     // 无障碍态同步
     expect(document.querySelector(".win__btn--pin")?.getAttribute("aria-pressed")).toBe("true");
     expect(document.querySelector(".win__btn--fix")?.getAttribute("aria-pressed")).toBe("true");
