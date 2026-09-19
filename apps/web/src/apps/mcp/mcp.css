@@ -1,0 +1,229 @@
+/* MCP 控制台 —— 只用设计令牌，不写死颜色。 */
+
+.mcp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  height: 100%;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.mcp-head__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--txt-strong);
+}
+
+.mcp-head__sub {
+  font-size: 12px;
+  color: var(--txt-faint);
+  margin-top: 2px;
+}
+
+.mcp-head__sub code,
+.mcp-note code {
+  font-size: 11px;
+  background: var(--surface-2);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.mcp-note {
+  font-size: 12px;
+  color: var(--txt-faint);
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.mcp-note--warn {
+  color: var(--danger, #c0392b);
+  border-color: var(--danger, #c0392b);
+}
+
+.mcp-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+.mcp-path {
+  color: var(--txt-faint);
+}
+
+.mcp-desc {
+  font-size: 12px;
+  color: var(--txt-muted, var(--txt));
+  max-width: 360px;
+}
+
+/* 表格 */
+.mcp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.mcp-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--txt-faint);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mcp-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.mcp-table tr:hover td {
+  background: var(--surface-2);
+}
+
+/* 分组 */
+.mcp-plugin-group {
+  margin-bottom: 14px;
+}
+
+.mcp-plugin-group__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 8px 0 4px;
+}
+
+/* 方法徽章 */
+.mcp-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--txt-muted, var(--txt));
+}
+
+.mcp-badge--get {
+  color: var(--ok, #2e7d32);
+  border-color: var(--ok, #2e7d32);
+}
+
+.mcp-badge--post {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.mcp-badge--put {
+  color: var(--warn, #b8860b);
+  border-color: var(--warn, #b8860b);
+}
+
+.mcp-badge--delete {
+  color: var(--danger, #c0392b);
+  border-color: var(--danger, #c0392b);
+}
+
+/* PAT 创建区 */
+.mcp-pats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mcp-pats__create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mcp-input {
+  flex: 1 1 220px;
+  min-width: 200px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--txt-strong);
+  font-size: 13px;
+}
+
+.mcp-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.mcp-pats__scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mcp-scope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--txt-muted, var(--txt));
+}
+
+/* 按钮 */
+.mcp-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mcp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mcp-btn--ghost {
+  background: transparent;
+  color: var(--accent);
+  margin-right: 6px;
+}
+
+.mcp-btn--danger {
+  background: transparent;
+  border-color: var(--danger, #c0392b);
+  color: var(--danger, #c0392b);
+}
+
+/* 明文一次性弹层 */
+.mcp-created {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.mcp-created__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.mcp-created__token {
+  word-break: break-all;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-3, var(--surface-2));
+  font-size: 13px;
+}
