@@ -13,6 +13,8 @@
     python tools/task.py dev          # 同起前端 5173 与后端 8000
     python tools/task.py lint         # tsc + eslint + prettier / ruff + mypy
     python tools/task.py test         # vitest + pytest
+    python tools/task.py check --paths apps/web/src/apps/docs services/api/modules/docs
+                                      # 按卡自检（XA）：只跑 --paths 涉及的那组检查
     python tools/task.py verify       # lint + test + 前端构建（交付前必跑）
     python tools/task.py build        # 前端产物（有 docker 时顺带建镜像）
     python tools/task.py clean        # 清缓存，data/ 绝不动
@@ -191,6 +193,80 @@ def api_lint_targets() -> list[str]:
     return targets
 
 
+# ────────────────────────────── 按卡自检（XA） ──────────────────────────────
+def _rel_posix(p: Path, base: Path) -> str:
+    return p.relative_to(base).as_posix()
+
+
+def classify_paths(raw_paths: list[str]) -> tuple[list[str], list[str]]:
+    """把 --paths 归一成（相对 apps/web 的路径, 相对 services/api 的路径）。
+
+    同一批参数允许三种写法：相对项目根、相对 apps/web、相对 services/api。
+    不存在或落在两端之外的路径记日志跳过 —— 脚手架阶段目录还没长齐是常态，
+    自检工具不该因为"某端还没建"就拒绝服务另一端。
+    """
+    web: list[str] = []
+    api: list[str] = []
+    for raw in raw_paths:
+        p = Path(raw.replace("\\", "/"))
+        hit = next((b / p for b in (ROOT, WEB, API) if (b / p).exists()), None)
+        if hit is None:
+            log(f"跳过（路径不存在）：{raw}")
+        elif WEB in hit.parents:
+            web.append(_rel_posix(hit, WEB))
+        elif API in hit.parents:
+            api.append(_rel_posix(hit, API))
+        else:
+            log(f"跳过（apps/web 与 services/api 之外）：{raw}")
+    return web, api
+
+
+def node_bin(cands: list[str]) -> list[str]:
+    """直接用 node 调包内 CLI —— npm run 会把参数追加到整仓命令后面，
+    按路径过滤必须点名到 bin 传文件列表。"""
+    for c in cands:
+        if (WEB / c).exists():
+            return ["node", c]
+    die(f"apps/web 下找不到 {' 或 '.join(cands)}（先跑 python tools/task.py setup）")
+    return []  # 不会走到
+
+
+def _has_py(p: Path) -> bool:
+    return (p.is_file() and p.suffix == ".py") or (
+        p.is_dir() and any(p.rglob("*.py"))
+    )
+
+
+def related_py_tests(api_paths: list[str]) -> list[str]:
+    """按路径关键词在 services/api/tests/ 里找相关测试文件。
+
+    模块名（文件名去 .py，目录取末段）出现在测试文件名里即算相关，
+    例：modules/finance/scheduler.py → test_finance_scheduler.py。
+    找不到不报错，只记日志 —— 无测试本身就是要暴露的信息。
+    """
+    tests = API / "tests"
+    if not tests.is_dir():
+        return []
+    kws: list[str] = []
+    for p in api_paths:
+        pp = Path(p)
+        if pp.suffix == ".py":
+            segs = [pp.stem] + ([pp.parts[-2]] if len(pp.parts) >= 2 else [])
+        else:
+            segs = [pp.parts[-1]]
+        for kw in segs:
+            if kw and kw not in kws:
+                kws.append(kw)
+    found: list[str] = []
+    for f in sorted(tests.rglob("test_*.py")):
+        stem = f.stem.lower()
+        if any(k.lower() in stem for k in kws):
+            rel = _rel_posix(f, API)
+            if rel not in found:
+                found.append(rel)
+    return found
+
+
 # ────────────────────────────── 各条命令 ──────────────────────────────
 def cmd_setup(_: argparse.Namespace) -> None:
     ensure_all()
@@ -292,6 +368,84 @@ def cmd_test(_: argparse.Namespace) -> None:
     log("test 通过。")
 
 
+def cmd_check(args: argparse.Namespace) -> None:
+    """XA 按卡自检：只跑 --paths 这一组路径涉及的检查。
+
+    与 verify 的区别是范围不是严格度：所有子检查都跑完再汇总失败项
+    （一次性暴露全部问题，方便按卡修复），最后以非零码退出。
+    """
+    ensure_all()
+    web, api = classify_paths(args.paths)
+    if not web and not api:
+        die("check：--paths 里没有可用路径。示例：check --paths apps/web/src/apps/docs")
+    log(f"按卡自检范围：前端 {web or '（无）'} ／ 后端 {api or '（无）'}")
+    failures: list[str] = []
+
+    def attempt(name: str, cmd: list[str], cwd: Path) -> None:
+        if run(cmd, cwd=cwd, check=False).returncode != 0:
+            failures.append(name)
+
+    if web:
+        log("── 前端（apps/web）──")
+        # tsc 无法按路径裁剪：类型图是整仓的，只报一次全量结果。
+        log("tsc 为全项目 --noEmit（类型检查不可按路径拆分，有意为之）")
+        attempt("tsc", node_bin(["node_modules/typescript/bin/tsc"]) + ["--noEmit"], WEB)
+        attempt("eslint", node_bin(["node_modules/eslint/bin/eslint.js"]) + web, WEB)
+        # 与 format:check 同口径（只查 ts/tsx/css）：目录展开成 glob，
+        # 其他后缀的文件按仓库约定直接放行。
+        pp_targets: list[str] = []
+        for p in web:
+            if (WEB / p).is_dir():
+                pp_targets.append(f"{p}/**/*.{{ts,tsx,css}}")
+            elif Path(p).suffix in (".ts", ".tsx", ".css"):
+                pp_targets.append(p)
+            else:
+                log(f"prettier 跳过（仓库口径不含该后缀）：{p}")
+        if pp_targets:
+            attempt(
+                "prettier",
+                node_bin(
+                    [
+                        "node_modules/prettier/bin/prettier.cjs",
+                        "node_modules/prettier/bin-prettier.js",
+                    ]
+                )
+                + ["--check", *pp_targets],
+                WEB,
+            )
+        attempt(
+            "vitest",
+            node_bin(["node_modules/vitest/vitest.mjs"])
+            + ["run", "--passWithNoTests", *web],
+            WEB,
+        )
+
+    if api:
+        log("── 后端（services/api）──")
+        py = str(venv_python())
+        attempt("ruff", [py, "-m", "ruff", "check", *api], API)
+        mypy_targets = [
+            # 与 lint 口径一致：tests/ 有意不进 mypy（全仓测试函数无标注，
+            # cmd_lint 的目标集本来就只含 core/db/modules/scripts/main.py）。
+            p
+            for p in api
+            if _has_py(API / p) and Path(p).parts[:1] != ("tests",)
+        ]
+        if mypy_targets:
+            attempt("mypy", [py, "-m", "mypy", *mypy_targets], API)
+        else:
+            log("跳过 mypy：--paths 里没有该查的目标（tests/ 按项目口径不进 mypy）。")
+        tests = related_py_tests(api)
+        if tests:
+            attempt("pytest", [py, "-m", "pytest", *tests], API)
+        else:
+            log("提示：没找到相关 pytest 测试文件（tests/ 下无同名匹配）。")
+
+    if failures:
+        die("check 未通过：" + "、".join(failures))
+    log("check 通过（按卡路径）。")
+
+
 def cmd_verify(_: argparse.Namespace) -> None:
     cmd_lint( argparse.Namespace() )
     cmd_test( argparse.Namespace() )
@@ -364,6 +518,7 @@ Life-OS 任务入口（与 Makefile 等价）
   lint         前端 tsc + eslint + prettier ／ 后端 ruff + mypy
   test         前端 vitest ／ 后端 pytest
   verify       交付前必跑：lint + test + 前端构建
+  check        按卡自检：--paths 只跑这组路径涉及的检查（tsc 为全量，见 help）
   build        前端产物（有 docker 时顺带建后端镜像）
   clean        清构建缓存（data/ 绝不动）
   new-plugin   生成新插件骨架（脚手架由 T14 提供）
@@ -389,6 +544,16 @@ def main() -> None:
         p = sub.add_parser(name, help=help_text)
         p.set_defaults(func=fn)
 
+    p_ck = sub.add_parser("check", help="按卡自检：只跑 --paths 涉及的检查")
+    p_ck.add_argument(
+        "--paths",
+        nargs="+",
+        required=True,
+        metavar="PATH",
+        help="卡片涉及的路径（相对项目根 / apps/web / services/api 三种写法均可）",
+    )
+    p_ck.set_defaults(func=cmd_check)
+
     p_np = sub.add_parser("new-plugin", help="生成新插件骨架")
     p_np.add_argument("--id", required=True, help="插件 id（小写英文，等于目录名）")
     p_np.add_argument("--name", required=True, help="插件中文名")
@@ -410,4 +575,6 @@ def main() -> None:
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     main()
