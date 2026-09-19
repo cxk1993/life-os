@@ -24,6 +24,7 @@ import pytest
 
 MODULES_DIR = Path(__file__).resolve().parents[1] / "modules"
 PLUGINS_DIR = Path(__file__).resolve().parents[3] / "plugins"   # 项目根/plugins
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 # 测试专用的临时模块名（集中登记，便于一眼看出哪些是"不是真模块"的东西）
 LEFTOVER_PROBE_MODULES = ("t03probe",)
@@ -44,8 +45,21 @@ def _clean_leftovers() -> None:
                 shutil.rmtree(d, ignore_errors=True)
 
 
+def _clean_tmp_dbs() -> None:
+    """清掉 tmp_*.db 测试库残留。
+
+    T15/T17 等卡用 data/tmp_*.db 做隔离库；进程被强杀或跨次运行残留时，
+    库里的旧数据会让全量运行出现偶发断言失败（2026-09-19 实测一例：
+    test_restore_revision_keeps_history 因残留状态偶发红一次）。
+    会话开始前清一次，测试自己会在 fixture 里重建表。
+    """
+    for p in DATA_DIR.glob("tmp_*.db"):
+        p.unlink(missing_ok=True)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _clean_leftover_probe_modules() -> Iterator[None]:
     _clean_leftovers()
+    _clean_tmp_dbs()
     yield
     _clean_leftovers()
