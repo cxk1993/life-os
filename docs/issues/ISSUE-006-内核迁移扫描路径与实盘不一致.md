@@ -27,6 +27,7 @@ def _migration_dir(info): return info.directory / "api" / "migrations"
 3. 手工用 `importlib` 加载 `modules/docs/migrations/0001_init.py` 的 `upgrade(engine)` 执行后 → 同操作 **201/200 正常**，`/revisions`、FTS 搜索全部可用。
 
 旁证（不是我第一个撞见，只是没人立卡）：
+- **第二实证（21:30，web 模块）**：同一个本地库（docs 表已手工补过）打开「网页」窗，`GET /api/v1/web/entries` → **500**；手工执行 `modules/web/migrations/0001_init.py` 的 `upgrade(engine)` 建出 `web_entry` 表后 → 200，入口增删改与 SSE 广播全部正常。**每个带表模块都要各自死一遍**，docs 不是孤例。
 - `T13-report.md §3-4`：生产靠手工 `SQLModel.metadata.create_all` 绕过，并注明「迁移脚本扫描路径与实盘不一致，见既有 ISSUE」——但 `docs/issues/` 里始终没有这张卡；
 - `T07-report.md:86`：「内核只扫 `modules/<id>/api/migrations/`，且 run_migrations 仅 third-party install 时执行；builtin 生产路径无自动建表 hook」。
 
