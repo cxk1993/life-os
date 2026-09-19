@@ -5,6 +5,8 @@ import { initTheme } from "@/shared/styles/theme";
 import { pluginHost, registerModules } from "./ModuleRegistry";
 import { useDesktopStore, normalStack, topmostNormalId, type WindowState } from "./store";
 import type { ModuleManifest } from "./types";
+import { AuthGate } from "./AuthGate";
+import { logout } from "@/shared/api/auth";
 import { Dock } from "./Dock";
 import { useShortcuts, type ShortcutHandlers } from "./Shortcuts";
 import { TopBar } from "./TopBar";
@@ -108,67 +110,70 @@ export function Desktop() {
   }, [query, modules]);
 
   return (
-    <div className="desktop">
-      <TopBar onOpenSearch={openSearch} onTidy={tidy} />
-      <div className="windows">
-        <WindowManager />
-      </div>
-      <Dock />
-      <ToastHost />
+    <AuthGate>
+      <div className="desktop">
+        <TopBar onOpenSearch={openSearch} onTidy={tidy} onLogout={() => void logout()} />
+        <div className="windows">
+          <WindowManager />
+        </div>
+        <Dock />
+        <ToastHost />
 
-      {searchOpen ? (
-        <>
-          <div className="search-backdrop" onClick={closeSearch} />
-          <div className="search" role="dialog" aria-modal="true" aria-label="全局搜索">
-            <input
-              className="search__input"
-              autoFocus
-              placeholder="搜索模块…"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setActiveIdx(0);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setActiveIdx((i) => Math.min(items.length - 1, i + 1));
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setActiveIdx((i) => Math.max(0, i - 1));
-                } else if (e.key === "Enter") {
-                  const m = items[activeIdx];
-                  if (m) {
-                    closeSearch();
-                    pluginHost.open(m.id);
-                  }
-                } else if (e.key === "Escape") {
-                  closeSearch();
-                }
-              }}
-            />
-            <div className="search__list">
-              {items.length ? (
-                items.map((m, i) => (
-                  <div
-                    key={m.id}
-                    className={`search__item${i === activeIdx ? " search__item--active" : ""}`}
-                    onMouseEnter={() => setActiveIdx(i)}
-                    onClick={() => {
+        {searchOpen ? (
+          <>
+            <div className="search-backdrop" onClick={closeSearch} />
+            <div className="search" role="dialog" aria-modal="true" aria-label="全局搜索">
+              <input
+                className="search__input"
+                autoFocus
+                placeholder="搜索模块…"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setActiveIdx(0);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveIdx((i) => Math.min(items.length - 1, i + 1));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIdx((i) => Math.max(0, i - 1));
+                  } else if (e.key === "Enter") {
+                    const m = items[activeIdx];
+                    if (m) {
                       closeSearch();
                       pluginHost.open(m.id);
-                    }}
-                  >
-                    {m.name}
-                  </div>
-                ))
-              ) : (
-                <div className="search__empty">没有匹配的模块</div>
-              )}
+                    }
+                  } else if (e.key === "Escape") {
+                    e.stopPropagation(); // ★ BUG-T02-1：Esc 只关搜索层，不许冒泡成"关窗"
+                    closeSearch();
+                  }
+                }}
+              />
+              <div className="search__list">
+                {items.length ? (
+                  items.map((m, i) => (
+                    <div
+                      key={m.id}
+                      className={`search__item${i === activeIdx ? " search__item--active" : ""}`}
+                      onMouseEnter={() => setActiveIdx(i)}
+                      onClick={() => {
+                        closeSearch();
+                        pluginHost.open(m.id);
+                      }}
+                    >
+                      {m.name}
+                    </div>
+                  ))
+                ) : (
+                  <div className="search__empty">没有匹配的模块</div>
+                )}
+              </div>
             </div>
-          </div>
-        </>
-      ) : null}
-    </div>
+          </>
+        ) : null}
+      </div>
+    </AuthGate>
   );
 }

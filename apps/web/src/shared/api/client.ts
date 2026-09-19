@@ -58,10 +58,67 @@ export function setToken(token: string | null): void {
   }
 }
 
+/** ★ T30：本地是否存有 token（鉴权门的初始判定）。 */
+export function hasToken(): boolean {
+  return tokenGetter() !== null;
+}
+
+/**
+ * ★ T30：401（token 过期）时的统一出口。
+ * AuthGate 注册「切回登录页」；其余模块不用各自处理 401。
+ */
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler = () => {};
+
+export function setUnauthorizedHandler(fn: UnauthorizedHandler): void {
+  unauthorizedHandler = fn;
+}
+
+export function notifyUnauthorized(): void {
+  unauthorizedHandler();
+}
+
+/** auth 自己的端点不走「401 → refresh → 重放」循环（登录失败就是失败）。 */
+function isAuthPath(path: string): boolean {
+  return path.startsWith("/api/v1/auth/");
+}
+
+/** ★ T30：refresh 单飞 —— 并发多个 401 只发一次 refresh，其余等同一个 Promise。 */
+let refreshInFlight: Promise<boolean> | null = null;
+
+function refreshOnce(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        // fetch 直连（不走 request()，避免递归 401）；Cookie 同源自动携带。
+        const res = await fetch("/api/v1/auth/refresh", {
+          method: "POST",
+          headers: { Accept: JSON_ACCEPT },
+        });
+        if (!res.ok) return false;
+        const data = (await res.json()) as { access_token?: string };
+        if (!data.access_token) return false;
+        setToken(data.access_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
 const JSON_ACCEPT = "application/json";
 const PROBLEM_TYPE = "application/problem+json";
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  retried = false,
+): Promise<T> {
   const headers = new Headers({ Accept: JSON_ACCEPT });
   const tok = tokenGetter();
   if (tok) headers.set("Authorization", `Bearer ${tok}`);
@@ -96,6 +153,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   if (!res.ok) {
+    // ★ T30：业务请求遇 401（token 过期）→ refresh 单飞 → 成功则重放一次。
+    //   auth 端点本身不参与（登录失败不应触发刷新循环）；每条请求只重放一次。
+    if (res.status === 401 && !isAuthPath(path) && !retried) {
+      const refreshed = await refreshOnce();
+      if (refreshed) return request<T>(method, path, body, true);
+      // refresh 失败：token 作废，通知门切回登录页
+      setToken(null);
+      notifyUnauthorized();
+    }
     if (ct.includes(PROBLEM_TYPE) && data && typeof data === "object") {
       const p = data as Record<string, unknown>;
       throw new ApiError({

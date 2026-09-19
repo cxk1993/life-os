@@ -1,0 +1,110 @@
+/* ★ T30 登录页样式 —— 只用设计令牌（与 desktop.css 同一令牌体系），克制、干净。 */
+
+.login {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg, #0f1115);
+  z-index: 9999;
+}
+
+.login__card {
+  width: min(360px, 90vw);
+  padding: 32px 28px;
+  border: 1px solid var(--line, #262a33);
+  border-radius: 14px;
+  background: var(--panel, #171a21);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 35%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login__brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--txt, #e8eaf0);
+  text-align: center;
+}
+
+.login__hint {
+  font-size: 12px;
+  color: var(--dim, #8b90a0);
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.login__label {
+  font-size: 12px;
+  color: var(--dim, #8b90a0);
+}
+
+.login__input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #262a33);
+  border-radius: 8px;
+  background: var(--bg, #0f1115);
+  color: var(--txt, #e8eaf0);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.login__input:focus {
+  border-color: var(--accent, #4d9fff);
+}
+
+.login__input--totp {
+  letter-spacing: 0.4em;
+  font-variant-numeric: tabular-nums;
+}
+
+.login__totp-toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--accent, #4d9fff);
+  cursor: pointer;
+}
+
+.login__totp-toggle:hover {
+  text-decoration: underline;
+}
+
+.login__error {
+  padding: 8px 10px;
+  border: 1px solid rgb(255 99 99 / 35%);
+  border-radius: 8px;
+  background: rgb(255 99 99 / 8%);
+  color: var(--danger, #ff7a7a);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.login__submit {
+  margin-top: 8px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent, #4d9fff);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.login__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.login__submit:not(:disabled):hover {
+  opacity: 0.9;
+}
