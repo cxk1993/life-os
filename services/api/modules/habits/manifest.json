@@ -23,8 +23,7 @@
   },
   "provides": [
     "habits.habit.read",
-    "habits.habit.write",
-    "habits.log.write"
+    "habits.habit.write"
   ],
   "requires": [],
   "slots": [

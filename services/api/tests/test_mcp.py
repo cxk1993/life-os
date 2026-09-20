@@ -100,23 +100,69 @@ def test_derive_tool_skips_invalid(bad):
     assert derive_tool(bad, "/api/v1/x", "p") is None
 
 
-# ─────────────────── 路径例外表（ISSUE-008） ───────────────────
+# ─────────────── 显式路由映射 api.tools（ISSUE-008 方案 A） ───────────────
 @pytest.mark.parametrize(
-    ("provides", "base", "plugin_id", "expect_path"),
+    ("provides", "base", "tools", "expect_path"),
     [
-        # 实证故障 1：dashboard.today.read 真实路由是 /today（非机械推导的 /todays）
-        ("dashboard.today.read", "/api/v1/dashboard", "dashboard", "/api/v1/dashboard/today"),
-        # 实证故障 2：dashboard.system-health.read 真实路由是 /health-of-system
-        ("dashboard.system-health.read", "/api/v1/dashboard", "dashboard",
+        # dashboard 3 条：单数资源 / 语义命名（声明取自真实 manifest）
+        ("dashboard.today.read", "/api/v1/dashboard",
+         {"today": "/today", "system-health": "/health-of-system", "overview": "/overview"},
+         "/api/v1/dashboard/today"),
+        ("dashboard.system-health.read", "/api/v1/dashboard",
+         {"today": "/today", "system-health": "/health-of-system", "overview": "/overview"},
          "/api/v1/dashboard/health-of-system"),
-        # 防误伤：例外表按 plugin_id 限定，别的插件的 todays 仍走机械推导
-        ("other.today.read", "/api/v1/other", "other", "/api/v1/other/todays"),
+        ("dashboard.overview.read", "/api/v1/dashboard",
+         {"today": "/today", "system-health": "/health-of-system", "overview": "/overview"},
+         "/api/v1/dashboard/overview"),
+        # resource 级共享：entry.read 与 entry.write 共用一条声明
+        ("finance.entry.write", "/api/v1/finance", {"entry": "/entries"},
+         "/api/v1/finance/entries"),
+        # 未声明的 resource 走机械推导（显式映射不误伤别的 resource）
+        ("finance.snapshot.read", "/api/v1/finance", {"entry": "/entries"},
+         "/api/v1/finance/snapshots"),
+        # route 值完整路径形态（令 35 §3：脚本与实现兼容两种形态）
+        ("finance.entry.read", "/api/v1/finance",
+         {"entry": "/api/v1/finance/entries"}, "/api/v1/finance/entries"),
+        # 未传 tools → 纯机械推导（常规 REST 插件零声明兼容，T18 哲学）
+        ("todo.item.update", "/api/v1/todo", None, "/api/v1/todo/items"),
     ],
 )
-def test_derive_tool_path_overrides(provides, base, plugin_id, expect_path):
-    t = derive_tool(provides, base, plugin_id)
+def test_derive_tool_explicit_routes(provides, base, tools, expect_path):
+    t = derive_tool(provides, base, "someplugin", tools)
     assert t is not None
     assert t.path == expect_path
+
+
+def test_tool_map_explicit_routes_end_to_end(client):
+    """端到端：真实 manifest 上 11 条破缺全治 + habits_log_write 已删（26→25）。
+
+    对表基准 = Qoder 判据帖（16:27）12 工具全表；habits.log.write 因唯一真实
+    写端点为带路径参数的 checkin（MCP 无法直通转发）按「宁可少暴露」删除。
+    依赖 client fixture：build_tool_map() 查 plugin_state，须先 init_engine +
+    create_all（临时库），否则 no such table。
+    """
+    from modules.mcp.registry_adapter import build_tool_map
+
+    tools = {t.name: t for t in build_tool_map()}
+    assert tools["dashboard_today_read"].path == "/api/v1/dashboard/today"
+    # ★ system-health 段含连字符：name 只替换 '.'，连字符保留（判据脚本同款口径）
+    assert tools["dashboard_system-health_read"].path == (
+        "/api/v1/dashboard/health-of-system")
+    assert tools["dashboard_overview_read"].path == "/api/v1/dashboard/overview"
+    assert tools["finance_entry_read"].path == "/api/v1/finance/entries"
+    assert tools["finance_entry_write"].path == "/api/v1/finance/entries"
+    assert tools["finance_beeccount_read"].path == "/api/v1/finance/beecount/source"
+    assert tools["web_entry_read"].path == "/api/v1/web/entries"
+    assert tools["web_entry_write"].path == "/api/v1/web/entries"
+    assert tools["review_daily_read"].path == "/api/v1/review/days"
+    assert tools["review_source_read"].path == "/api/v1/review/source"
+    assert tools["calendar_slot_free"].path == "/api/v1/calendar/free-slots"
+    # 机械推导命中组不受影响（照常）
+    assert tools["calendar_event_write"].path == "/api/v1/calendar/events"
+    # habits_log_write：诚实少暴露（T18 哲学），未删的照常
+    assert "habits_log_write" not in tools
+    assert "habits_habit_read" in tools
+    assert len(tools) == 25
 
 
 # ───────────────────────── PAT 生命周期 ─────────────────────────

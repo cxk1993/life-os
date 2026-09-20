@@ -16,7 +16,10 @@
   "api": {
     "base": "/api/v1/web",
     "openapi": "/api/v1/web/openapi.json",
-    "health": "/api/v1/web/health"
+    "health": "/api/v1/web/health",
+    "tools": {
+      "entry": "/entries"
+    }
   },
   "provides": [
     "web.entry.read",

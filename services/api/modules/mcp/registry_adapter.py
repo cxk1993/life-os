@@ -41,18 +41,10 @@ _METHOD_BY_VERB: dict[str, str] = {
 WRITE_VERBS: frozenset[str] = frozenset(
     {"write", "create", "update", "delete", "remove"}
 )
-
-# 路径例外表（ISSUE-008，2026-09-20）：机械「resource+s」复数化的实证例外。
-# 键 = f"{plugin_id}.{resource}s"（机械推导产物），值 = 插件 router 里的真实路由段。
-# 仅 2 条实证故障（Qoder 勘误：幻影第三工具不存在，勿再加映射）：
-#   dashboard.today.read         → /today           （非 /todays）
-#   dashboard.system-health.read → /health-of-system（非 /system-healths）
-# 带 plugin_id 前缀限定作用域：其他插件将来真有 todays 复数路由不受误伤。
-# 例外表膨胀（>5 条）时应升级为 manifest 显式声明（T18 哲学的正式扩展，候卡）。
-_PATH_OVERRIDES: dict[str, str] = {
-    "dashboard.todays": "/today",
-    "dashboard.system-healths": "/health-of-system",
-}
+# （ISSUE-008 方案 A，2026-09-20）不规则/语义命名路由的显式映射不在本文件——
+# 在各插件 manifest 的 api.tools（resource → 路由段，声明则优先，未声明走机械
+# 推导）。显式数据归插件声明、机制归本文件，源码保持零业务词；上一版的
+# _PATH_OVERRIDES 例外表已迁入 dashboard/finance/web/review/calendar 的 manifest。
 
 
 @dataclass(frozen=True)
@@ -68,10 +60,17 @@ class ToolMapping:
     description: str  # 机械生成的人类可读描述
 
 
-def derive_tool(provides: str, api_base: str, plugin_id: str) -> ToolMapping | None:
+def derive_tool(
+    provides: str,
+    api_base: str,
+    plugin_id: str,
+    tool_routes: dict[str, str] | None = None,
+) -> ToolMapping | None:
     """单条能力字符串 → 工具映射。不合法则返回 None（跳过，不猜）。
 
     纯函数：不碰注册表，便于表驱动单测。
+    tool_routes：manifest api.tools 的显式映射（resource → 路由段），
+    命中则优先（ISSUE-008 方案 A）；未声明 resource 走机械「resource+s」推导。
     """
     parts = provides.split(".")
     # 契约 pattern 保证 >=3 段（domain.resource.verb）；防御性再查一次。
@@ -84,8 +83,14 @@ def derive_tool(provides: str, api_base: str, plugin_id: str) -> ToolMapping | N
         return None
     name = "_".join(parts)
     scope = f"{domain}:{verb}"
-    derived = f"/{resource}s"
-    path = f"{api_base.rstrip('/')}{_PATH_OVERRIDES.get(f'{plugin_id}.{resource}s', derived)}"
+    explicit = (tool_routes or {}).get(resource)
+    base = api_base.rstrip("/")
+    if explicit is None:
+        path = f"{base}/{resource}s"
+    elif explicit.startswith(base):
+        path = explicit  # 完整路径（令 35 §3：脚本与实现兼容两种形态）
+    else:
+        path = f"{base}{explicit}"  # 相对 router 段（规范形态，如 /entries）
     description = (
         f"MCP 工具：调用 {api_base} 的 {resource} {verb} 能力（域 {domain}，"
         f"来源插件 {plugin_id}）。入参 payload 为请求体（GET 时转查询参数）。"
@@ -115,11 +120,13 @@ def build_tool_map() -> list[ToolMapping]:
         # 无状态行 = 从未动过 = 默认启用（与 PluginManager 口径一致）。
         if st is not None and not st.get("enabled", True):
             continue
-        api_base = (info.manifest.get("api") or {}).get("base", "")
+        api = info.manifest.get("api") or {}
+        api_base = api.get("base", "")
         if not api_base:
             continue  # 没有 REST 基址的插件，工具无处转发
+        tool_routes = api.get("tools") or {}
         for cap in info.manifest.get("provides", []) or []:
-            tool = derive_tool(cap, api_base, info.id)
+            tool = derive_tool(cap, api_base, info.id, tool_routes)
             if tool is not None:
                 out.append(tool)
     # 稳定排序：客户端展示与测试断言都受益。

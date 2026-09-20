@@ -28,6 +28,12 @@ class ManifestApi(BaseModel):
     base: str = Field(..., description="路由前缀，必须为 /api/v1/<id>")
     openapi: str | None = None
     health: str | None = None
+    # ISSUE-008 方案 A（2026-09-20）：resource → 真实路由段 的显式映射。
+    # 键 = provides 倒数第二段（resource），值 = api.base 下的路由段（如
+    # "/entries"、"/health-of-system"）。声明则 MCP 转发用它，未声明的
+    # resource 走机械「resource+s」推导——T18「加工具零额外声明」对
+    # 常规 REST 资源依旧成立，显式声明只用于不规则/语义命名路由。
+    tools: dict[str, str] = {}
 
 
 class Manifest(BaseModel):

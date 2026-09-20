@@ -16,7 +16,11 @@
   "api": {
     "base": "/api/v1/finance",
     "openapi": "/api/v1/finance/openapi.json",
-    "health": "/api/v1/finance/health"
+    "health": "/api/v1/finance/health",
+    "tools": {
+      "entry": "/entries",
+      "beeccount": "/beecount/source"
+    }
   },
   "provides": [
     "finance.entry.read",

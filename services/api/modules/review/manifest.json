@@ -18,7 +18,11 @@
   "api": {
     "base": "/api/v1/review",
     "openapi": "/api/v1/review/openapi.json",
-    "health": "/api/v1/review/health"
+    "health": "/api/v1/review/health",
+    "tools": {
+      "daily": "/days",
+      "source": "/source"
+    }
   },
   "provides": [
     "review.daily.read",

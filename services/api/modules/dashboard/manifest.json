@@ -19,7 +19,12 @@
   "api": {
     "base": "/api/v1/dashboard",
     "openapi": "/api/v1/dashboard/openapi.json",
-    "health": "/api/v1/dashboard/health"
+    "health": "/api/v1/dashboard/health",
+    "tools": {
+      "today": "/today",
+      "system-health": "/health-of-system",
+      "overview": "/overview"
+    }
   },
   "provides": [
     "dashboard.overview.read",

@@ -19,7 +19,10 @@
   "api": {
     "base": "/api/v1/calendar",
     "openapi": "/api/v1/calendar/openapi.json",
-    "health": "/api/v1/calendar/health"
+    "health": "/api/v1/calendar/health",
+    "tools": {
+      "slot": "/free-slots"
+    }
   },
   "provides": [
     "calendar.event.read",

@@ -90,7 +90,12 @@
           "description": "路由前缀，必须等于 /api/v1/<id>。"
         },
         "openapi": { "type": "string" },
-        "health": { "type": "string" }
+        "health": { "type": "string" },
+        "tools": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "^/" },
+          "description": "ISSUE-008 方案 A：resource → 真实路由段 的显式映射（如 {\"entry\": \"/entries\"}）。键为 provides 倒数第二段；声明则 MCP 转发优先用它，未声明 resource 走机械「resource+s」推导。"
+        }
       }
     },
     "provides": {
