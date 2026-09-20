@@ -26,12 +26,14 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http.cookiejar
 import json
 import re
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,11 +49,16 @@ EXPECTED_PATH = Path(__file__).resolve().parent / "expected.json"
 
 
 class Row:
+    # RFC-001（总监令13 采纳）：rows 全局收集，供 verdict 事件机读输出；
+    # 只含判据名/期望/实测/判定——绝不含 token/cookie/口令（#006 红灯纪律）。
+    collected: list[dict[str, Any]] = []
+
     def __init__(self) -> None:
         self.items: list[tuple[str, str, str, bool]] = []
 
     def add(self, name: str, expect: str, actual: str, ok: bool) -> None:
         self.items.append((name, expect, actual, ok))
+        Row.collected.append({"name": name, "expect": expect, "actual": actual, "ok": ok})
 
     def render(self, title: str) -> bool:
         print(f"\n## {title}")
@@ -66,6 +73,32 @@ class Row:
 def load_expected() -> dict[str, Any]:
     with open(EXPECTED_PATH, encoding="utf-8") as f:
         return json.load(f)
+
+
+def contract_sha256() -> str:
+    """expected.json 全文 sha256——契约防漂移的机器化指纹（RFC-001；运行时计算，不改契约本体）。"""
+    return hashlib.sha256(EXPECTED_PATH.read_bytes()).hexdigest()
+
+
+def emit_verdict(target: str, suite: str) -> dict[str, Any]:
+    """RFC-001 机读 verdict 事件（--emit-verdict 显式开启；人读表格与退出码语义不变）。
+
+    schema 版本号只进本事件的 `schema` 字段（总监令13 精化），不动 expected.json 结构。
+    """
+    rows = Row.collected
+    passed = sum(1 for r in rows if r["ok"])
+    verdict = {
+        "schema": "lifeos.probe.verdict/1",
+        "ts": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "target": target,
+        "suite": suite,
+        "verdict": "PASS" if passed == len(rows) and rows else "FAIL",
+        "summary": {"total": len(rows), "passed": passed, "failed": len(rows) - passed},
+        "contract_sha256": contract_sha256(),
+        "rows": rows,
+    }
+    print(json.dumps(verdict, ensure_ascii=False))
+    return verdict
 
 
 class Client:
@@ -237,6 +270,8 @@ def main() -> int:
     ap.add_argument("--suite", default="all",
                     choices=["gate", "hash", "modules", "docsprobe", "deploycheck", "all"])
     ap.add_argument("--password", default=None, help="不推荐；优先用环境变量 LIFEOS_ADMIN_PASSWORD")
+    ap.add_argument("--emit-verdict", action="store_true",
+                    help="RFC-001：在人读表格之外追加一行机读 verdict JSON（schema=lifeos.probe.verdict/1）")
     args = ap.parse_args()
 
     exp = load_expected()
@@ -268,6 +303,8 @@ def main() -> int:
 
     print("\n" + "=" * 60)
     print("ALL_GREEN ✅" if all(results) else "RED ❌（有判据未过，详见上表）")
+    if args.emit_verdict:
+        emit_verdict(args.target, args.suite)
     return 0 if all(results) else 1
 
 

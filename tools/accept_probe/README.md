@@ -18,6 +18,19 @@ python tools/accept_probe/probe.py --target production --suite deploycheck  # �
 
 退出码：`0` 全绿 ｜ `1` 有判据未过 ｜ `2` 用法/输入错误。可 `set -e` 串进部署 runbook。
 
+## RFC-001 · 机读 verdict 事件（总监令13 采纳，2026-09-20 13:5x 实现）
+
+```bash
+python tools/accept_probe/probe.py --target production --suite all --emit-verdict
+```
+
+- 人读表格与退出码语义**完全不变**，`--emit-verdict` 仅追加一行 JSON：
+  `{"schema":"lifeos.probe.verdict/1","ts":…,"target":…,"suite":…,"verdict":"PASS|FAIL","summary":{total,passed,failed},"contract_sha256":…,"rows":[…]}`
+- **零凭证**：rows 只含判据名/期望/实测/判定，绝无 token/cookie/口令；
+- **契约不动**：schema 版本号只进事件 `schema` 字段；`contract_sha256` = expected.json 全文 sha256（运行时计算）——期望值被静默修改会在此留下指纹；
+- **并单**：本事件为 O 项（TX-O1-01/O1/O2）判据留痕标准件，O 项完工帖按此格式附机读行；
+- 旧用法（不带 flag）零影响。
+
 ## 套件 ↔ 判据来源映射（约束3：来源可溯）
 
 | 套件 | 判据 | 出处 |
