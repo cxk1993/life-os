@@ -56,12 +56,15 @@ def _clean_leftovers() -> None:
 
 
 def _clean_tmp_dbs() -> None:
-    """清掉 tmp_*.db 测试库残留（含 tmp_iso_*）。"""
-    for p in DATA_DIR.glob("tmp_*.db"):
-        p.unlink(missing_ok=True)
-    # WAL 附属文件
-    for p in DATA_DIR.glob("tmp_*.db-*"):
-        p.unlink(missing_ok=True)
+    """清掉 tmp_*.db 测试库残留（含 tmp_iso_*）。
+
+    ★ Windows：并发进程占用时 unlink 抛 PermissionError，
+      missing_ok 只吞 FileNotFoundError —— 必须 suppress，
+      否则整个 pytest 会话在 setup 就炸（hermes 2026-09-20 目击）。
+    """
+    for p in list(DATA_DIR.glob("tmp_*.db")) + list(DATA_DIR.glob("tmp_*.db-*")):
+        with suppress(FileNotFoundError, PermissionError, OSError):
+            p.unlink(missing_ok=True)
 
 
 def _module_db_path(mod_name: str) -> str:
