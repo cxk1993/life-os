@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 from collections.abc import Iterator
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
@@ -86,10 +87,8 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
     db_path = getattr(mod, "_TEST_DB_PATH", None) or _module_db_path(name)
     os.environ["DB_PATH"] = str(db_path)
     # 声明给模块内 fixture 使用（有的 fixture 读 environ，有的直接 init_engine）
-    try:
+    with suppress(Exception):
         mod._TEST_DB_PATH = str(db_path)  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001
-        pass
 
     from db.engine import init_engine, reset_engine
 

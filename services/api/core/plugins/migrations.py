@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from collections.abc import Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Sequence
+from typing import Any
 
 from sqlmodel import text
 
