@@ -41,10 +41,11 @@ _DOCS_CAPS = ["docs.node.read", "docs.node.write", "docs.search"]
 
 
 class _ClientDocsAdapter:
-    """把内核注入的 InternalHttpClient 适配成 DocsAdapter 协议（tree/create/patch）。
+    """把内核注入的 InternalHttpClient 适配成 DocsAdapter 协议（tree/create/patch/remove）。
 
     ISSUE-005 A 案平滑替换：原 _HttpxDocsAdapter（自签 token + 自管 httpx）
     换成内核注入的 client；DiaryService 的协议不变，零侵入。
+    ★ T17 幂等修复：新增 remove（软删），供 ensure_diary_root 对账时清理重复根。
     """
 
     def __init__(self, client: Any) -> None:
@@ -61,6 +62,10 @@ class _ClientDocsAdapter:
 
     def patch(self, node_id: str, body: dict) -> dict:
         return self._client.patch(f"/api/v1/docs/nodes/{node_id}", json=body)
+
+    def remove(self, node_id: str) -> None:
+        """软删节点（T15 回收站语义，可恢复）。"""
+        self._client.delete(f"/api/v1/docs/nodes/{node_id}")
 
 
 def _svc(request: Request, user: UserDep, tz: str = "Asia/Shanghai") -> DiaryService:

@@ -63,14 +63,6 @@ class FakeDocsAdapter:
     def _children(self, parent_id) -> list[dict]:
         return [n for n in self.nodes.values() if n["parent_id"] == parent_id]
 
-    def _to_tree(self, parent_id) -> list[dict]:
-        out = []
-        for c in self._children(parent_id):
-            cc = dict(c)
-            cc["children"] = self._to_tree(c["id"])
-            out.append(cc)
-        return out
-
     def tree(self) -> list[dict]:
         return self._to_tree(None)
 
@@ -86,6 +78,22 @@ class FakeDocsAdapter:
         if "meta_json" in body:
             node["meta_json"] = body["meta_json"]
         return node
+
+    def remove(self, node_id) -> None:
+        """软删（模拟 T15 回收站：标 deleted_at，树里不再出现）。"""
+        node = self.nodes.get(node_id)
+        if node is not None:
+            node["deleted_at"] = "2026-09-20T00:00:00+00:00"
+
+    def _to_tree(self, parent_id) -> list[dict]:
+        out = []
+        for c in self._children(parent_id):
+            if c.get("deleted_at"):
+                continue  # 软删节点不进树（对齐 T15 语义）
+            cc = dict(c)
+            cc["children"] = self._to_tree(c["id"])
+            out.append(cc)
+        return out
 
     def count_kind(self, kind) -> int:
         return sum(1 for n in self.nodes.values() if n["kind"] == kind)
@@ -248,3 +256,41 @@ def test_manifest(client):
     assert m["provides"] == []
     assert sorted(m["requires"]) == ["docs.node.read", "docs.node.write", "docs.search"]
     assert m["permissions"] == []
+
+
+# ───────────────────────── T17 幂等修复回归（BUG-T16-1 同款药方） ─────────────────────────
+
+def test_ensure_diary_root_creates_with_slug(svc):
+    """建根时带固定 slug（meta_json.root:diary）—— 后续查重靠它。"""
+    root_id = svc.ensure_diary_root([])
+    node = svc.docs.nodes[root_id]
+    assert node["name"] == "日记"
+    assert node["meta_json"] == {"slug": "root:diary"}
+
+
+def test_ensure_diary_root_idempotent_no_dup(svc):
+    """连续 ensure 2 次 → 只 1 个根（复用而非新建）。"""
+    tree = svc.docs.tree()
+    r1 = svc.ensure_diary_root(tree)
+    tree = svc.docs.tree()
+    r2 = svc.ensure_diary_root(tree)
+    assert r1 == r2
+    roots = [n for n in svc.docs.nodes.values() if n["name"] == "日记" and n["parent_id"] is None]
+    assert len(roots) == 1
+
+
+def test_ensure_diary_root_reconciles_dup_roots(svc):
+    """★ 并发挂载历史脏数据：两个「日记」根 → 保 slug 正根 + 软删多余（对账）。"""
+    # 模拟 00:29/00:30 双浏览器并发：两个无 slug 的旧根
+    svc.docs.create(None, "folder", "日记")
+    svc.docs.create(None, "folder", "日记")
+    # 再来一次 ensure → 应软删多余、只剩 1 根
+    tree = svc.docs.tree()
+    canonical_id = svc.ensure_diary_root(tree)
+    alive = [
+        n
+        for n in svc.docs.nodes.values()
+        if n["name"] == "日记" and n["parent_id"] is None and not n.get("deleted_at")
+    ]
+    assert len(alive) == 1
+    assert alive[0]["id"] == canonical_id

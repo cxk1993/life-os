@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Protocol
@@ -18,6 +19,7 @@ from core.errors import ValidationError
 
 DEFAULT_TZ = "Asia/Shanghai"
 DIARY_ROOT_NAME = "日记"
+DIARY_ROOT_SLUG = "root:diary"
 INBOX_NAME = "收件箱"
 
 
@@ -29,6 +31,7 @@ class DocsAdapter(Protocol):
         self, parent_id: str | None, kind: str, name: str, meta: dict | None = None
     ) -> dict: ...
     def patch(self, node_id: str, body: dict) -> dict: ...
+    def remove(self, node_id: str) -> None: ...
 
 
 @dataclass
@@ -58,11 +61,36 @@ class DiaryService:
 
     # ───────────────────────── 根 / 收件箱（get-or-create 幂等） ─────────────────────────
     def ensure_diary_root(self, tree: list[dict]) -> str:
-        """确保「日记」根存在，返回其 id。"""
-        root = self._find_in_tree(tree, DIARY_ROOT_NAME, None)
-        if root:
-            return root["id"]
-        return self.docs.create(None, "folder", DIARY_ROOT_NAME)["id"]
+        """确保「日记」根存在，返回其 id。
+
+        ★ T17 幂等修复（对齐 BUG-T16-1 药方）：
+          1. 创建时带固定 slug `root:diary`（meta_json），标记正根；
+          2. 查重优先按 slug（避免并发挂载时"查 name 无 → 双建根"竞态）；
+          3. 发现多个同名根 → 保带 slug 的正根（无 slug 保最早）→ 其余软删对账。
+        """
+        roots = [n for n in tree if n.get("name") == DIARY_ROOT_NAME and n.get("parent_id") is None]
+        if not roots:
+            return self.docs.create(
+                None, "folder", DIARY_ROOT_NAME, meta={"slug": DIARY_ROOT_SLUG}
+            )["id"]
+
+        # 优先带 slug 的正根；都没有则选最早创建的（保留现场）
+        canonical = next(
+            (n for n in roots if self._node_slug(n) == DIARY_ROOT_SLUG), roots[0]
+        )
+        # ★ 对账：其余同名根软删归档（历史脏数据自动收敛，不阻塞）
+        for d in roots:
+            if d["id"] != canonical["id"]:
+                with contextlib.suppress(Exception):
+                    self.docs.remove(d["id"])  # 对账失败不阻塞；下次挂载再试
+        return canonical["id"]
+
+    @staticmethod
+    def _node_slug(node: dict) -> str | None:
+        meta = node.get("meta_json")
+        if isinstance(meta, dict):
+            return meta.get("slug")
+        return None
 
     def ensure_inbox(self, diary_root_id: str, tree: list[dict]) -> str:
         """确保「日记/收件箱」存在，返回其 id。"""
