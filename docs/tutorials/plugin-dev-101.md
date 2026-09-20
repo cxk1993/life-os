@@ -81,7 +81,7 @@ apps/web/src/apps/myplugin/
   "emits": [],
   "consumes": [],
   "permissions": [],
-   "migrations": "api/migrations",
+   "migrations": null,
   "settingsSchema": null,
   "lifecycle": {
     "onInstall": null,
@@ -147,7 +147,7 @@ node node_modules/vite/bin/vite.js build                         # 构建
   "emits": [],
   "consumes": [],
   "permissions": [],
-   "migrations": "api/migrations",
+   "migrations": null,
   "settingsSchema": null,
   "lifecycle": {
     "onInstall": null,
@@ -291,16 +291,6 @@ node node_modules/vite/bin/vite.js build                        # 构建
 | §5 | 验收自检 | ✅（对齐 expected.json） |
 | §6 | 真实演进史 | ✅ |
 | §7 | 进度 | ✅ |
-| **已完成** | | |
-| §1 | 5 分钟跑通 | ✅（路径修正：cd services/api + --kind builtin） |
-| §2 | 薄壳模板 | ✅（required 12 个，与 schema 一致） |
-| §3 | 扩展点地图 | ✅（12 个，以 schema 为准） |
-| §4 | 陷阱清单 | ✅（pyfiglet 已撤掉，新增 --kind 必传） |
-| §5 | 验收自检 | ✅（对齐 expected.json） |
-| §6 | 真实演进史 | ✅ |
-| §7 | 进度 | ✅ |
-| **待完成** | | |
-| §8 | 交叉核对（路径/命令/字段名与仓库一致） | 🔜 |
 
 **改稿记录**（总监令15 §4 派单）：
 - 13:52 开工回执帖已发
