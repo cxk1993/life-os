@@ -1,7 +1,10 @@
 """插件发现：扫描内置(services/api/modules/*) + 第三方(plugins/*) 的 manifest（总纲 §1.3）。
 
 ★ 加载器对两者一视同仁——除了 uninstall 只对 third-party 开放（见 manager）。
-本模块只负责"找到 + 校验 + 标记来源"，不负责挂载（挂载归 ModuleRegistry）。
+本模块负责"找到 + 校验 + 标记来源"，并提供**统一挂载入口** mount_plugin()：
+幂等检查 + 统一路由加载 + 委托 ModuleRegistry 落挂。TX-ACT-01 前置小步——
+启动全量挂载（create_app）与运行时启停（enable/install）共用同一入口，
+不再各写一份。
 
 校验三层：
   1. JSON 合法；
@@ -18,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from core.errors import ManifestError
+from core.manifest import load_router
 from core.plugins.validate import validate_manifest
 from core.plugins.version import check_compatibility
 
@@ -162,16 +166,18 @@ def load_plugin_router(info: PluginInfo) -> Any:
         if router is None:
             raise ManifestError(f"插件「{info.id}」router.py 未定义 router = APIRouter()")
         return router
-    # builtin / core：复用内核的包 import 逻辑
-    import importlib
+    # builtin / core：复用内核的包 import 逻辑（与 core.manifest.load_router
+    # 同一实现，不再各写一份；对 modules/ 下的模块两者逐字等价）
+    return load_router(info.id)
 
-    try:
-        mod = importlib.import_module(f"modules.{info.id}.router")
-    except ModuleNotFoundError as exc:
-        raise ManifestError(
-            f"插件「{info.id}」缺少 router.py（无法 import modules.{info.id}.router）：{exc}"
-        ) from exc
-    router = getattr(mod, "router", None)
-    if router is None:
-        raise ManifestError(f"插件「{info.id}」router.py 未定义 router = APIRouter()")
-    return router
+
+def mount_plugin(info: PluginInfo, registry: Any) -> None:
+    """统一挂载入口（TX-ACT-01 前置小步）：幂等 + 统一路由加载 + 委托挂载。
+
+    启动全量挂载（create_app）与运行时启停（PluginManager.enable/install）
+    共用本入口。已挂载时静默返回（幂等），重复调用安全。
+    """
+    if info.id in registry.mounted():
+        return
+    router = load_plugin_router(info)
+    registry.mount(info.id, router, prefix=info.manifest["api"]["base"])

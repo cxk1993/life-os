@@ -25,13 +25,14 @@ from core.errors import (
 )
 from core.events import event_bus
 from core.logging import configure_logging, get_logger
-from core.manifest import discover_modules, load_router
+from core.manifest import discover_modules
 from core.middleware import (
     AccessLogMiddleware,
     IdempotencyMiddleware,
     RateLimitMiddleware,
     TraceIdMiddleware,
 )
+from core.plugins.discover import PluginInfo, mount_plugin
 from core.plugins.migrations import make_startup_lifespan
 from core.registry import ModuleRegistry
 
@@ -135,9 +136,18 @@ def create_app(
     app.include_router(events_router, prefix="/api/v1")
 
     # ── 挂载模块（发现已先行，这里只挂）──
-    for manifest, _dir in discovered:
-        router = load_router(manifest.id)
-        reg.mount(manifest.id, router, prefix=manifest.api.base)
+    # TX-ACT-01 前置小步：启动全量挂载与运行时启停（enable/install）
+    # 共用统一入口 mount_plugin()（幂等 + 统一路由加载），不再各写一份。
+    # modules/ 下的发现结果恒为 builtin（目录决定 source，kind 由 manifest 决定）。
+    for manifest, module_dir in discovered:
+        info = PluginInfo(
+            id=manifest.id,
+            kind=manifest.kind,
+            source="builtin",
+            manifest=manifest.as_dict(),
+            directory=module_dir,
+        )
+        mount_plugin(info, reg)
         app.state.modules[manifest.id] = manifest.as_dict()
         log.info("模块已挂载", extra={"module": manifest.id, "base": manifest.api.base})
 

@@ -34,7 +34,9 @@ PLUGINS_DIR = Path(__file__).resolve().parents[3] / "plugins"   # 项目根/plug
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 # 测试专用的临时模块名（集中登记，便于一眼看出哪些是"不是真模块"的东西）
-LEFTOVER_PROBE_MODULES = ("t03probe",)
+# i006probe：test_issue006_migrations 的带迁移探针——2026-09-20 实测其 teardown
+# 删除会被平台 safe-delete 拦截而残留（挂载数 17→18 波及后续测试），故在此登记。
+LEFTOVER_PROBE_MODULES = ("t03probe", "i006probe")
 
 # 测试专用的第三方插件目录前缀（T14 的插件测试会往 plugins/ 下造真插件，正常由
 # uninstall 删掉；但进程被强杀时 teardown 不执行，就会像下面这样留下来）

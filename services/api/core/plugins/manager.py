@@ -20,7 +20,7 @@ from sqlmodel import select
 from core.deps import get_db
 from core.errors import ConflictError, ForbiddenError, NotFoundError
 from core.plugins import discover as discover_mod
-from core.plugins.discover import DiscoveryResult, PluginInfo
+from core.plugins.discover import DiscoveryResult, PluginInfo, mount_plugin
 from core.plugins.lifecycle import run_lifecycle_hook
 from core.plugins.migrations import rollback_migrations, run_migrations
 from core.plugins.permissions import is_valid_permission
@@ -136,14 +136,8 @@ class PluginManager:
             db.commit()
 
     # ───────────────────────── 挂载 / 摘卸载 ─────────────────────────
-    def _mount(self, info: PluginInfo, registry: Any) -> None:
-        if info.id in registry.mounted():
-            return
-        from core.plugins.discover import load_plugin_router
-
-        router = load_plugin_router(info)
-        registry.mount(info.id, router, prefix=info.manifest["api"]["base"])
-
+    # 挂载统一走 core.plugins.discover.mount_plugin（TX-ACT-01 前置小步：
+    # 与 create_app 启动全量挂载共用单一入口，本类不再各写一份）。
     def _unmount(self, info: PluginInfo, registry: Any) -> None:
         if info.id in registry.mounted():
             registry.unmount(info.id)
@@ -157,7 +151,7 @@ class PluginManager:
             return self.get_plugin(plugin_id)
         self._upsert_state(info, enabled=True, last_error=None)
         try:
-            self._mount(info, registry)
+            mount_plugin(info, registry)
             err = run_lifecycle_hook(info, "enable", db=get_db())
         except Exception as exc:  # noqa: BLE001
             self._upsert_state(info, enabled=True, last_error=str(exc))
@@ -193,7 +187,7 @@ class PluginManager:
         run_migrations(engine, info)
         run_lifecycle_hook(info, "install", db=get_db())
         self._upsert_state(info, enabled=True, last_error=None)
-        self._mount(info, registry)
+        mount_plugin(info, registry)
         return self.get_plugin(plugin_id)
 
     def uninstall(self, plugin_id: str, registry: Any) -> dict[str, Any]:
