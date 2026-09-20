@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -172,7 +172,8 @@ def ensure_record_table(engine: Any) -> None:
     """
     from db.models.system import AppSetting
 
-    AppSetting.__table__.create(bind=engine, checkfirst=True)
+    # SQLModel 模型的 __table__ 在运行期才挂上，mypy 桩不识别（attr-defined）
+    AppSetting.__table__.create(bind=engine, checkfirst=True)  # type: ignore[attr-defined]
 
 
 def reconcile_migrations(
@@ -208,7 +209,7 @@ def make_startup_lifespan(modules: Sequence[tuple[str, Path]]) -> Any:
     """
 
     @asynccontextmanager
-    async def lifespan(_app: Any):
+    async def lifespan(_app: Any) -> AsyncIterator[None]:
         from core.deps import get_db
 
         with get_db() as session:

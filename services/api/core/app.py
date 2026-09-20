@@ -32,6 +32,7 @@ from core.middleware import (
     RateLimitMiddleware,
     TraceIdMiddleware,
 )
+from core.plugins.migrations import make_startup_lifespan
 from core.registry import ModuleRegistry
 
 log = get_logger("kernel.app")
@@ -52,12 +53,23 @@ def create_app(
     settings = get_settings()
     configure_logging(level=settings.log_level, log_dir=settings.log_dir)
 
+    # ── 模块发现（先于 app 构造：lifespan 需要插件清单）──
+    scan_dir = Path(modules_dir) if modules_dir else _DEFAULT_MODULES_DIR
+    try:
+        discovered = discover_modules(scan_dir)
+    except AppError:
+        raise  # manifest 校验失败：明确抛出，启动即失败（不许静默跳过）
+
     app = FastAPI(
         title="Life-OS API",
         version="0.1.0",
         description="人生管理系统后端宿主（内核）。自动发现并挂载 modules/ 下的插件路由。",
         docs_url="/docs",
         openapi_url="/openapi.json",
+        # ISSUE-006：服务真正开始服务前，按台账对账补跑各插件迁移。
+        # 测试均不进入 lifespan（TestClient 非 context manager 用法），
+        # 故全组测试零感知，生产新库首启即自动建表。
+        lifespan=make_startup_lifespan([(m.id, d) for m, d in discovered]),
     )
 
     reg = registry or ModuleRegistry()
@@ -122,12 +134,7 @@ def create_app(
 
     app.include_router(events_router, prefix="/api/v1")
 
-    # ── 自动发现并挂载模块 ──
-    scan_dir = Path(modules_dir) if modules_dir else _DEFAULT_MODULES_DIR
-    try:
-        discovered = discover_modules(scan_dir)
-    except AppError:
-        raise  # manifest 校验失败：明确抛出，启动即失败（不许静默跳过）
+    # ── 挂载模块（发现已先行，这里只挂）──
     for manifest, _dir in discovered:
         router = load_router(manifest.id)
         reg.mount(manifest.id, router, prefix=manifest.api.base)
