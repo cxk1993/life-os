@@ -53,3 +53,10 @@ deploy/tools/nssm/*
 !deploy/tools/nssm/install-services.cmd
 deploy/tools/**/*.exe
 .workbuddy/
+
+# 密钥文件绝不入库（Qoder L2 预警 + MiMo 目击 2026-09-20：仓库根 .ssh_deploy-key.pem ACL 锁死删不掉，只能防入库）
+*.pem
+*.key
+!.gitkeep
+id_rsa*
+id_ed25519*
