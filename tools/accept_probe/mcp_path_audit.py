@@ -14,8 +14,10 @@ T18「宁可少暴露不可错转发」删除 provides）：
     跳过      = <3 段 ｜ 未知动词 ｜ 插件无 api.base
 
 用法：
-    python tools/accept_probe/mcp_path_audit.py            # 对表+判定
+    python tools/accept_probe/mcp_path_audit.py            # 对表+判定（path+名集合双闸门）
     python tools/accept_probe/mcp_path_audit.py --verbose   # 附每条工具明细
+    python tools/accept_probe/mcp_path_audit.py --base <repo>  # 指定仓库根（负例测试沙栏用，
+                                                              #  默认本脚本所在仓库；令40 事故教训）
 
 退出码：0=全对表（修复后应为 0）；1=存在差集（修复前应为 1，列出故障工具）。
 """
@@ -34,6 +36,7 @@ except Exception:
 
 MODULES_DIR = Path(__file__).resolve().parents[2] / "services" / "api" / "modules"
 ADAPTER = MODULES_DIR / "mcp" / "registry_adapter.py"
+EXPECTED_PATH = Path(__file__).resolve().parent / "expected.json"
 
 _METHOD_BY_VERB = {
     "read": "GET", "list": "GET", "search": "GET", "free": "GET", "get": "GET",
@@ -93,10 +96,16 @@ def norm_path(p: str) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="MCP 工具 path 全量审计（ISSUE-008 判据）")
+    global MODULES_DIR, ADAPTER
+    ap = argparse.ArgumentParser(description="MCP 工具 path+名集合双闸门审计（ISSUE-008 判据）")
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--base", default=None,
+                    help="仓库根（默认本脚本所在仓库）；负例测试请在副本目录上跑，勿碰真文件")
     args = ap.parse_args()
 
+    if args.base:
+        MODULES_DIR = Path(args.base).resolve() / "services" / "api" / "modules"
+        ADAPTER = MODULES_DIR / "mcp" / "registry_adapter.py"
     if not ADAPTER.exists():
         print(f"找不到 {ADAPTER}（判据源失效，先查仓库结构）")
         return 2
@@ -130,10 +139,33 @@ def main() -> int:
         mark = "✅" if t["route_hit"] else "❌"
         print(f"  {mark} {t['tool']:<28} {t['method']:<6} {t['derived_path']}"
               + ("" if t["route_hit"] else "   ← 真实路由无此 method+path"))
-    if bad:
-        print("\n差集非空 → ISSUE-008 未修复（预期：修复后本脚本 exit 0）")
+
+    # ── 名集合契约对表（总监令40 头号派单：名级 tools/list 对表闸门）──
+    # 期望名清单（expected.json mcp_tools.names，人审写死）vs 代码派生名集合：
+    # 缺=有人删了 provides/声明；多=有人加了工具——都要红，逼一次契约回帖（禁静默增删）。
+    name_bad: list[str] = []
+    exp_cfg = {}
+    try:
+        exp_cfg = json.loads(EXPECTED_PATH.read_text(encoding="utf-8")).get("suites", {}).get("mcp_tools", {})
+    except Exception:
+        pass
+    if exp_cfg.get("enabled"):
+        expected_names = set(exp_cfg.get("names") or [])
+        derived_names = {t["tool"] for t in tools}
+        missing = sorted(expected_names - derived_names)
+        extra = sorted(derived_names - expected_names)
+        count_ok = len(tools) == exp_cfg.get("count")
+        print(f"\n名集合契约对表：期望 {exp_cfg.get('count')} / 派生 {len(tools)}"
+              f"｜缺 {len(missing)}：{missing or '无'}｜多 {len(extra)}：{extra or '无'}"
+              f"｜计数{'✅' if count_ok else '❌'}")
+        if missing or extra or not count_ok:
+            name_bad = missing + extra + ([] if count_ok else ["<count>"])
+
+    if bad or name_bad:
+        print("\n闸门 RED ❌（path 差集或名集合契约未过；修复/契约回帖后应全绿 exit 0）")
         return 1
     print(f"\nALL_PATHS_MATCH ✅（{len(tools)} 工具推导 path 与真实路由全对表）")
+    print("NAMES_CONTRACT_MATCH ✅（派生名集合与 expected.json 契约一致）")
     return 0
 
 

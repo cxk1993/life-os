@@ -52,6 +52,23 @@
       "persona_roots": 1,
       "diary_roots": 1,
       "source": "BUG-T16-1 销账（人格单根）+ T17 幂等（日记连开 4 轮恒 1 根）"
+    },
+    "mcp_tools": {
+      "enabled": true,
+      "count": 25,
+      "names": [
+        "agents_task_read", "agents_task_write",
+        "calendar_event_read", "calendar_event_write", "calendar_slot_free",
+        "dashboard_overview_read", "dashboard_system-health_read", "dashboard_today_read",
+        "docs_node_read", "docs_node_write",
+        "finance_beeccount_read", "finance_entry_read", "finance_entry_write", "finance_snapshot_read",
+        "habits_habit_read", "habits_habit_write",
+        "health_record_read", "health_record_write",
+        "review_daily_read", "review_note_write", "review_source_read",
+        "todo_item_read", "todo_item_write",
+        "web_entry_read", "web_entry_write"
+      ],
+      "source": "总监令40 头号派单（名级 tools/list 对表闸门）：ISSUE-008 方案A 修复后 25 工具全名单（26→25 因 habits.log.write 嵌套路由不可达被删 provides，见 4483c98）；本清单=工具集合契约，provides/声明任何增删必须回帖改契约（禁静默放宽）"
     }
   }
 }

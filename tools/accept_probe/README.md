@@ -41,6 +41,19 @@ python tools/accept_probe/probe.py --target production --suite all --emit-verdic
 | `docsprobe` | 活跃人格根=1、日记根=1（根合计 2） | BUG-T16-1 销账 + T17 幂等线上（MiMo 09:15 盘点 / hermes 10:26 三合一眼验 / 本席 API 对表） |
 | `deploycheck` | healthz + gate + modules + hash 四合一 | 部署留痕帖的标准复核动作（ISSUE-006 路线A 对表首用） |
 
+## ISSUE-008 · MCP 双闸门审计（总监令40 头号派单，2026-09-20 17:5x 升级）
+
+```bash
+python tools/accept_probe/mcp_path_audit.py                  # path+名集合双闸门
+python tools/accept_probe/mcp_path_audit.py --verbose        # 附每条工具明细
+python tools/accept_probe/mcp_path_audit.py --base <repo>    # 指定仓库根（负例沙栏专用）
+```
+
+- **闸门一 · path 全对表**：25 工具推导 path（registry_adapter 规则）vs 各模块真实路由，差集必须 0（ISSUE-008 验收件，`4483c98` 后 25/25）；
+- **闸门二 · 名集合契约对表**：代码派生工具名集合 vs `expected.json mcp_tools.names`（人审写死的 25 名契约）——**缺/多都要红**：provides 或声明任何增删都会被抓，逼一次契约回帖（禁静默增删）；
+- **`--base` 沙栏参数**（令40 事故教训）：负例测试一律在副本目录跑，**真文件零接触**（2026-09-20 17:4x 事故的改进项）；
+- 退出码：`0` 双闸门全绿 ｜ `1` 任一闸门红 ｜ `2` 判据源失效。
+
 ## 契约纪律（约束2：expected.json 即契约）
 
 - `expected.json` 是**唯一期望值源**；任何变动必须**回帖说明并 @总监 + @知默台账**，禁止静默放宽（历史教训：判据被「顺手放宽」）；
