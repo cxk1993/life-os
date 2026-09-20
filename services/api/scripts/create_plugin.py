@@ -50,6 +50,69 @@ def _table_prefix(plugin_id: str) -> str:
     return plugin_id.replace("-", "_")
 
 
+# 与 contracts/plugin.schema.json 的 required 清单保持一致（TX-AST-01）。
+# 注意：勿猜 TX-ACT-01 的 activates_on 等未入 schema 的新字段，候合入后再补。
+_REQUIRED_MANIFEST_FIELDS: tuple[str, ...] = (
+    "id",
+    "name",
+    "version",
+    "kind",
+    "kernelApi",
+    "api",
+    "provides",
+    "requires",
+    "slots",
+    "emits",
+    "consumes",
+    "permissions",
+)
+
+# 常用权限值提示（TX-PERM-01 声明式权限，A 路径回退数组格式 list[str]）。
+# 生成骨架默认空数组（显式授权），开发者在 README/注释指引下按需补。
+_PERMISSION_HINTS = "\n".join(
+    [
+        "db:own            # 插件自己的表（最常用）",
+        "db:read           # 读共享数据",
+        "http:out          # 出站 HTTP 请求",
+        "fs:read           # 读文件系统",
+        "fs:write          # 写文件系统（高风险，慎用）",
+        "shell:exec        # 执行命令（极高风险，默认不授）",
+    ]
+)
+
+
+def _validate_manifest(manifest: dict[str, object]) -> list[str]:
+    """生成后自检：必填字段是否齐全、格式是否符合契约。
+
+    返回错误清单；为空即通过。错误精确到字段，方便内核强校验前先挡一道。
+    """
+    errs: list[str] = []
+
+    for field in _REQUIRED_MANIFEST_FIELDS:
+        if field not in manifest:
+            errs.append(f"缺少必填字段：{field}")
+
+    if "id" in manifest:
+        pid = manifest["id"]
+        if not isinstance(pid, str) or not _ID_RE.match(pid):
+            errs.append(f"id 格式不合法：{pid!r}（小写开头，只含小写/数字，连字符作分隔）")
+
+    if "version" in manifest and not isinstance(manifest["version"], str):
+        errs.append("version 必须是字符串（三段式语义化版本，如 0.1.0）")
+
+    if "kind" in manifest and manifest["kind"] not in ("core", "builtin", "third-party"):
+        errs.append(f"kind 非法：{manifest['kind']!r}（只能是 core/builtin/third-party）")
+
+    if "permissions" in manifest and not isinstance(manifest["permissions"], list):
+        errs.append("permissions 必须是数组（A 路径回退数组格式 list[str]）")
+    elif isinstance(manifest.get("permissions"), list) and not all(
+        isinstance(p, str) for p in manifest["permissions"]
+    ):
+        errs.append("permissions 数组元素必须都是字符串（如 [\"db:own\"]）")
+
+    return errs
+
+
 def _manifest(plugin_id: str, name: str, kind: str) -> dict[str, object]:
     return {
         "id": plugin_id,
@@ -114,6 +177,40 @@ router = APIRouter()
 def health() -> dict[str, bool]:
     """每个插件都必须有 health —— 内核据此判断"该能力是否可用"。"""
     return {{"ok": True}}
+'''
+
+
+_ROUTER_PY_WITH_EXAMPLE = '''"""插件路由：{name}（含跨插件调用示例，由 --with-example 生成）。
+
+HTTP 契约（全项目统一，不许自创）：
+  成功 → 直接返回资源 JSON（200/201）
+  失败 → 由内核统一转成 RFC7807 application/problem+json
+
+★ 跨插件调用（ISSUE-005 C 案参考）：
+  1. 在 manifest.json 的 requires 里声明目标能力，如 ["catalog.read"]；
+  2. 用 core.deps.get_plugin_client 拿客户端，再调对方 API；
+  3. 对方提供的必须是 provides 里声明过的能力，否则内核拒绝。
+"""
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends
+
+from core.deps import get_plugin_client
+
+router = APIRouter()
+
+
+@router.get("/health")
+def health() -> dict[str, bool]:
+    """每个插件都必须有 health —— 内核据此判断"该能力是否可用"。"""
+    return {{"ok": True}}
+
+
+@router.get("/example-cross-plugin")
+def example_cross_plugin(client=Depends(get_plugin_client)) -> dict:
+    """跨插件调用示例：调 catalog 的 health（requires 需声明 catalog.read）。"""
+    resp = client.get("/api/v1/catalog/health")
+    return {{"catalog_health": resp.status_code == 200, "status": resp.status_code}}
 '''
 
 
@@ -229,7 +326,9 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8", newline="\n")
 
 
-def create(plugin_id: str, name: str, kind: str, force: bool) -> int:
+def create(
+    plugin_id: str, name: str, kind: str, force: bool, with_example: bool = False
+) -> int:
     if not _ID_RE.match(plugin_id) or not (_ID_MIN <= len(plugin_id) <= _ID_MAX):
         print(f"❌ id 不合法：{plugin_id!r}")
         print(
@@ -253,17 +352,28 @@ def create(plugin_id: str, name: str, kind: str, force: bool) -> int:
     cls = "".join(part.capitalize() for part in re.split(r"[-_]", plugin_id)) + "Item"
     fmt = {"plugin_id": plugin_id, "name": name, "kind": kind, "prefix": prefix, "cls": cls}
 
+    # ── manifest：生成后自检（TX-AST-01：必填字段校验，错误精确到字段）──
+    manifest = _manifest(plugin_id, name, kind)
+    errs = _validate_manifest(manifest)
+    if errs:
+        for err in errs:
+            print(f"❌ manifest 校验失败：{err}")
+        return 2
+
+    # ── 写骨架 ──
+    router_tpl = _ROUTER_PY_WITH_EXAMPLE if with_example else _ROUTER_PY
+
     # ── manifest ──
     target.mkdir(parents=True, exist_ok=True)
     (target / "manifest.json").write_text(
-        json.dumps(_manifest(plugin_id, name, kind), ensure_ascii=False, indent=2) + "\n",
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
         newline="\n",
     )
     _write(target / "README.md", _README.format(**fmt))
 
     if kind == "third-party":
-        _write(target / "api" / "router.py", _ROUTER_PY.format(**fmt))
+        _write(target / "api" / "router.py", router_tpl.format(**fmt))
         _write(target / "api" / "models.py", _MODELS_PY.format(**fmt))
         _write(
             target / "api" / "settings.schema.json",
@@ -273,7 +383,7 @@ def create(plugin_id: str, name: str, kind: str, force: bool) -> int:
         _write(target / "web" / "index.tsx", _WEB_TSX.format(**fmt))
     else:
         # 内置插件：后端在 services/api/modules/<id>/，前端在 apps/web/src/apps/<id>/
-        _write(target / "router.py", _ROUTER_PY.format(**fmt))
+        _write(target / "router.py", router_tpl.format(**fmt))
         _write(target / "models.py", _MODELS_PY.format(**fmt))
         _write(
             target / "settings.schema.json",
@@ -283,11 +393,14 @@ def create(plugin_id: str, name: str, kind: str, force: bool) -> int:
         _write(_BUILTIN_WEB_DIR / plugin_id / "index.tsx", _WEB_TSX.format(**fmt))
 
     print(f"✅ 已生成插件骨架：{target}")
+    if with_example:
+        print("   （含跨插件调用示例，requires 记得声明目标能力）")
     if kind != "third-party":
         print(f"   前端入口：{_BUILTIN_WEB_DIR / plugin_id / 'index.tsx'}")
     print()
     print("下一步：")
-    print("  1. 补全 manifest.json 里的 description / provides / requires / slots")
+    print("  1. 补全 manifest.json 里的 description / provides / requires / slots / permissions")
+    print(f"     permissions 常用值：{_PERMISSION_HINTS}")
     print(f"  2. 表名一律用 {prefix}_ 前缀，时间列用 db.base.TimestampTZ")
     print("  3. 跑 python -m pytest tests/test_plugins.py -q 确认框架能接受它")
     print("  4. 起服务后它会自动出现在 /api/v1/plugins 与 /api/docs")
@@ -298,12 +411,13 @@ def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if len(args) < 2:
         print('用法：python scripts/create_plugin.py <id> "<名称>" \\')
-        print("        [--kind third-party|builtin] [--force]")
+        print("        [--kind third-party|builtin] [--force] [--with-example]")
         return 2
 
     plugin_id, name = args[0].strip(), args[1].strip()
     kind = "third-party"
     force = False
+    with_example = False
     rest = args[2:]
     i = 0
     while i < len(rest):
@@ -315,6 +429,10 @@ def main(argv: list[str] | None = None) -> int:
             force = True
             i += 1
             continue
+        if rest[i] == "--with-example":
+            with_example = True
+            i += 1
+            continue
         print(f"❌ 未知参数：{rest[i]}")
         return 2
 
@@ -322,7 +440,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"❌ --kind 只能是 third-party 或 builtin，收到 {kind!r}")
         return 2
 
-    return create(plugin_id, name, kind, force)
+    return create(plugin_id, name, kind, force, with_example)
 
 
 if __name__ == "__main__":
