@@ -13,6 +13,12 @@ import { snap, useDesktopStore } from "./store";
  *   不 setPointerCapture、不挂 pointermove/pointerup 监听）——
  *   固定几何的窗口因此完全拖不动。调用点同时会把这个 handler 从 `onPointerDown` 上摘掉，
  *   这里是第二道保险。
+ *
+ * ★ 评审修复（2026-09-20）：补 `pointercancel` 分支。此前拖动中若指针被系统取消
+ *   （触屏手势接管 / Alt+Tab / 输入法弹窗等），window 上的 pointermove/pointerup
+ *   监听会**泄漏**且 transform 残留；且 onMove 不分 pointerId，泄漏期内用户任何
+ *   鼠标移动都会让窗口跟着跳，直到下一次 pointerup 才止住。现以 AbortController
+ *   统一管理监听生命周期，pointercancel 即中止并还原视觉位置。
  */
 export function useDragMove(
   instanceId: string,
@@ -36,6 +42,7 @@ export function useDragMove(
       startX.current = e.clientX;
       startY.current = e.clientY;
 
+      const ac = new AbortController();
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - startX.current;
         const dy = ev.clientY - startY.current;
@@ -44,8 +51,7 @@ export function useDragMove(
       };
 
       const onUp = (ev: PointerEvent) => {
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
+        ac.abort(); // ★ 一次性移除 pointermove/pointerup/pointercancel 全部监听
         el.releasePointerCapture?.(id);
         el.style.transform = "";
         const dx = ev.clientX - startX.current;
@@ -56,8 +62,15 @@ export function useDragMove(
         });
       };
 
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
+      const onCancel = () => {
+        ac.abort();
+        el.releasePointerCapture?.(id);
+        el.style.transform = ""; // ★ 拖动从未提交几何，还原视觉即可
+      };
+
+      window.addEventListener("pointermove", onMove, { signal: ac.signal });
+      window.addEventListener("pointerup", onUp, { signal: ac.signal });
+      window.addEventListener("pointercancel", onCancel, { signal: ac.signal });
     },
     [instanceId, elRef, enabled],
   );
