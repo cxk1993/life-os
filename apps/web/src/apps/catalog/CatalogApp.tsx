@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Tabs } from "@/shared/components/Tabs";
 import {
   catalogApi,
   type CatalogEntry,
@@ -9,12 +10,16 @@ import {
 } from "./api";
 import "./catalog.css";
 
-// ★ 来源分组（固定顺序：插件 → 网页 → 内核 → 手动）
-const SOURCE_ORDER: { key: string; label: string }[] = [
-  { key: "plugin", label: "插件能力" },
-  { key: "web_entry", label: "网页入口" },
-  { key: "kernel", label: "内核基础" },
-  { key: "manual", label: "手动导入" },
+// ★ 令29：能力目录窗口内部分页（主人需求「滚动框太挤，做窗口内部分页」）
+//   固定五个页签：插件 → 内核 → 网页 → 手动 → MCP；空源页签保留并显空态（不隐藏）。
+type TabId = "plugin" | "kernel" | "web_entry" | "manual" | "mcp";
+
+const TAB_DEFS: { id: TabId; label: string }[] = [
+  { id: "plugin", label: "插件能力" },
+  { id: "kernel", label: "内核基础" },
+  { id: "web_entry", label: "网页入口" },
+  { id: "manual", label: "手动导入" },
+  { id: "mcp", label: "AI 工具（MCP）" },
 ];
 
 const KIND_LABEL: Record<string, string> = {
@@ -27,6 +32,8 @@ export default function CatalogApp() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
+  // ★ 令29：默认落在「插件能力」页签
+  const [activeTab, setActiveTab] = useState<TabId>("plugin");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "entries"],
@@ -71,8 +78,22 @@ export default function CatalogApp() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog"] }),
   });
 
-  // 搜索过滤（名称 / id / capabilities / 端点）
-  const filtered = useMemo(() => {
+  // 各源全量计数（不受搜索影响，做进页签 label）
+  const sourceCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      plugin: 0,
+      kernel: 0,
+      web_entry: 0,
+      manual: 0,
+    };
+    for (const e of data?.entries ?? []) {
+      if (e.source in counts) counts[e.source] += 1;
+    }
+    return counts;
+  }, [data]);
+
+  // 搜索过滤（名称 / id / capabilities / 端点 / note）——作用于当前条目页签
+  const filteredEntries = useMemo(() => {
     if (!data?.entries) return [];
     const q = query.trim().toLowerCase();
     if (!q) return data.entries;
@@ -83,20 +104,40 @@ export default function CatalogApp() {
     );
   }, [data, query]);
 
-  // 按来源分组
-  const groups = useMemo(() => {
-    const bySource = new Map<string, CatalogEntry[]>();
-    for (const e of filtered) {
-      const list = bySource.get(e.source) ?? [];
-      list.push(e);
-      bySource.set(e.source, list);
-    }
-    return SOURCE_ORDER.map(({ key, label }) => ({
-      key,
-      label,
-      items: bySource.get(key) ?? [],
-    })).filter((g) => g.items.length > 0);
-  }, [filtered]);
+  // 当前条目页签要显示的条目（页签内不再分组，一源一页）
+  const activeEntries = useMemo(
+    () => (activeTab === "mcp" ? [] : filteredEntries.filter((e) => e.source === activeTab)),
+    [filteredEntries, activeTab],
+  );
+
+  // MCP 页签：同一搜索框过滤工具名 / 路径 / scope / 说明 / 插件 id
+  const visibleMcpTools = useMemo(() => {
+    const tools = mcpQuery.data ?? [];
+    const q = query.trim().toLowerCase();
+    if (!q) return tools;
+    return tools.filter((t) =>
+      [t.name, t.description, t.path, t.scope, t.plugin_id]
+        .filter(Boolean)
+        .some((s) => String(s).toLowerCase().includes(q)),
+    );
+  }, [mcpQuery.data, query]);
+
+  // 页签 label 带全量计数角标
+  const tabs = useMemo(
+    () =>
+      TAB_DEFS.map((t) => ({
+        id: t.id,
+        label: (
+          <>
+            {t.label}
+            <span className="catalog-tab-count">
+              {t.id === "mcp" ? (mcpQuery.data?.length ?? 0) : (sourceCounts[t.id] ?? 0)}
+            </span>
+          </>
+        ),
+      })),
+    [sourceCounts, mcpQuery.data],
+  );
 
   if (isLoading)
     return (
@@ -115,7 +156,18 @@ export default function CatalogApp() {
     );
   }
 
-  const counts = data?.counts ?? {};
+  // 头部「+ 手动导入」：展开表单并自动切到手动导入页签；再次点击收起
+  const toggleAddForm = () => {
+    if (!adding) {
+      setActiveTab("manual");
+      setAdding(true);
+    } else {
+      setAdding(false);
+    }
+  };
+
+  const searchPlaceholder =
+    activeTab === "mcp" ? "搜索 AI 工具 / 名称 / 路径…" : "搜索能力 / 名称 / 端点…";
 
   return (
     <div className="catalog-root">
@@ -124,95 +176,123 @@ export default function CatalogApp() {
         <div className="catalog-title">能力目录</div>
         <input
           className="catalog-search"
-          placeholder="搜索能力 / 名称 / 端点…"
+          placeholder={searchPlaceholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="catalog-add-btn" onClick={() => setAdding(!adding)}>
+        <button className="catalog-add-btn" onClick={toggleAddForm}>
           {adding ? "收起" : "+ 手动导入"}
         </button>
       </div>
 
-      {/* 汇总行 */}
-      <div className="catalog-counts">
-        {Object.entries(counts).map(([k, v]) => (
-          <span key={k} className="catalog-count">
-            {k}: {v}
-          </span>
-        ))}
+      {/* ★ 令29：来源页签（计数做进 label，替代原顶部汇总行） */}
+      <div className="catalog-tabs">
+        <Tabs tabs={tabs} active={activeTab} onChange={(id) => setActiveTab(id as TabId)} />
       </div>
 
-      {adding && <ManualForm onDone={() => setAdding(false)} />}
+      {/* ★ 页签内容区：窗口内单页滚动，不再整窗长挤 */}
+      <div className="catalog-tab-body" role="tabpanel">
+        {activeTab !== "mcp" && (
+          <>
+            {activeTab === "manual" && adding && <ManualForm onDone={() => setAdding(false)} />}
 
-      {groups.length === 0 && <div className="catalog-hint">没有匹配的能力条目</div>}
-
-      {/* 分组列表 */}
-      {groups.map((g) => (
-        <section key={g.key} className="catalog-group">
-          <div className="catalog-group-title">
-            {g.label} <span className="catalog-group-count">{g.items.length}</span>
-          </div>
-          <div className="catalog-items">
-            {g.items.map((e) => (
-              <div key={e.id} className={`catalog-item ${e.enabled ? "" : "is-disabled"}`}>
-                <div className="catalog-item-main">
-                  <div className="catalog-item-name">
-                    {e.name}
-                    <span className="catalog-item-kind">{KIND_LABEL[e.kind] ?? e.kind}</span>
-                  </div>
-                  <div className="catalog-item-meta">
-                    <code>{e.id}</code>
-                    {e.endpoint && <code>{e.endpoint}</code>}
-                    {e.auth_ref && e.auth_ref !== "none" && (
-                      <span className="catalog-auth">{e.auth_ref}</span>
-                    )}
-                  </div>
-                  {e.capabilities.length > 0 && (
-                    <div className="catalog-caps">
-                      {e.capabilities.map((c) => (
-                        <span key={c} className="catalog-cap">
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <PluginPermissionRow entry={e} permMap={permMap} />
-                  {e.note && <div className="catalog-note">{e.note}</div>}
+            {activeEntries.length === 0 ? (
+              query.trim() ? (
+                <div className="catalog-hint">「{query.trim()}」在本页没有匹配的能力条目</div>
+              ) : activeTab === "manual" ? (
+                <div className="catalog-hint">
+                  暂无手动导入的能力 —— 点右上角「+ 手动导入」添加一个网页 / API / MCP 入口。
                 </div>
-                <div className="catalog-item-actions">
-                  {e.source === "manual" ? (
-                    <>
-                      <button
-                        className="catalog-toggle"
-                        title={e.enabled ? "点击停用" : "点击启用"}
-                        onClick={() => toggleMut.mutate({ id: e.id, enabled: !e.enabled })}
-                      >
-                        {e.enabled ? "开" : "关"}
-                      </button>
-                      <button
-                        className="catalog-del"
-                        title="删除"
-                        onClick={() => deleteMut.mutate(e.id)}
-                      >
-                        ×
-                      </button>
-                    </>
-                  ) : (
-                    <span className={`catalog-dot ${e.enabled ? "on" : "off"}`} />
-                  )}
-                </div>
+              ) : (
+                <div className="catalog-hint">暂无（这类能力还没有条目）</div>
+              )
+            ) : (
+              <div className="catalog-items">
+                {activeEntries.map((e) => (
+                  <EntryRow
+                    key={e.id}
+                    entry={e}
+                    permMap={permMap}
+                    onToggle={(enabled) => toggleMut.mutate({ id: e.id, enabled })}
+                    onDelete={() => deleteMut.mutate(e.id)}
+                  />
+                ))}
               </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "mcp" && (
+          <McpToolsSection
+            tools={visibleMcpTools}
+            totalCount={mcpQuery.data?.length ?? 0}
+            isLoading={mcpQuery.isLoading}
+            error={mcpQuery.error}
+            filter={query.trim()}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────── 条目卡片（plugin / kernel / web_entry / manual 四源共用） ───────────
+
+function EntryRow({
+  entry: e,
+  permMap,
+  onToggle,
+  onDelete,
+}: {
+  entry: CatalogEntry;
+  permMap: Map<string, PluginPermissions>;
+  onToggle: (enabled: boolean) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className={`catalog-item ${e.enabled ? "" : "is-disabled"}`}>
+      <div className="catalog-item-main">
+        <div className="catalog-item-name">
+          {e.name}
+          <span className="catalog-item-kind">{KIND_LABEL[e.kind] ?? e.kind}</span>
+        </div>
+        <div className="catalog-item-meta">
+          <code>{e.id}</code>
+          {e.endpoint && <code>{e.endpoint}</code>}
+          {e.auth_ref && e.auth_ref !== "none" && (
+            <span className="catalog-auth">{e.auth_ref}</span>
+          )}
+        </div>
+        {e.capabilities.length > 0 && (
+          <div className="catalog-caps">
+            {e.capabilities.map((c) => (
+              <span key={c} className="catalog-cap">
+                {c}
+              </span>
             ))}
           </div>
-        </section>
-      ))}
-
-      {/* ★ mcp-console 轻 UI：AI 工具（MCP）区块 —— T18 27 工具展示承接 */}
-      <McpToolsSection
-        tools={mcpQuery.data ?? null}
-        isLoading={mcpQuery.isLoading}
-        error={mcpQuery.error}
-      />
+        )}
+        <PluginPermissionRow entry={e} permMap={permMap} />
+        {e.note && <div className="catalog-note">{e.note}</div>}
+      </div>
+      <div className="catalog-item-actions">
+        {e.source === "manual" ? (
+          <>
+            <button
+              className="catalog-toggle"
+              title={e.enabled ? "点击停用" : "点击启用"}
+              onClick={() => onToggle(!e.enabled)}
+            >
+              {e.enabled ? "开" : "关"}
+            </button>
+            <button className="catalog-del" title="删除" onClick={onDelete}>
+              ×
+            </button>
+          </>
+        ) : (
+          <span className={`catalog-dot ${e.enabled ? "on" : "off"}`} />
+        )}
+      </div>
     </div>
   );
 }
@@ -380,12 +460,16 @@ const MCP_METHOD_BADGE: Record<string, string> = {
 
 function McpToolsSection({
   tools,
+  totalCount,
   isLoading,
   error,
+  filter,
 }: {
-  tools: CatalogMcpTool[] | null;
+  tools: CatalogMcpTool[]; // 已按搜索框过滤后的可见工具
+  totalCount: number; // 未过滤的全量计数（空态文案区分「本来就没有」与「搜不到」）
   isLoading: boolean;
   error: Error | null;
+  filter: string;
 }) {
   // 按插件分组
   const byPlugin = useMemo(() => {
@@ -400,24 +484,26 @@ function McpToolsSection({
 
   return (
     <section className="catalog-group catalog-mcp-section">
-      <div className="catalog-group-title">
-        AI 工具（MCP） <span className="catalog-group-count">{tools?.length ?? 0}</span>
-      </div>
       {isLoading && <div className="catalog-hint">工具加载中…</div>}
       {!isLoading && error && (
         <div className="catalog-hint">工具列表加载失败（后端未启用 mcp？）</div>
       )}
-      {!isLoading && !error && (tools?.length ?? 0) === 0 && (
+      {!isLoading && !error && totalCount === 0 && (
         <div className="catalog-hint">
           当前没有插件声明 provides —— 在插件的 manifest 加一行 provides，这里就会自动多出一个 AI
           工具。
         </div>
       )}
+      {!isLoading && !error && totalCount > 0 && byPlugin.length === 0 && (
+        <div className="catalog-hint">「{filter}」在 AI 工具里没有匹配项</div>
+      )}
       {!isLoading &&
         !error &&
         byPlugin.map(([pluginId, list]) => (
           <div key={pluginId} className="catalog-mcp-plugin">
-            <div className="catalog-mcp-plugin-title">{pluginId}</div>
+            <div className="catalog-mcp-plugin-title">
+              {pluginId} <span className="catalog-group-count">{list.length}</span>
+            </div>
             <table className="catalog-mcp-table">
               <thead>
                 <tr>

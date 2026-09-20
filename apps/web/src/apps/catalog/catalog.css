@@ -70,6 +70,42 @@
   border: 1px solid var(--line);
 }
 
+/* ★ 令29：来源页签（复用全局 .tabs/.tab，仅补布局与计数角标） */
+.catalog-tabs {
+  flex-shrink: 0;
+}
+
+.catalog-tab-count {
+  display: inline-block;
+  margin-left: 5px;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg2, var(--bg));
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.tab--active .catalog-tab-count {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* 页签内容区：窗口内单页滚动（替代原来的整窗长滚动） */
+.catalog-tab-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 2px;
+}
+
 .catalog-group {
   display: flex;
   flex-direction: column;
@@ -100,9 +136,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  overflow-y: auto;
-  min-height: 0;
-  flex: 1;
 }
 
 .catalog-item {
