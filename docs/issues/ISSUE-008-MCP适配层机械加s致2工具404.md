@@ -14,7 +14,7 @@ MCP 26 工具中 `dashboard_today_read`、`dashboard_system-health_read` 两个�
 
 | 环节 | 位置 | 实测 |
 |:--|:--|:--|
-| 推导 path | `services/api/modules/mcp/registry_adapter.py:73` | `path = f"{api_base.rstrip('/')}/{resource}s"` —— **机械加复数 s** |
+| 推导 path | `services/api/modules/mcp/registry_adapter.py:75` | `path = f"{api_base.rstrip('/')}/{resource}s"` —— **机械加复数 s** |
 | 真实路由 | `services/api/modules/dashboard/router.py:67` | `@router.get("/today")`（**today 不加 s**） |
 | 真实路由 | `services/api/modules/dashboard/router.py:75` | `@router.get("/health-of-system")`（vs 推导 `/system-healths`，**系统健康不是复数**） |
 | 调用链 | `services/api/modules/mcp/mcp_server.py:124` | `forward(tool.method, tool.path, payload)` 直用推导 path |
