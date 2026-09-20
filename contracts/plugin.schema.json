@@ -155,6 +155,14 @@
       ],
       "description": "权限声明：支持旧数组格式（向后兼容）或新对象格式（声明式）。"
     },
+    "activates_on": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(startup:always|event:[a-z0-9-]+(\\.[a-z0-9-]+)+)$"
+      },
+      "description": "声明式激活事件（TX-ACT-01）。缺省或含 startup:always = 启动即激活（向后兼容）；event:<topic> = 事件命中触发懒加载（精确匹配）；未命中则保持注册未激活。"
+    },
     "migrations": {
       "type": ["string", "null"],
       "description": "自带迁移目录（相对插件根）。无表则写 null。"

@@ -200,12 +200,20 @@ def reconcile_migrations(
     return result
 
 
-def make_startup_lifespan(modules: Sequence[tuple[str, Path]]) -> Any:
+def make_startup_lifespan(
+    modules: Sequence[tuple[str, Path]],
+    *,
+    on_started: Any | None = None,
+    on_stopping: Any | None = None,
+) -> Any:
     """为 create_app 生成 lifespan：服务开始服务前对账补跑各插件迁移。
 
     引擎经 core.deps 注入链获取（Session.get_bind()）——core 不 import db
     的分层约定不破。阻塞发生在 uvicorn lifespan 阶段，此时还未对外服务，
     正是「表必须先于请求存在」的正确时机。
+
+    TX-ACT-01：on_started/on_stopping 为可选零参钩子（如事件监听的挂/摘），
+    分别在对账完成后、服务退出时调用——保证对账时点不因激活器改变（硬约束 3）。
     """
 
     @asynccontextmanager
@@ -224,6 +232,12 @@ def make_startup_lifespan(modules: Sequence[tuple[str, Path]]) -> Any:
                 total,
                 extra={"plugins": {pid: v for pid, v in ran.items()}},
             )
-        yield
+        if on_started is not None:
+            on_started()
+        try:
+            yield
+        finally:
+            if on_stopping is not None:
+                on_stopping()
 
     return lifespan

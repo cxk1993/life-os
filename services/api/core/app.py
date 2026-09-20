@@ -32,7 +32,8 @@ from core.middleware import (
     RateLimitMiddleware,
     TraceIdMiddleware,
 )
-from core.plugins.discover import PluginInfo, mount_plugin
+from core.plugins.activator import PluginActivator
+from core.plugins.discover import PluginInfo
 from core.plugins.migrations import make_startup_lifespan
 from core.registry import ModuleRegistry
 
@@ -61,6 +62,15 @@ def create_app(
     except AppError:
         raise  # manifest 校验失败：明确抛出，启动即失败（不许静默跳过）
 
+    # ── 注册表与激活器（先于 app 构造：lifespan 钩子要引用激活器）──
+    # TX-ACT-01 注册/激活二分：app.state.modules 是「注册表」（全量清单，
+    # /api/v1/modules 由此而来，语义零漂移）；registry.mounted() 是「激活表」
+    # （路由真正在跑的）。startup:always（或缺省）启动即激活，event: 型等命中。
+    reg = registry or ModuleRegistry()
+    activator = PluginActivator(reg)
+    # 固化 bound method 引用，add/remove 操作同一对象（去重/摘除都可靠）。
+    activator_listener = activator.on_event
+
     app = FastAPI(
         title="Life-OS API",
         version="0.1.0",
@@ -70,13 +80,19 @@ def create_app(
         # ISSUE-006：服务真正开始服务前，按台账对账补跑各插件迁移。
         # 测试均不进入 lifespan（TestClient 非 context manager 用法），
         # 故全组测试零感知，生产新库首启即自动建表。
-        lifespan=make_startup_lifespan([(m.id, d) for m, d in discovered]),
+        # TX-ACT-01：对账完成后挂激活器的事件监听、退出时摘除——
+        # 迁移对账时点不动（硬约束 3），激活器只搭 lifespan 的顺风车。
+        lifespan=make_startup_lifespan(
+            [(m.id, d) for m, d in discovered],
+            on_started=lambda: event_bus.add_listener(activator_listener),
+            on_stopping=lambda: event_bus.remove_listener(activator_listener),
+        ),
     )
 
-    reg = registry or ModuleRegistry()
     reg.bind(app)
     app.state.registry = reg
-    app.state.modules = {}  # id -> manifest dict
+    app.state.activator = activator
+    app.state.modules = {}  # id -> manifest dict（注册表：全量清单）
 
     # ── 中间件（顺序：CORS 最外，TraceId 最内贴路由）──
     app.add_middleware(IdempotencyMiddleware)
@@ -104,7 +120,17 @@ def create_app(
 
     @app.get("/readyz", tags=["_kernel"])
     def readyz() -> dict[str, Any]:
-        return {"ok": True, "modules": reg.mounted(), "config": settings_as_dict()}
+        # TX-ACT-01：modules 仍是「已挂载」（生产口径不变，存量插件零漂移）；
+        # 新增 registered/activated/activation_errors 三键暴露注册-激活二分
+        # 与激活失败目击（卡档缓行纪律：只报目击，不自动处置）。
+        return {
+            "ok": True,
+            "modules": reg.mounted(),
+            "registered": sorted(app.state.modules),
+            "activated": activator.activated,
+            "activation_errors": activator.last_error,
+            "config": settings_as_dict(),
+        }
 
     # ── 模块清单（前端 / AI 都靠它发现能力）──
     @app.get("/api/v1/modules", tags=["_kernel"])
@@ -135,10 +161,11 @@ def create_app(
 
     app.include_router(events_router, prefix="/api/v1")
 
-    # ── 挂载模块（发现已先行，这里只挂）──
-    # TX-ACT-01 前置小步：启动全量挂载与运行时启停（enable/install）
-    # 共用统一入口 mount_plugin()（幂等 + 统一路由加载），不再各写一份。
-    # modules/ 下的发现结果恒为 builtin（目录决定 source，kind 由 manifest 决定）。
+    # ── 注册 + 按声明激活 ──
+    # TX-ACT-01：注册（app.state.modules 全量登记）与激活（load_router+mount）
+    # 二分。缺省 / startup:always 启动即激活（存量 17 插件全走这条，零漂移）；
+    # event:<topic> 型只注册登记 pending，事件命中后由激活器延后挂载。
+    # 挂载动作统一走 mount_plugin()（前置小步确立的单一入口）。
     for manifest, module_dir in discovered:
         info = PluginInfo(
             id=manifest.id,
@@ -147,8 +174,13 @@ def create_app(
             manifest=manifest.as_dict(),
             directory=module_dir,
         )
-        mount_plugin(info, reg)
-        app.state.modules[manifest.id] = manifest.as_dict()
-        log.info("模块已挂载", extra={"module": manifest.id, "base": manifest.api.base})
+        app.state.modules[manifest.id] = manifest.as_dict()  # 先注册（全量，零漂移）
+        if activator.activate_on_startup(info):
+            log.info("模块已注册并激活", extra={"module": manifest.id, "base": manifest.api.base})
+        else:
+            log.info(
+                "模块已注册待事件激活",
+                extra={"module": manifest.id, "base": manifest.api.base},
+            )
 
     return app

@@ -36,7 +36,8 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 # 测试专用的临时模块名（集中登记，便于一眼看出哪些是"不是真模块"的东西）
 # i006probe：test_issue006_migrations 的带迁移探针——2026-09-20 实测其 teardown
 # 删除会被平台 safe-delete 拦截而残留（挂载数 17→18 波及后续测试），故在此登记。
-LEFTOVER_PROBE_MODULES = ("t03probe", "i006probe")
+# actprobe：test_activator 的激活语义探针（TX-ACT-01，2026-09-20）。
+LEFTOVER_PROBE_MODULES = ("t03probe", "i006probe", "actprobe")
 
 # 测试专用的第三方插件目录前缀（T14 的插件测试会往 plugins/ 下造真插件，正常由
 # uninstall 删掉；但进程被强杀时 teardown 不执行，就会像下面这样留下来）
@@ -98,7 +99,16 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
     from db.engine import init_engine, reset_engine
 
     reset_engine()
-    init_engine()
+    # ★ 2026-09-20 workbuddy（TX-ACT-01 验证中发现并修复）：
+    # 原来只设 DB_PATH 环境变量再无参 init_engine()。但 services/api/.env
+    # 里显式写了 DB_PATH=./data/lifos.db，pydantic-settings 在组合跑现场
+    # 实测取 .env 值而非 environ 值（取证：make_engine 调用瞬间 environ
+    # 已是 tmp_iso_*.db，Settings() 却仍返回 lifos.db），引擎静默指向
+    # 主库 → test_issue006 的 lifespan 对账把探针表建进主库，跨文件
+    # 组合跑时该测试前置断言被历史污染击穿（单跑因时序差异幸免）。
+    # 改为显式传绝对 sqlite URL（同一库文件），不再依赖环境变量优先级。
+    abs_db = (Path(__file__).resolve().parents[1] / db_path).resolve()
+    init_engine(f"sqlite:///{abs_db.as_posix()}")
 
 
 @pytest.fixture(scope="session", autouse=True)

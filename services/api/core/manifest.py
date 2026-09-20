@@ -16,6 +16,12 @@ from core.errors import ManifestError
 
 _KINDS = {"core", "builtin", "third-party"}
 _ID_RE = __import__("re").compile(r"^[a-z][a-z0-9-]*$")
+# TX-ACT-01：activates_on 条目只允许 startup:always 或 event:<topic>
+# （topic 点分小写、至少两段，如 event:note.created）——与 contracts/plugin.schema.json
+# 的 pattern 保持字面一致，两层校验同一语义。
+_ACTIVATES_ON_RE = __import__("re").compile(
+    r"^(startup:always|event:[a-z0-9-]+(\.[a-z0-9-]+)+)$"
+)
 
 
 class ManifestApi(BaseModel):
@@ -41,6 +47,7 @@ class Manifest(BaseModel):
     emits: list[str] = []
     consumes: list[str] = []
     permissions: list[str] = []
+    activates_on: list[str] = []
     migrations: str | None = None
     settingsSchema: str | None = None
     lifecycle: dict[str, Any] = Field(default_factory=dict)
@@ -79,6 +86,12 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
         raise ManifestError(
             f"模块「{m.id}」api.base 必须是 {expected_base!r}，实际为 {m.api.base!r}"
         )
+    for act in m.activates_on:
+        if not _ACTIVATES_ON_RE.match(act):
+            raise ManifestError(
+                f"模块「{m.id}」activates_on 条目 {act!r} 非法：只支持 "
+                "startup:always 或 event:<topic>（点分小写、至少两段，如 event:note.created）"
+            )
     return m
 
 

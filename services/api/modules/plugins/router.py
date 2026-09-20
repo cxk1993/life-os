@@ -71,7 +71,13 @@ def disable_plugin(
     request: Request,
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
-    return MGR.disable(plugin_id, _registry(request))
+    result = MGR.disable(plugin_id, _registry(request))
+    # TX-ACT-01：禁用的插件同时清掉激活器的 pending 登记，
+    # 防止事件命中把已禁用插件重新挂回路由（击穿 disable 语义）。
+    activator = getattr(request.app.state, "activator", None)
+    if activator is not None:
+        activator.clear_pending(plugin_id)
+    return result
 
 
 @router.post("/install")

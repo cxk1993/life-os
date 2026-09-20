@@ -14,12 +14,16 @@ import contextlib
 import fnmatch
 import json
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import Request
 from fastapi.responses import StreamingResponse
+
+from core.logging import get_logger
+
+log = get_logger("kernel.events")
 
 _BUS_MAXLEN = 100
 
@@ -32,6 +36,7 @@ class EventBus:
     def __init__(self, maxlen: int = _BUS_MAXLEN) -> None:
         self._history: deque[dict[str, Any]] = deque(maxlen=maxlen)
         self._subscribers: list[asyncio.Queue[dict[str, Any]]] = []
+        self._listeners: list[Callable[[dict[str, Any]], None]] = []
         self._seq = 0
         self._seq_lock = __import__("threading").Lock()
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -51,10 +56,29 @@ class EventBus:
             "payload": payload,
         }
         self._history.append(event)
+        # 进程内回调监听（TX-ACT-01 激活器挂点）：同步调用，单回调异常不影响广播。
+        # publish 可能来自任意线程，回调必须自行保证线程安全。
+        for listener in list(self._listeners):
+            try:
+                listener(event)
+            except Exception as exc:  # noqa: BLE001
+                log.error(
+                    "事件回调监听器异常（已忽略，不影响广播）",
+                    extra={"topic": topic, "error": str(exc)},
+                )
         if self._subscribers and self._loop is not None:
             for q in list(self._subscribers):
                 self._loop.call_soon_threadsafe(q.put_nowait, event)
         return event
+
+    def add_listener(self, callback: Callable[[dict[str, Any]], None]) -> None:
+        """注册回调监听器（重复注册同一回调无副作用地被去重）。"""
+        if callback not in self._listeners:
+            self._listeners.append(callback)
+
+    def remove_listener(self, callback: Callable[[dict[str, Any]], None]) -> None:
+        with contextlib.suppress(ValueError):
+            self._listeners.remove(callback)
 
     def subscribe(self) -> tuple[asyncio.Queue[dict[str, Any]], list[dict[str, Any]]]:
         """注册订阅者（必须在事件循环内调用）。"""
