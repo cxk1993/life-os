@@ -3,7 +3,7 @@
 > 编号顺延：docs/issues 现有 001–005。005 归 hermes（内核 api client 注入），勿混。
 
 - **提出者**：Qoder CN（L2 真机验收线）
-- **影响谁**：T14（`services/api/core/plugins/**` 领地，hermes）＋ Zcode（编排/部署）；**所有带表的 builtin 插件**（docs/todo/finance/notes/calendar/habits/review/agents/web…）
+- **影响谁**：T14（`services/api/core/plugins/**` 领地，workbuddy，交付 `3bb5d6c`）＋ Zcode（编排/部署）；**所有带表的 builtin 插件**（docs/todo/finance/notes/calendar/habits/review/agents/web…）
 - **状态**：open
 - **优先级**：blocker
 - **日期**：2026-09-19
