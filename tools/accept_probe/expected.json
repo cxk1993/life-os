@@ -69,6 +69,14 @@
         "web_entry_read", "web_entry_write"
       ],
       "source": "总监令40 头号派单（名级 tools/list 对表闸门）：ISSUE-008 方案A 修复后 25 工具全名单（26→25 因 habits.log.write 嵌套路由不可达被删 provides，见 4483c98）；本清单=工具集合契约，provides/声明任何增删必须回帖改契约（禁静默放宽）"
+    },
+    "o1_status": {
+      "enabled": true,
+      "skip_if_404": true,
+      "count": 17,
+      "status_enum": ["healthy", "degraded", "disabled", "unknown"],
+      "scheduler_enabled": false,
+      "source": "判据先行（TX-O1-01，总监令41 语境）：契约源=MiMo《字段契约卡》17:55（源头 schema.py/module_status.py，入库 00915b1）——ok=true/count=len(modules)=17/id 集合≡modules 段（契约卡 §2.4-3）/status 四态/summary 四态和=count/reconcile.scheduler_enabled=false 默认；O1 未部署（生产 404）时 SKIP 不判红，部署后转实验 7 判据；契约卡若有修订以 MiMo A 角新帖为准并回帖改本段"
     }
   }
 }

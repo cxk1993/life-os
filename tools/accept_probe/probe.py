@@ -252,6 +252,54 @@ def suite_docsprobe(client: Client, exp: dict[str, Any], user: str, pwd: str) ->
     return row.render("docsprobe · 文档链根计数（C1 幂等机器侧）")
 
 
+def _check_o1(body: Any, e: dict[str, Any], modules_ids: list[str]) -> Row:
+    """O1 契约对表纯函数（判据先行：契约源=MiMo《TX-O1-01 字段契约卡》17:55）。
+    判据：ok=true / count=len(modules)=契约值 / id 集合与 modules 段一致（契约卡 §2.4-3）/
+    status∈四态枚举 / summary 四态和=count / reconcile.scheduler_enabled=契约默认值。"""
+    row = Row()
+    if not isinstance(body, dict):
+        row.add("响应形态", "dict", type(body).__name__, False)
+        return row
+    mods = body.get("modules") or []
+    ids = sorted(str(m.get("id")) for m in mods if isinstance(m, dict) and m.get("id"))
+    count = body.get("count")
+    enum = e.get("status_enum") or ["healthy", "degraded", "disabled", "unknown"]
+    statuses = [str(m.get("status")) for m in mods if isinstance(m, dict)]
+    bad_status = sorted({s for s in statuses if s not in enum})
+    summary = body.get("summary") or {}
+    ssum = sum(int(v) for v in summary.values() if isinstance(v, int))
+    sched = (body.get("reconcile") or {}).get("scheduler_enabled")
+    row.add("ok 字段", "true", str(body.get("ok")), body.get("ok") is True)
+    row.add("count=len(modules)", str(len(mods)), f"count={count} len={len(mods)}",
+            isinstance(count, int) and count == len(mods))
+    row.add("count=契约值", str(e.get("count")), str(count), count == e.get("count"))
+    miss = sorted(set(modules_ids) - set(ids))
+    extra = sorted(set(ids) - set(modules_ids))
+    row.add("id 集合≡modules 段", "无缺无多", f"缺:{miss or '无'} 多:{extra or '无'}", not miss and not extra)
+    row.add("status∈四态枚举", "/".join(enum), f"越界:{bad_status or '无'}", not bad_status)
+    row.add("summary 四态和=count", str(len(mods)), str(ssum), ssum == len(mods))
+    row.add("scheduler_enabled", str(e.get("scheduler_enabled")), str(sched), sched == e.get("scheduler_enabled"))
+    return row
+
+
+def suite_o1status(client: Client, exp: dict[str, Any], user: str, pwd: str) -> bool:
+    """O1 模块健康四态（TX-O1-01）：/api/v1/health/modules 契约对表。
+    判据先行态：O1 未部署→404→输出 SKIP 行（不判红不冒充绿）；部署后自动转实验。"""
+    e = exp["suites"]["o1_status"]
+    row = Row()
+    if not client.access:
+        client.login(user, pwd)
+    status, body, _ = client.get("/api/v1/health/modules", auth=True)
+    if status == 404 and e.get("skip_if_404", True):
+        row.add("⏭SKIP O1 路由", "200（部署后实验）", "404 未部署（判据先行态）", True)
+        ok = row.render("o1status · O1 四态（SKIP：未部署，非绿非红）")
+        print("  说明：判据包预写态（契约卡已立、部署未到）；部署后本行转实验 7 判据。")
+        return ok
+    modules_ids = exp["suites"]["modules"]["ids"]
+    row = _check_o1(body, e, modules_ids)
+    return row.render("o1status · O1 模块健康四态（TX-O1-01 契约）")
+
+
 def suite_deploycheck(client: Client, exp: dict[str, Any], user: str, pwd: str) -> bool:
     """部署后四合一：healthz + gate + modules + hash（部署留痕帖的标准复核动作）。"""
     row = Row()
@@ -268,7 +316,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="L2 验收判据自动化套件（只读）")
     ap.add_argument("--target", default="production", choices=["production", "local"])
     ap.add_argument("--suite", default="all",
-                    choices=["gate", "hash", "modules", "docsprobe", "deploycheck", "all"])
+                    choices=["gate", "hash", "modules", "docsprobe", "o1status", "deploycheck", "all"])
     ap.add_argument("--password", default=None, help="不推荐；优先用环境变量 LIFEOS_ADMIN_PASSWORD")
     ap.add_argument("--emit-verdict", action="store_true",
                     help="RFC-001：在人读表格之外追加一行机读 verdict JSON（schema=lifeos.probe.verdict/1）")
@@ -283,7 +331,7 @@ def main() -> int:
     import os
     pwd = args.password or os.environ.get("LIFEOS_ADMIN_PASSWORD") or ""
     user = tgt.get("username", "admin")
-    need_auth = args.suite in ("gate", "modules", "docsprobe", "deploycheck", "all")
+    need_auth = args.suite in ("gate", "modules", "docsprobe", "o1status", "deploycheck", "all")
     if need_auth and not pwd:
         print("需要口令：export LIFEOS_ADMIN_PASSWORD=…（绝不写入文件）")
         return 2
@@ -298,6 +346,8 @@ def main() -> int:
         results.append(suite_modules(client, exp, user, pwd))
     if args.suite in ("docsprobe", "all"):
         results.append(suite_docsprobe(client, exp, user, pwd))
+    if args.suite in ("o1status", "all"):
+        results.append(suite_o1status(client, exp, user, pwd))
     if args.suite == "deploycheck":
         results.append(suite_deploycheck(client, exp, user, pwd))
 

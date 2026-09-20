@@ -13,6 +13,7 @@ python tools/accept_probe/probe.py --target production --suite gate     # A6 三
 python tools/accept_probe/probe.py --target production --suite hash     # 入口基线
 python tools/accept_probe/probe.py --target production --suite modules  # 坞 census
 python tools/accept_probe/probe.py --target production --suite docsprobe # 根计数
+python tools/accept_probe/probe.py --target production --suite o1status  # O1 四态（未部署=SKIP）
 python tools/accept_probe/probe.py --target production --suite deploycheck  # 部署后四合一
 ```
 
@@ -39,6 +40,7 @@ python tools/accept_probe/probe.py --target production --suite all --emit-verdic
 | `hash` | 入口 `index-*.js` = 基线 | hash 链（02:36 判定帖 §5 追记 → 令8 §4 12:00 快照未漂移） |
 | `modules` | 计数 17 + id 集合 | 令8 §4 生产三项快照（12:00）；11:4x 本席逐数 id 复验 |
 | `docsprobe` | 活跃人格根=1、日记根=1（根合计 2） | BUG-T16-1 销账 + T17 幂等线上（MiMo 09:15 盘点 / hermes 10:26 三合一眼验 / 本席 API 对表） |
+| `o1status` | O1 四态契约：ok/count=len(modules)=17/id 集合≡modules 段/status∈四态/summary 和=count/scheduler_enabled=false | **判据先行**：契约源=MiMo《TX-O1-01 字段契约卡》17:55（`00915b1`）；未部署 404→SKIP（非绿非红），部署后转实验 |
 | `deploycheck` | healthz + gate + modules + hash 四合一 | 部署留痕帖的标准复核动作（ISSUE-006 路线A 对表首用） |
 
 ## ISSUE-008 · MCP 双闸门审计（总监令40 头号派单，2026-09-20 17:5x 升级）
