@@ -4,6 +4,7 @@
 ★ 本文件不要加 future import；204 端点不要写 -> None 返回注解时注意兼容。
 """
 import json
+import logging
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -14,11 +15,16 @@ from sqlmodel import Session
 from core.deps import get_current_user, get_db
 from core.security import User
 
+from .reconcile import reconcile_followups, reconcile_status
+from .reconcile_scheduler import scheduler_status as reconcile_scheduler_status
+from .reconcile_scheduler import start_scheduler as start_reconcile_scheduler
 from .schema import (
     FollowupRequestOut,
     HealthRecordCreate,
     HealthRecordOut,
     HealthRecordUpdate,
+    ReconcileOut,
+    ReconcileStatusOut,
 )
 from .service import HealthService
 
@@ -104,3 +110,41 @@ def request_followup(
 ) -> dict[str, Any]:
     """手动再触发跟进事件（只 publish，不 import todo）。"""
     return HealthService(db).request_followup(record_id)
+
+
+# ── E3 期望态 reconcile（默认只手动；调度 HEAL_RECONCILE_ENABLED）──
+
+
+@router.post("/followups/reconcile", response_model=ReconcileOut)
+def post_reconcile_followups(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """广播期望态：所有 followup_needed 记录重发 care.requested（消费方幂等收敛）。"""
+    return reconcile_followups(db)
+
+
+@router.get("/followups/reconcile", response_model=ReconcileStatusOut)
+def get_reconcile_status(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """只读期望态规模与调度开关，不 publish。"""
+    return reconcile_status(db)
+
+
+@router.get("/followups/reconcile/scheduler")
+def get_reconcile_scheduler(
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    return reconcile_scheduler_status()
+
+
+# 模块挂载时尝试启动 reconcile 调度；默认关时为空操作
+try:
+    _reconcile_sched_started = start_reconcile_scheduler()
+except Exception as _reconcile_exc:  # noqa: BLE001
+    _reconcile_sched_started = False
+    logging.getLogger("health.router").warning(
+        "health reconcile 调度器启动失败: %s", _reconcile_exc
+    )

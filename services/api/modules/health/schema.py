@@ -44,3 +44,22 @@ class FollowupRequestOut(BaseModel):
     event_topic: str = "health.care.requested"
     idempotency_key: str
     record_id: str
+
+
+class ReconcileOut(BaseModel):
+    ok: bool
+    event_topic: str = "health.care.requested"
+    desired_count: int
+    published_count: int
+    error_count: int = 0
+    mode: str = "desired-state-broadcast"
+    scheduler_enabled: bool = False
+    published: list[dict] = []
+    errors: list[dict] = []
+
+
+class ReconcileStatusOut(BaseModel):
+    event_topic: str = "health.care.requested"
+    desired_count: int
+    scheduler_enabled: bool = False
+    records: list[HealthRecordOut] = []

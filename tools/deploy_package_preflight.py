@@ -42,7 +42,7 @@ def md5_file(path: Path) -> str:
 
 
 def load_file_list(path: Path) -> list[str]:
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8-sig")
     if path.suffix.lower() == ".json":
         data = json.loads(text)
         if isinstance(data, dict) and "files" in data:
@@ -60,7 +60,7 @@ def load_file_list(path: Path) -> list[str]:
 
 
 def load_hashes(path: Path) -> dict[str, str]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
     if isinstance(data, list):
         out: dict[str, str] = {}
         for item in data:
