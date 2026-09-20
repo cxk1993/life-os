@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { catalogApi, type CatalogEntry, type CatalogMcpTool } from "./api";
+import {
+  catalogApi,
+  type CatalogEntry,
+  type CatalogMcpTool,
+  type PluginPermissions,
+  type PluginInfoLite,
+} from "./api";
 import "./catalog.css";
 
 // ★ 来源分组（固定顺序：插件 → 网页 → 内核 → 手动）
@@ -34,6 +40,25 @@ export default function CatalogApp() {
     queryFn: () => catalogApi.mcpTools(),
     retry: 1,
   });
+
+  // ★ E2 权限徽标：只读复用 /api/v1/plugins 的 granted permissions（零后端改动）
+  const pluginsQuery = useQuery({
+    queryKey: ["catalog", "plugins-perms"],
+    queryFn: () => catalogApi.plugins(),
+    staleTime: 10_000,
+    retry: 1,
+  });
+
+  // catalog 插件条目 id 为 `plugin.<pid>`，插件清单 id 为 `<pid>`，去前缀建映射
+  const permMap = useMemo(() => {
+    const m = new Map<string, PluginPermissions>();
+    for (const p of (pluginsQuery.data?.plugins ?? []) as PluginInfoLite[]) {
+      if (p.id && p.permissions !== undefined && p.permissions !== null) {
+        m.set(p.id, p.permissions);
+      }
+    }
+    return m;
+  }, [pluginsQuery.data]);
 
   const toggleMut = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
@@ -151,6 +176,7 @@ export default function CatalogApp() {
                       ))}
                     </div>
                   )}
+                  <PluginPermissionRow entry={e} permMap={permMap} />
                   {e.note && <div className="catalog-note">{e.note}</div>}
                 </div>
                 <div className="catalog-item-actions">
@@ -187,6 +213,160 @@ export default function CatalogApp() {
         isLoading={mcpQuery.isLoading}
         error={mcpQuery.error}
       />
+    </div>
+  );
+}
+
+// ─────────── ★ E2 权限徽标（令19 三裁 / 令21 路B：granted 数据源，纯前端） ───────────
+
+interface NormBadge {
+  key: string;
+  label: string;
+  cls: string;
+}
+
+interface NormPerms {
+  core: NormBadge[]; // 核心 5 枚常显（风险语义）
+  detail: NormBadge[]; // 细节 4 枚进 hover（资源级 token）
+  raw: string; // 原始 permissions 文本
+  kind: "array" | "object";
+}
+
+// 回环主机：net:out:<host> 命中这些算「本机网络」，其余（含 *）算外网
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+// provides/capabilities 里出现这些动词即视为「有写能力」，不发只读徽标
+const WRITE_VERB = /(write|create|update|delete|remove|manage|admin|exec|send|set|import|sync)/i;
+const READ_VERB =
+  /(read|get|list|query|view|health|today|stats|summary|overview|compass|growth|trend|check)/i;
+
+/**
+ * 把 granted permissions（旧数组 token / 新粗布尔对象）归一为两层徽标。
+ * 规则与令19 三裁、E2 v2 静态原型逐一对齐：
+ *  - 网络四选一：🔒无网络 / 🌐本机 / 🌍外网（数组可精确到主机）；对象 network=true 仅显中性「🌐 可联网」
+ *  - 📖只读：无 db:own/fs/子进程 且 provides 仅读无写
+ *  - ⚙️子进程：subprocess（对象）或对应数组 token
+ *  - 细节层：🗄️db:own / 🌉bridge:read / 📁fs:plugin / 🔔notify:send（收进 hover，附原始 JSON）
+ */
+function normalizePermissions(perms: PluginPermissions, capabilities: string[]): NormPerms {
+  const isObject = !Array.isArray(perms) && typeof perms === "object" && perms !== null;
+
+  let net: "none" | "local" | "external" | "unknown" = "none";
+  let subprocess = false;
+  let hasDb = false;
+  let hasFs = false;
+  let hasBridge = false;
+  let hasNotify = false;
+
+  if (Array.isArray(perms)) {
+    for (const raw of perms) {
+      const t = String(raw);
+      if (t === "db:own") hasDb = true;
+      else if (t === "bridge:read") hasBridge = true;
+      else if (t === "fs:plugin" || t.startsWith("fs:")) hasFs = true;
+      else if (t === "notify:send" || t.startsWith("notify:")) hasNotify = true;
+      else if (
+        t === "subprocess" ||
+        t.startsWith("subprocess:") ||
+        t === "proc:exec" ||
+        t.startsWith("proc:")
+      )
+        subprocess = true;
+      else if (t.startsWith("net:out")) {
+        const host = t.slice("net:out:".length).trim();
+        if (host === "" || host === "*") net = "external";
+        else if (LOOPBACK_HOSTS.has(host.toLowerCase())) {
+          if (net !== "external") net = "local";
+        } else net = "external";
+      }
+    }
+  } else if (isObject) {
+    const o = perms as Record<string, boolean>;
+    if (o.network === true) net = "unknown"; // 粗布尔：不区分本机/外网，显中性
+    if (o.subprocess === true) subprocess = true;
+    if (o.filesystem === true) hasFs = true;
+  }
+
+  const detail: NormBadge[] = [];
+  if (hasDb) detail.push({ key: "db", label: "🗄️ db:own", cls: "catalog-pbadge--info" });
+  if (hasBridge)
+    detail.push({ key: "bridge", label: "🌉 bridge:read", cls: "catalog-pbadge--violet" });
+  if (hasFs) detail.push({ key: "fs", label: "📁 fs:plugin", cls: "catalog-pbadge--warn" });
+  if (hasNotify)
+    detail.push({ key: "notify", label: "🔔 notify:send", cls: "catalog-pbadge--violet" });
+
+  const core: NormBadge[] = [];
+  if (net === "external")
+    core.push({ key: "net-ext", label: "🌍 外部网络", cls: "catalog-pbadge--danger" });
+  else if (net === "local")
+    core.push({ key: "net-local", label: "🌐 本机网络", cls: "catalog-pbadge--warn" });
+  else if (net === "unknown")
+    core.push({ key: "net-any", label: "🌐 可联网", cls: "catalog-pbadge--warn" });
+  else core.push({ key: "net-none", label: "🔒 无网络", cls: "catalog-pbadge--safe" });
+
+  const caps = capabilities ?? [];
+  const readOnly =
+    !hasDb &&
+    !hasFs &&
+    !subprocess &&
+    caps.length > 0 &&
+    caps.every((c) => !WRITE_VERB.test(c)) &&
+    caps.some((c) => READ_VERB.test(c));
+  if (readOnly) core.push({ key: "readonly", label: "📖 只读", cls: "catalog-pbadge--safe" });
+  if (subprocess)
+    core.push({ key: "subprocess", label: "⚙️ 子进程", cls: "catalog-pbadge--danger" });
+
+  return {
+    core,
+    detail,
+    raw: JSON.stringify(perms ?? []),
+    kind: isObject ? "object" : "array",
+  };
+}
+
+function PluginPermissionRow({
+  entry,
+  permMap,
+}: {
+  entry: CatalogEntry;
+  permMap: Map<string, PluginPermissions>;
+}) {
+  // 仅 plugin 源显示权限；插件清单尚未就绪或查无此 pid 时不渲染（避免假「无网络」）
+  if (entry.source !== "plugin") return null;
+  const pid = entry.id.replace(/^plugin\./, "");
+  const perms = permMap.get(pid);
+  if (perms === undefined) return null;
+
+  const norm = normalizePermissions(perms, entry.capabilities);
+  const detailTitle =
+    norm.kind === "object"
+      ? "声明式权限（filesystem/network/subprocess 布尔）"
+      : norm.detail.length > 0
+        ? "资源级权限（旧数组 token）"
+        : "无资源级 token（自身不建表/不触文件桥通知）";
+
+  return (
+    <div className="catalog-perms">
+      {norm.core.map((b) => (
+        <span key={b.key} className={`catalog-pbadge ${b.cls}`}>
+          {b.label}
+        </span>
+      ))}
+      <span className="catalog-perms-detail" tabIndex={0} role="button" aria-label="权限明细">
+        🔑 权限明细 {norm.detail.length}
+        <span className="catalog-perms-pop" role="tooltip">
+          <span className="catalog-perms-pop-title">{detailTitle}</span>
+          {norm.detail.length > 0 && (
+            <span className="catalog-perms-pop-badges">
+              {norm.detail.map((b) => (
+                <span key={b.key} className={`catalog-pbadge ${b.cls}`}>
+                  {b.label}
+                </span>
+              ))}
+            </span>
+          )}
+          <code className="catalog-perms-pop-raw">{norm.raw}</code>
+        </span>
+      </span>
     </div>
   );
 }
@@ -233,36 +413,38 @@ function McpToolsSection({
           工具。
         </div>
       )}
-      {!isLoading && !error && byPlugin.map(([pluginId, list]) => (
-        <div key={pluginId} className="catalog-mcp-plugin">
-          <div className="catalog-mcp-plugin-title">{pluginId}</div>
-          <table className="catalog-mcp-table">
-            <thead>
-              <tr>
-                <th>工具名</th>
-                <th>调用</th>
-                <th>scope</th>
-                <th>说明</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((t) => (
-                <tr key={t.name}>
-                  <td className="catalog-mcp-mono">{t.name}</td>
-                  <td>
-                    <span className={`catalog-mcp-badge ${MCP_METHOD_BADGE[t.method] ?? ""}`}>
-                      {t.method}
-                    </span>{" "}
-                    <span className="catalog-mcp-mono catalog-mcp-path">{t.path}</span>
-                  </td>
-                  <td className="catalog-mcp-mono">{t.scope}</td>
-                  <td className="catalog-mcp-desc">{t.description}</td>
+      {!isLoading &&
+        !error &&
+        byPlugin.map(([pluginId, list]) => (
+          <div key={pluginId} className="catalog-mcp-plugin">
+            <div className="catalog-mcp-plugin-title">{pluginId}</div>
+            <table className="catalog-mcp-table">
+              <thead>
+                <tr>
+                  <th>工具名</th>
+                  <th>调用</th>
+                  <th>scope</th>
+                  <th>说明</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+              </thead>
+              <tbody>
+                {list.map((t) => (
+                  <tr key={t.name}>
+                    <td className="catalog-mcp-mono">{t.name}</td>
+                    <td>
+                      <span className={`catalog-mcp-badge ${MCP_METHOD_BADGE[t.method] ?? ""}`}>
+                        {t.method}
+                      </span>{" "}
+                      <span className="catalog-mcp-mono catalog-mcp-path">{t.path}</span>
+                    </td>
+                    <td className="catalog-mcp-mono">{t.scope}</td>
+                    <td className="catalog-mcp-desc">{t.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
     </section>
   );
 }

@@ -12,6 +12,7 @@ vi.mock("./api", () => ({
     updateManual: vi.fn(),
     deleteManual: vi.fn(),
     mcpTools: vi.fn(),
+    plugins: vi.fn(),
   },
 }));
 
@@ -21,6 +22,7 @@ const apiMock = catalogApi as unknown as {
   updateManual: ReturnType<typeof vi.fn>;
   deleteManual: ReturnType<typeof vi.fn>;
   mcpTools: ReturnType<typeof vi.fn>;
+  plugins: ReturnType<typeof vi.fn>;
 };
 
 const sampleCatalog = {
@@ -89,6 +91,11 @@ describe("CatalogApp", () => {
     vi.clearAllMocks();
     apiMock.getCatalog.mockResolvedValue(sampleCatalog);
     apiMock.mcpTools.mockResolvedValue(sampleMcpTools);
+    // E2：默认 calendar 插件持 db:own（无网络）；各用例可覆盖
+    apiMock.plugins.mockResolvedValue({
+      plugins: [{ id: "calendar", permissions: ["db:own"] }],
+      count: 1,
+    });
   });
 
   it("加载后按来源分组展示条目", async () => {
@@ -166,5 +173,76 @@ describe("CatalogApp", () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("AI 工具（MCP）")).toBeTruthy());
     expect(screen.getByText(/当前没有插件声明 provides/)).toBeTruthy();
+  });
+
+  // ─────────── ★ E2 权限徽标（令21 五个用例） ───────────
+
+  it("E2：旧数组 token 推出核心徽标，db:own 计入明细 1 且本机网络常显", async () => {
+    apiMock.plugins.mockResolvedValue({
+      plugins: [{ id: "calendar", permissions: ["db:own", "net:out:localhost"] }],
+      count: 1,
+    });
+    renderApp();
+    const card = await waitFor(
+      () => screen.getByText("日程表").closest(".catalog-item") as HTMLElement,
+    );
+    expect(card.textContent).toContain("🌐 本机网络");
+    expect(card.textContent).toContain("🔑 权限明细 1");
+    // 细节 token 在 hover 气泡里
+    expect(card.textContent).toContain("🗄️ db:own");
+    expect(card.textContent).not.toContain("🌍 外部网络");
+  });
+
+  it("E2：空 permissions 显「🔒 无网络」、明细 0", async () => {
+    apiMock.plugins.mockResolvedValue({
+      plugins: [{ id: "calendar", permissions: [] }],
+      count: 1,
+    });
+    renderApp();
+    const card = await waitFor(
+      () => screen.getByText("日程表").closest(".catalog-item") as HTMLElement,
+    );
+    expect(card.textContent).toContain("🔒 无网络");
+    expect(card.textContent).toContain("🔑 权限明细 0");
+  });
+
+  it("E2：新对象 network=true 仅显中性「🌐 可联网」，不臆造本机/外网", async () => {
+    apiMock.plugins.mockResolvedValue({
+      plugins: [
+        { id: "calendar", permissions: { filesystem: false, network: true, subprocess: false } },
+      ],
+      count: 1,
+    });
+    renderApp();
+    const card = await waitFor(
+      () => screen.getByText("日程表").closest(".catalog-item") as HTMLElement,
+    );
+    expect(card.textContent).toContain("🌐 可联网");
+    expect(card.textContent).not.toContain("🌐 本机网络");
+    expect(card.textContent).not.toContain("🌍 外部网络");
+    // 气泡保留布尔原文，不丢信息
+    expect(card.textContent).toContain('"network":true');
+  });
+
+  it("E2：hover 气泡含原始 permissions 数组原文", async () => {
+    apiMock.plugins.mockResolvedValue({
+      plugins: [{ id: "calendar", permissions: ["db:own", "bridge:read"] }],
+      count: 1,
+    });
+    renderApp();
+    const card = await waitFor(
+      () => screen.getByText("日程表").closest(".catalog-item") as HTMLElement,
+    );
+    expect(card.textContent).toContain('["db:own","bridge:read"]');
+    expect(card.textContent).toContain("🔑 权限明细 2");
+  });
+
+  it("E2：非 plugin 源（manual）不渲染权限行", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    const pluginCard = screen.getByText("日程表").closest(".catalog-item") as HTMLElement;
+    const manualCard = screen.getByText("我的 API").closest(".catalog-item") as HTMLElement;
+    expect(pluginCard.querySelector(".catalog-perms")).toBeTruthy();
+    expect(manualCard.querySelector(".catalog-perms")).toBeFalsy();
   });
 });
