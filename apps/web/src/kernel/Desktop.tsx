@@ -4,6 +4,7 @@ import { ToastHost } from "@/shared/components/Toast";
 import { initTheme } from "@/shared/styles/theme";
 import { pluginHost, registerModules } from "./ModuleRegistry";
 import { useDesktopStore, normalStack, topmostNormalId, type WindowState } from "./store";
+import { installIframeAuthBridge } from "./iframeAuthBridge";
 import type { ModuleManifest } from "./types";
 import { AuthGate } from "./AuthGate";
 import { logout } from "@/shared/api/auth";
@@ -67,6 +68,8 @@ export function Desktop() {
 
   useEffect(() => {
     initTheme();
+    // ★ B2：跨源自家 iframe 的登录态握手桥（origin 白名单空起步，fail closed）
+    const bridge = installIframeAuthBridge();
     let cancelled = false;
     fetch(MODULES_URL)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
@@ -80,6 +83,7 @@ export function Desktop() {
       });
     return () => {
       cancelled = true;
+      bridge.dispose();
     };
   }, []);
 

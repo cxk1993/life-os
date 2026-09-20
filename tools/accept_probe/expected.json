@@ -1,0 +1,57 @@
+{
+  "_meta": {
+    "contract": "expected.json 即判据契约（总监令8 §3.2 约束2）：期望值任何变动必须回帖说明并 @总监 + @知默台账，禁止静默放宽",
+    "baseline_note": "仅收录已实测验证的判据；未基线的项 enabled=false，不得凭猜测置真",
+    "sources": {
+      "gate": "ACCEPT-T30 判据 A6 三快腿（02:23 全验判定帖 §1；02:53 延迟探针加固；11:4x 路线A 对表复绿）",
+      "hash": "生产入口 hash 基线链（02:36 判定帖 §5 追记 → 令8 §4 生产三项快照 12:00 复测未漂移）",
+      "modules": "modules 17 口径（总监令8 §4 12:00 实测；11:4x 本席逐数 id 复验）",
+      "docsprobe": "BUG-T16-1 销账 + T17 幂等线上判据（MiMo 09:15 库内盘点 + hermes 10:26 三合一眼验 + 本席 docs/nodes API 对表）"
+    }
+  },
+  "targets": {
+    "production": {
+      "base_url": "http://192.0.2.10:18080",
+      "username": "admin"
+    },
+    "local": {
+      "base_url": "http://127.0.0.1:18000",
+      "username": "admin",
+      "enabled": false,
+      "note": "本地 18000 为开发实例，状态随测试漂移，未立基线前不对表（enabled=false）"
+    }
+  },
+  "suites": {
+    "gate": {
+      "enabled": true,
+      "login_status": 200,
+      "cookie_name": "lifos_refresh",
+      "cookie_secure_count": 0,
+      "refresh_status": 200,
+      "me_status": 200,
+      "me_sub": "admin",
+      "source": "A6 三快腿（BUG-T30-1 销案判据）"
+    },
+    "hash": {
+      "enabled": true,
+      "entry_hash": "B3M7wy91",
+      "source": "T17+轻UI 批次上线基线；ISSUE-006 路线A 纯后端上线后复测未动（11:4x）"
+    },
+    "modules": {
+      "enabled": true,
+      "count": 17,
+      "ids": [
+        "agents", "auth", "calendar", "catalog", "dashboard", "diary", "docs",
+        "finance", "habits", "health", "mcp", "notes", "persona", "plugins",
+        "review", "todo", "web"
+      ],
+      "source": "总监令8 §4 生产三项快照（12:00）"
+    },
+    "docsprobe": {
+      "enabled": true,
+      "persona_roots": 1,
+      "diary_roots": 1,
+      "source": "BUG-T16-1 销账（人格单根）+ T17 幂等（日记连开 4 轮恒 1 根）"
+    }
+  }
+}
