@@ -43,6 +43,17 @@ export interface ManualEntryUpdate {
   enabled?: boolean | null;
 }
 
+// ★ mcp-console 轻 UI：T18 MCP 工具在目录页展示承接（只读 /api/v1/mcp/tools）
+//   与 mcp/api.ts 的 ToolInfo 同形状（不 import 对方，避免跨领地耦合）
+export interface CatalogMcpTool {
+  name: string;
+  description: string;
+  method: string;
+  path: string;
+  scope: string;
+  plugin_id: string;
+}
+
 const BASE = "/api/v1/catalog";
 
 export const catalogApi = {
@@ -51,4 +62,5 @@ export const catalogApi = {
   updateManual: (id: string, body: ManualEntryUpdate) =>
     api.patch<CatalogEntry>(`${BASE}/manual/${encodeURIComponent(id)}`, body),
   deleteManual: (id: string) => api.delete<void>(`${BASE}/manual/${encodeURIComponent(id)}`),
+  mcpTools: () => api.get<CatalogMcpTool[]>("/api/v1/mcp/tools"),
 };

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { catalogApi } from "./api";
-import type { CatalogEntry } from "./api";
+import { catalogApi, type CatalogEntry, type CatalogMcpTool } from "./api";
 import "./catalog.css";
 
 // ★ 来源分组（固定顺序：插件 → 网页 → 内核 → 手动）
@@ -27,6 +26,13 @@ export default function CatalogApp() {
     queryKey: ["catalog", "entries"],
     queryFn: () => catalogApi.getCatalog(),
     staleTime: 10_000,
+  });
+
+  // ★ mcp-console 轻 UI：T18 MCP 工具（AI 可调用能力）展示承接
+  const mcpQuery = useQuery({
+    queryKey: ["catalog", "mcp-tools"],
+    queryFn: () => catalogApi.mcpTools(),
+    retry: 1,
   });
 
   const toggleMut = useMutation({
@@ -174,7 +180,90 @@ export default function CatalogApp() {
           </div>
         </section>
       ))}
+
+      {/* ★ mcp-console 轻 UI：AI 工具（MCP）区块 —— T18 27 工具展示承接 */}
+      <McpToolsSection
+        tools={mcpQuery.data ?? null}
+        isLoading={mcpQuery.isLoading}
+        error={mcpQuery.error}
+      />
     </div>
+  );
+}
+
+const MCP_METHOD_BADGE: Record<string, string> = {
+  GET: "catalog-mcp-badge--get",
+  POST: "catalog-mcp-badge--post",
+  PUT: "catalog-mcp-badge--put",
+  DELETE: "catalog-mcp-badge--delete",
+};
+
+function McpToolsSection({
+  tools,
+  isLoading,
+  error,
+}: {
+  tools: CatalogMcpTool[] | null;
+  isLoading: boolean;
+  error: Error | null;
+}) {
+  // 按插件分组
+  const byPlugin = useMemo(() => {
+    const map = new Map<string, CatalogMcpTool[]>();
+    for (const t of tools ?? []) {
+      const list = map.get(t.plugin_id) ?? [];
+      list.push(t);
+      map.set(t.plugin_id, list);
+    }
+    return [...map.entries()];
+  }, [tools]);
+
+  return (
+    <section className="catalog-group catalog-mcp-section">
+      <div className="catalog-group-title">
+        AI 工具（MCP） <span className="catalog-group-count">{tools?.length ?? 0}</span>
+      </div>
+      {isLoading && <div className="catalog-hint">工具加载中…</div>}
+      {!isLoading && error && (
+        <div className="catalog-hint">工具列表加载失败（后端未启用 mcp？）</div>
+      )}
+      {!isLoading && !error && (tools?.length ?? 0) === 0 && (
+        <div className="catalog-hint">
+          当前没有插件声明 provides —— 在插件的 manifest 加一行 provides，这里就会自动多出一个 AI
+          工具。
+        </div>
+      )}
+      {!isLoading && !error && byPlugin.map(([pluginId, list]) => (
+        <div key={pluginId} className="catalog-mcp-plugin">
+          <div className="catalog-mcp-plugin-title">{pluginId}</div>
+          <table className="catalog-mcp-table">
+            <thead>
+              <tr>
+                <th>工具名</th>
+                <th>调用</th>
+                <th>scope</th>
+                <th>说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((t) => (
+                <tr key={t.name}>
+                  <td className="catalog-mcp-mono">{t.name}</td>
+                  <td>
+                    <span className={`catalog-mcp-badge ${MCP_METHOD_BADGE[t.method] ?? ""}`}>
+                      {t.method}
+                    </span>{" "}
+                    <span className="catalog-mcp-mono catalog-mcp-path">{t.path}</span>
+                  </td>
+                  <td className="catalog-mcp-mono">{t.scope}</td>
+                  <td className="catalog-mcp-desc">{t.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </section>
   );
 }
 

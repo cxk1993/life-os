@@ -11,6 +11,7 @@ vi.mock("./api", () => ({
     createManual: vi.fn(),
     updateManual: vi.fn(),
     deleteManual: vi.fn(),
+    mcpTools: vi.fn(),
   },
 }));
 
@@ -19,6 +20,7 @@ const apiMock = catalogApi as unknown as {
   createManual: ReturnType<typeof vi.fn>;
   updateManual: ReturnType<typeof vi.fn>;
   deleteManual: ReturnType<typeof vi.fn>;
+  mcpTools: ReturnType<typeof vi.fn>;
 };
 
 const sampleCatalog = {
@@ -52,6 +54,25 @@ const sampleCatalog = {
   counts: { plugin: 1, manual: 1 },
 };
 
+const sampleMcpTools = [
+  {
+    name: "calendar.event.write",
+    description: "写入日程事件",
+    method: "POST",
+    path: "/api/v1/calendar/events",
+    scope: "calendar:write",
+    plugin_id: "calendar",
+  },
+  {
+    name: "todo.item.create",
+    description: "创建待办",
+    method: "POST",
+    path: "/api/v1/todo/items",
+    scope: "todo:write",
+    plugin_id: "todo",
+  },
+];
+
 function renderApp() {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -67,6 +88,7 @@ describe("CatalogApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMock.getCatalog.mockResolvedValue(sampleCatalog);
+    apiMock.mcpTools.mockResolvedValue(sampleMcpTools);
   });
 
   it("加载后按来源分组展示条目", async () => {
@@ -125,5 +147,24 @@ describe("CatalogApp", () => {
     fireEvent.change(nameInput, { target: { value: "新建的 API" } });
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(apiMock.createManual).toHaveBeenCalled());
+  });
+
+  it("展示 MCP 工具区块（按插件分组）", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("AI 工具（MCP）")).toBeTruthy());
+    // 表格里应出现两个工具名（MCP 区块内）
+    const section = screen.getByText("AI 工具（MCP）").closest("section") as HTMLElement;
+    expect(section).toBeTruthy();
+    expect(section.querySelectorAll(".catalog-mcp-table tbody tr").length).toBe(2);
+    expect(section.textContent).toContain("calendar.event.write");
+    expect(section.textContent).toContain("todo.item.create");
+    expect(section.textContent).toContain("写入日程事件");
+  });
+
+  it("MCP 工具列表为空时显示提示", async () => {
+    apiMock.mcpTools.mockResolvedValue([]);
+    renderApp();
+    await waitFor(() => expect(screen.getByText("AI 工具（MCP）")).toBeTruthy());
+    expect(screen.getByText(/当前没有插件声明 provides/)).toBeTruthy();
   });
 });

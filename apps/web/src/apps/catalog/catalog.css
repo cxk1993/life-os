@@ -300,3 +300,89 @@
   font-size: 12px;
   color: red;
 }
+
+/* ─────────── mcp-console 轻 UI：AI 工具（MCP）区块 ─────────── */
+
+.catalog-mcp-section {
+  margin-top: 6px;
+}
+
+.catalog-mcp-plugin {
+  margin: 6px 0 10px;
+}
+
+.catalog-mcp-plugin-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #888);
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  background: rgba(128, 128, 128, 0.08);
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.catalog-mcp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.catalog-mcp-table th {
+  text-align: left;
+  color: var(--text-secondary, #888);
+  font-weight: 500;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+.catalog-mcp-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+  vertical-align: top;
+}
+
+.catalog-mcp-table tr:hover td {
+  background: rgba(128, 128, 128, 0.05);
+}
+
+.catalog-mcp-mono {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+}
+
+.catalog-mcp-path {
+  color: var(--text-secondary, #888);
+}
+
+.catalog-mcp-desc {
+  color: var(--text-secondary, #aaa);
+  font-size: 11px;
+}
+
+.catalog-mcp-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  color: #fff;
+  background: #666;
+}
+
+.catalog-mcp-badge--get {
+  background: #2f7d4f;
+}
+
+.catalog-mcp-badge--post {
+  background: #2d5f9e;
+}
+
+.catalog-mcp-badge--put {
+  background: #9a6a1f;
+}
+
+.catalog-mcp-badge--delete {
+  background: #a03a2e;
+}
