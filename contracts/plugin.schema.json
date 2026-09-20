@@ -135,12 +135,25 @@
       "description": "本插件会监听的事件。"
     },
     "permissions": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "pattern": "^(db:own|db:read:[a-z][a-z0-9-]*|bridge:read|net:out:[a-z0-9.-]+|fs:plugin|notify:send)$"
-      },
-      "description": "声明式权限：db:own / db:read:<id> / bridge:read / net:out:<host> / fs:plugin / notify:send。"
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "【旧格式，向后兼容】权限字符串数组，如 [\"db:own\"]。新插件请用对象格式。"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "filesystem": { "type": "boolean", "default": false, "description": "允许访问本地文件系统" },
+            "network": { "type": "boolean", "default": false, "description": "允许发起网络请求" },
+            "subprocess": { "type": "boolean", "default": false, "description": "允许创建子进程" }
+          },
+          "required": [],
+          "description": "【新格式】声明式权限：filesystem / network / subprocess，默认均为 false，需显式授权"
+        }
+      ],
+      "description": "权限声明：支持旧数组格式（向后兼容）或新对象格式（声明式）。"
     },
     "migrations": {
       "type": ["string", "null"],

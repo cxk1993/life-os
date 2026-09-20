@@ -76,8 +76,10 @@ def _manifest(plugin_id: str, name: str, kind: str) -> dict[str, object]:
         "slots": [],
         "emits": [],
         "consumes": [],
-        # db:own = 只允许写自己的表（表名以插件 id 为前缀）
-        "permissions": ["db:own"],
+        # ★ 声明式权限（数组格式，旧格式）：默认空数组，需显式授权
+        # 新对象格式（{"filesystem": false, ...}）schema 已放行，但内核仍只收 list[str]
+        # 待内核升级（B 路径）后再切对象格式，此处回退数组格式避免启动 fail
+        "permissions": [],
         "migrations": "api/migrations",
         "settingsSchema": "api/settings.schema.json",
         "lifecycle": {
