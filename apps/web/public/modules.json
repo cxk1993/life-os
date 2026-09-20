@@ -209,5 +209,20 @@
       "minW": 560,
       "minH": 400
     }
+  },
+  {
+    "id": "mcp",
+    "name": "MCP Server",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "桥",
+    "description": "MCP 桥：把插件 provides 机械映射成 AI 可调用的工具。",
+    "entry": "@/apps/mcp",
+    "window": {
+      "w": 860,
+      "h": 560,
+      "minW": 520,
+      "minH": 360
+    }
   }
 ]

@@ -1,21 +1,27 @@
-"""测试会话级保险：清理可能残留的临时模块目录。
+"""测试会话级保险 + ★ 全量 pytest 数据库隔离（MiMo · Zcode 派工）。
 
 ## 为什么需要这个文件
 
-`test_kernel.py` 里的 `probe_module` fixture 必须把临时模块造在**真实的** `modules/` 之下
-（因为 `load_router` 是按模块 id 从 `modules` 包里 import 的，放临时目录 import 不到），
-所以它有污染仓库的可能。
+1. **残留清理**：probe 模块 / plugins 临时目录 / tmp_*.db 在进程被强杀时
+   teardown 不执行，会污染下一轮（T03/T15 实测踩过）。
+2. ★ **DB 隔离（2026-09-20 系统性修复）**：
+   - 各测试文件在 import 时设 `os.environ["DB_PATH"]`；
+   - `init_engine()` **幂等只认第一次**；
+   - pytest **先收集（import 全部模块）再执行** → 环境变量被「最后一个
+     import」覆盖，之后第一个 fixture 的 init_engine 绑定全局库；
+   - 结果：全量跑时 test_web 等打到别人的 tmp 库，出现
+     `409 slug 已被占用：demo` 等连挂（单跑该文件却全绿）。
 
-它自己带 `finally` 清理。但有一个 `finally` 兜不住的情况：**pytest 进程被强杀**
-（编排者中途停掉任务、进程被 SIGKILL），teardown 根本不执行 —— 于是仓库里留下了
-`modules/t03probe/`。这个坑**在 T03 验收时实际踩过一次**，排查了半天才确认是残留。
-
-所以这里再加一层会话级保险：会话开始前清一次、结束后再清一次。
-即使上一轮是被强杀的，下一轮跑测试时也会自动收拾干净。
+   **修法**：每个测试模块第一次 setup 前，把引擎 **reset** 到该模块
+   独占的 `tmp_iso_<模块名>_<pid>.db`。模块 fixture 里再 init_engine
+   即绑定到正确库；表由各模块自己 create_all/checkfirst。
+   **不改任何测试断言**，只动隔离基础设施（总监授权）。
 """
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
 from collections.abc import Iterator
 from pathlib import Path
@@ -33,6 +39,9 @@ LEFTOVER_PROBE_MODULES = ("t03probe",)
 # uninstall 删掉；但进程被强杀时 teardown 不执行，就会像下面这样留下来）
 LEFTOVER_PLUGIN_GLOBS = ("demo3p-*", "drillplug")
 
+# 已切换引擎的测试模块（避免每条测试都 reset）
+_isolated_modules: set[str] = set()
+
 
 def _clean_leftovers() -> None:
     for name in LEFTOVER_PROBE_MODULES:
@@ -46,15 +55,46 @@ def _clean_leftovers() -> None:
 
 
 def _clean_tmp_dbs() -> None:
-    """清掉 tmp_*.db 测试库残留。
-
-    T15/T17 等卡用 data/tmp_*.db 做隔离库；进程被强杀或跨次运行残留时，
-    库里的旧数据会让全量运行出现偶发断言失败（2026-09-19 实测一例：
-    test_restore_revision_keeps_history 因残留状态偶发红一次）。
-    会话开始前清一次，测试自己会在 fixture 里重建表。
-    """
+    """清掉 tmp_*.db 测试库残留（含 tmp_iso_*）。"""
     for p in DATA_DIR.glob("tmp_*.db"):
         p.unlink(missing_ok=True)
+    # WAL 附属文件
+    for p in DATA_DIR.glob("tmp_*.db-*"):
+        p.unlink(missing_ok=True)
+
+
+def _module_db_path(mod_name: str) -> str:
+    """每个测试进程内模块独占的 SQLite 路径（相对 services/api）。"""
+    short = mod_name.rsplit(".", 1)[-1]
+    short = re.sub(r"[^A-Za-z0-9_]+", "_", short)[:80]
+    return f"./data/tmp_iso_{short}_{os.getpid()}.db"
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item: pytest.Item) -> None:
+    """模块边界：把全局引擎切到该测试模块的隔离库。"""
+    mod = item.module
+    if mod is None:
+        return
+    name = getattr(mod, "__name__", "") or ""
+    if not name.startswith("tests") and "test_" not in name:
+        return
+    if name in _isolated_modules:
+        return
+    _isolated_modules.add(name)
+
+    db_path = getattr(mod, "_TEST_DB_PATH", None) or _module_db_path(name)
+    os.environ["DB_PATH"] = str(db_path)
+    # 声明给模块内 fixture 使用（有的 fixture 读 environ，有的直接 init_engine）
+    try:
+        mod._TEST_DB_PATH = str(db_path)  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        pass
+
+    from db.engine import init_engine, reset_engine
+
+    reset_engine()
+    init_engine()
 
 
 @pytest.fixture(scope="session", autouse=True)

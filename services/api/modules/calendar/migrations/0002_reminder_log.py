@@ -13,6 +13,12 @@ _MODEL_MODULE = "calendar_models_0002"
 
 
 def _load_models() -> Any:
+    # 全量 pytest / lifespan：create_app 可能已 import 包路径 models，
+    # 再按文件路径 exec 会重复定义 Table。优先复用已加载模块。
+    for key in ("modules.calendar.models", _MODEL_MODULE):
+        existing = sys.modules.get(key)
+        if existing is not None:
+            return existing
     path = Path(__file__).resolve().parent.parent / "models.py"
     spec = importlib.util.spec_from_file_location(_MODEL_MODULE, path)
     assert spec is not None and spec.loader is not None

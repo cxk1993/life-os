@@ -16,6 +16,12 @@ _MODEL_MODULE = "todo_models"
 
 
 def _load_models() -> Any:
+    # 全量 pytest / lifespan：create_app 可能已 import 包路径 models，
+    # 再按文件路径 exec 会重复定义 Table。优先复用已加载模块。
+    for key in ("modules.todo.models", _MODEL_MODULE):
+        existing = sys.modules.get(key)
+        if existing is not None:
+            return existing
     # todo 模块是扁平结构：modules/todo/migrations/0001_init.py → 上两级到 modules/todo/models.py
     path = Path(__file__).resolve().parent.parent / "models.py"
     spec = importlib.util.spec_from_file_location(_MODEL_MODULE, path)

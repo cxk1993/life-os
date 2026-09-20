@@ -94,15 +94,42 @@ def get_engine() -> Engine:
 
 
 def init_engine(db_url: str | None = None) -> Engine:
-    """初始化引擎并注册到 core.deps（幂等；重复调用返回同一引擎）。
+    """初始化引擎并注册到 core.deps。
 
-    这是 main.py 里唯一需要出现的 db 代码：
-        from db.engine import init_engine
-        init_engine()
+    - `db_url=None`：幂等，已有引擎直接返回（生产入口姿势）。
+    - **显式 `db_url`**：若与当前引擎不同则 **重建**（测试隔离需要：
+      pytest hook 已按模块绑过库，个别测试再传独立 URL 时必须能切换）。
     """
     global _engine
-    if _engine is None:
-        _engine = make_engine(db_url)
-        set_engine(session_factory)
-        logger.info("数据库引擎已就绪：%s", _engine.url)
+    if _engine is not None:
+        if db_url is None:
+            return _engine
+        try:
+            current = _engine.url.render_as_string(hide_password=False)
+        except Exception:  # noqa: BLE001
+            current = str(_engine.url)
+        target = db_url
+        if current == target or current.replace("sqlite:///", "sqlite:///") == target:
+            return _engine
+        reset_engine()
+    _engine = make_engine(db_url)
+    set_engine(session_factory)
+    logger.info("数据库引擎已就绪：%s", _engine.url)
     return _engine
+
+
+def reset_engine() -> None:
+    """丢弃当前全局引擎，使下次 init_engine() 按当时的 DB_PATH 重建。
+
+    仅供**测试隔离**使用（conftest / pytest hook）：全量 pytest 时多个测试
+    模块各自声明 DB_PATH，但 init_engine 幂等只认第一次——不 reset 就会
+    全进程共用一个库，出现 slug 冲突类连挂。生产入口不要调用本函数。
+    """
+    global _engine
+    if _engine is not None:
+        try:
+            _engine.dispose()
+        except Exception:  # noqa: BLE001 — dispose 失败不阻断切换
+            logger.warning("reset_engine: dispose 当前引擎失败", exc_info=True)
+        _engine = None
+    logger.info("数据库引擎已重置，等待 init_engine()")

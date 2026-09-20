@@ -206,6 +206,8 @@ def test_sync_mcp_mode_missing_token_clear_error(client, auth, monkeypatch):
     monkeypatch.setenv("FINANCE_UPSTREAM", "mcp")
     monkeypatch.setenv("BEECOUNT_BASE_URL", "http://127.0.0.1:8870")
     monkeypatch.delenv("BEECOUNT_MCP_TOKEN", raising=False)
+    # 屏蔽 .env 回退，否则 read_setting 会读到真实 token，测不出「未配置」
+    monkeypatch.setattr("core.config._dotenv_values", lambda: {})
     r = client.post(f"{BASE}/snapshots/sync", headers=auth)
     assert r.status_code == 503, r.text
     assert r.headers.get("content-type", "").startswith("application/problem+json")
