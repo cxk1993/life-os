@@ -63,3 +63,33 @@ class ReconcileStatusOut(BaseModel):
     desired_count: int
     scheduler_enabled: bool = False
     records: list[HealthRecordOut] = []
+
+
+class ReconcileDigestOut(BaseModel):
+    """E3 reconcile 摘要（并表用，不带记录清单）。"""
+
+    event_topic: str = "health.care.requested"
+    desired_count: int = 0
+    scheduler_enabled: bool = False
+
+
+class ModuleHealthOut(BaseModel):
+    """TX-O1-01 · 单模块健康四态条目（结构态只读目击）。"""
+
+    id: str
+    name: str | None = None
+    kind: str | None = None
+    status: str
+    activated: bool = False
+    api_health_declared: bool = False
+    detail: str | None = None
+
+
+class ModulesStatusOut(BaseModel):
+    """TX-O1-01 · 坞模块健康总览（四态 + 汇总 + E3 reconcile 并表）。"""
+
+    ok: bool = True
+    count: int = 0
+    modules: list[ModuleHealthOut] = []
+    summary: dict[str, int] = {}
+    reconcile: ReconcileDigestOut = ReconcileDigestOut()

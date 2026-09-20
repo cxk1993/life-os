@@ -8,13 +8,14 @@ import logging
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi import Path as FPath
 from sqlmodel import Session
 
 from core.deps import get_current_user, get_db
 from core.security import User
 
+from .module_status import dock_module_status
 from .reconcile import reconcile_followups, reconcile_status
 from .reconcile_scheduler import scheduler_status as reconcile_scheduler_status
 from .reconcile_scheduler import start_scheduler as start_reconcile_scheduler
@@ -23,6 +24,7 @@ from .schema import (
     HealthRecordCreate,
     HealthRecordOut,
     HealthRecordUpdate,
+    ModulesStatusOut,
     ReconcileOut,
     ReconcileStatusOut,
 )
@@ -138,6 +140,23 @@ def get_reconcile_scheduler(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
     return reconcile_scheduler_status()
+
+
+# ── TX-O1-01 · 坞模块健康四态（令 30 批 A 角 Zcode；只读目击，不自动处置）──
+
+
+@router.get("/modules", response_model=ModulesStatusOut)
+def dock_module_statuses(
+    request: Request,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """坞模块四态总览（healthy/degraded/disabled/unknown）+ E3 reconcile 并表。
+
+    结构态判定（进程内注册/激活状态），零网络自探测；census 语义零漂移
+    （内核 /api/v1/modules 不动，本端点为 health 前缀下的纯附加）。
+    """
+    return dock_module_status(request.app, db)
 
 
 # 模块挂载时尝试启动 reconcile 调度；默认关时为空操作
