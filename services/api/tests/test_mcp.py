@@ -100,6 +100,25 @@ def test_derive_tool_skips_invalid(bad):
     assert derive_tool(bad, "/api/v1/x", "p") is None
 
 
+# ─────────────────── 路径例外表（ISSUE-008） ───────────────────
+@pytest.mark.parametrize(
+    ("provides", "base", "plugin_id", "expect_path"),
+    [
+        # 实证故障 1：dashboard.today.read 真实路由是 /today（非机械推导的 /todays）
+        ("dashboard.today.read", "/api/v1/dashboard", "dashboard", "/api/v1/dashboard/today"),
+        # 实证故障 2：dashboard.system-health.read 真实路由是 /health-of-system
+        ("dashboard.system-health.read", "/api/v1/dashboard", "dashboard",
+         "/api/v1/dashboard/health-of-system"),
+        # 防误伤：例外表按 plugin_id 限定，别的插件的 todays 仍走机械推导
+        ("other.today.read", "/api/v1/other", "other", "/api/v1/other/todays"),
+    ],
+)
+def test_derive_tool_path_overrides(provides, base, plugin_id, expect_path):
+    t = derive_tool(provides, base, plugin_id)
+    assert t is not None
+    assert t.path == expect_path
+
+
 # ───────────────────────── PAT 生命周期 ─────────────────────────
 def test_pat_create_returns_plaintext_once(client):
     r = client.post(

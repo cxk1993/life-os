@@ -42,6 +42,18 @@ WRITE_VERBS: frozenset[str] = frozenset(
     {"write", "create", "update", "delete", "remove"}
 )
 
+# 路径例外表（ISSUE-008，2026-09-20）：机械「resource+s」复数化的实证例外。
+# 键 = f"{plugin_id}.{resource}s"（机械推导产物），值 = 插件 router 里的真实路由段。
+# 仅 2 条实证故障（Qoder 勘误：幻影第三工具不存在，勿再加映射）：
+#   dashboard.today.read         → /today           （非 /todays）
+#   dashboard.system-health.read → /health-of-system（非 /system-healths）
+# 带 plugin_id 前缀限定作用域：其他插件将来真有 todays 复数路由不受误伤。
+# 例外表膨胀（>5 条）时应升级为 manifest 显式声明（T18 哲学的正式扩展，候卡）。
+_PATH_OVERRIDES: dict[str, str] = {
+    "dashboard.todays": "/today",
+    "dashboard.system-healths": "/health-of-system",
+}
+
 
 @dataclass(frozen=True)
 class ToolMapping:
@@ -72,7 +84,8 @@ def derive_tool(provides: str, api_base: str, plugin_id: str) -> ToolMapping | N
         return None
     name = "_".join(parts)
     scope = f"{domain}:{verb}"
-    path = f"{api_base.rstrip('/')}/{resource}s"
+    derived = f"/{resource}s"
+    path = f"{api_base.rstrip('/')}{_PATH_OVERRIDES.get(f'{plugin_id}.{resource}s', derived)}"
     description = (
         f"MCP 工具：调用 {api_base} 的 {resource} {verb} 能力（域 {domain}，"
         f"来源插件 {plugin_id}）。入参 payload 为请求体（GET 时转查询参数）。"
