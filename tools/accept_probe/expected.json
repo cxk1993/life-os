@@ -34,8 +34,8 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "ZKIU8avV",
-      "source": "2026-09-20 15:3x 生产部署批次（主人 15:0x 拍板，总监部署单：RFC-001+E1+934e300+E3+B2 dist 重建）后 L2 实测新入口；旧基线 B3M7wy91（T17+轻UI 批次）→ ZKIU8avV（B2 dist+E2 徽标批次）；契约变动已回帖 @总监+知默"
+      "entry_hash": "C3N61fir",
+      "source": "2026-09-22 23:3x 全量对齐部署批次（主人拍板「与本地 HEAD 7b4e418 完全对齐」，总监执行：9f36254 分页+4483c98 ISSUE-008+00915b1 O1 三件套及全部后端增量，本地重建 dist 直传，MD5 七点抽对全✓）后实测新入口；基线链 B3M7wy91→ZKIU8avV→C3N61fir；契约变动按纪律回帖 @总监+知默"
     },
     "modules": {
       "enabled": true,
