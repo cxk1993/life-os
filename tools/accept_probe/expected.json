@@ -11,7 +11,7 @@
   },
   "targets": {
     "production": {
-      "base_url": "http://192.0.2.10:18080",
+      "base_url": "https://life.example.com:8443",
       "username": "admin"
     },
     "local": {
