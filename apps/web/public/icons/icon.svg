@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1e3d"/>
+      <stop offset="1" stop-color="#153a6b"/>
+    </linearGradient>
+    <linearGradient id="moon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fdf6e3"/>
+      <stop offset="1" stop-color="#ffe9b0"/>
+    </linearGradient>
+    <linearGradient id="tide1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4fc3f7"/>
+      <stop offset="1" stop-color="#7ce4d8"/>
+    </linearGradient>
+    <linearGradient id="tide2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- 星 -->
+  <circle cx="120" cy="120" r="5" fill="#fdf6e3" opacity="0.9"/>
+  <circle cx="180" cy="80"  r="3" fill="#fdf6e3" opacity="0.7"/>
+  <circle cx="90"  cy="200" r="3" fill="#fdf6e3" opacity="0.6"/>
+  <circle cx="420" cy="96"  r="4" fill="#fdf6e3" opacity="0.8"/>
+  <!-- 月（弦月：实心圆挖偏心的暗圆） -->
+  <g>
+    <path d="M 352 84
+             A 128 128 0 1 0 352 340
+             A 104 104 0 1 1 352 84 Z" fill="url(#moon)"/>
+  </g>
+  <!-- 潮（两道浪） -->
+  <path d="M 32 400
+           C 96 360, 160 440, 224 400
+           S 352 360, 416 400
+           S 496 430, 512 412
+           L 512 460
+           C 460 484, 380 448, 300 470
+           S 120 488, 32 464 Z" fill="url(#tide2)" opacity="0.95"/>
+  <path d="M 32 372
+           C 100 336, 168 408, 240 372
+           S 376 336, 448 372" fill="none" stroke="url(#tide1)" stroke-width="18" stroke-linecap="round"/>
+</svg>

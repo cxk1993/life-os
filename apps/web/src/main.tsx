@@ -34,3 +34,12 @@ createRoot(rootElement).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+// PWA：生产环境注册 service worker（dev 下不注册，避免 HMR 被缓存层干扰）。
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // 注册失败不影响使用，静默即可（例如通过 IP 直连的非安全上下文）
+    });
+  });
+}
