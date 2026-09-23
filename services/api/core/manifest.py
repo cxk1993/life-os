@@ -49,6 +49,11 @@ class Manifest(BaseModel):
     api: ManifestApi
     provides: list[str] = []
     requires: list[str] = []
+    # ★ TX-DEG-01（#009 软依赖声明的静态半边）：缺了**不阻塞启动**的依赖。
+    #   语义：硬依赖（requires）缺 = 起不来（T14 fail-fast 不变）；
+    #        软依赖（本字段）缺 = 坞位挂 degraded 角标，功能降级但不死。
+    #   与 requires 必须互斥（同一条目不得两处都写 —— #033 闸门规则 ④）。
+    optionalDependencies: list[str] = []
     slots: list[str] = []
     emits: list[str] = []
     consumes: list[str] = []
@@ -101,6 +106,82 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
     return m
 
 
+# ── TX-DEG-01 · 依赖声明闸门（#033 四条静态规则）─────────────────────────
+# 依据：Home Assistant hassfest「Reject manifest dependencies on core integrations」
+# （PR #169425）+ 我方显式声明线（#019→#021→#020）。**依赖声明错误必须在闸门层
+# 拦截，不能留给运行时** —— 等加载期撞墙时模块已经挂了一半，现场很难定位。
+#
+# ★ 语义锚点（2026-09-23 实装时被真实目录打回后校准）：`requires` /
+#   `optionalDependencies` 里写的是**能力名**（如 `web.entry.read`），**不是模块 id** ——
+#   闸门判据是「该能力必须被某个模块 provides」。第一版按"模块 id 必须实存"判，
+#   上线即被 catalog（它依赖的是 web 的能力，不是 web 这个模块）拦下 ——
+#   这次校准本身就是闸门价值的证明。
+#
+# 四条规则：① 依赖的能力必须被某模块 provides ② 禁止反向依赖内核内部能力
+#           ③ 循环依赖检测（能力→提供者模块，只沿硬依赖）④ 软依赖不得同时是硬依赖
+KERNEL_RESERVED_CAPABILITY_PREFIXES: tuple[str, ...] = ("core.", "kernel.", "_kernel.")
+
+
+def _gate_dependency_declarations(found: dict[str, tuple[Manifest, Path]]) -> None:
+    """依赖声明闸门：全部模块发现后统一校验，失败抛 ManifestError（启动即失败）。"""
+    # 能力名 → 提供者模块 id
+    provider: dict[str, str] = {}
+    for mid, (m, _p) in found.items():
+        for cap in m.provides:
+            provider.setdefault(cap, mid)
+
+    # 模块 → 其硬依赖所指向的模块（经「能力 → 提供者」映射；软依赖不入图）
+    hard_edges: dict[str, set[str]] = {mid: set() for mid in found}
+
+    for mid, (m, _p) in found.items():
+        hard, soft = list(m.requires), list(m.optionalDependencies)
+
+        # ④ 软硬互斥（同一能力不得两处都写）
+        both = sorted(set(hard) & set(soft))
+        if both:
+            raise ManifestError(
+                f"模块「{mid}」的能力 {both} 同时出现在 requires 与 optionalDependencies"
+                "（软硬必须互斥：要么缺了会死，要么缺了降级，不能两头都占）"
+            )
+
+        for cap in hard + soft:
+            field = "requires" if cap in hard else "optionalDependencies"
+            # ② 不得反向依赖内核内部能力
+            if cap.startswith(KERNEL_RESERVED_CAPABILITY_PREFIXES):
+                raise ManifestError(
+                    f"模块「{mid}」{field} 依赖内核内部能力 {cap!r}"
+                    "（内核是宿主、不对外 provides —— 反向依赖禁止）"
+                )
+            # ① 依赖的能力必须真的有人 provides
+            if cap not in provider:
+                raise ManifestError(
+                    f"模块「{mid}」{field} 声明的能力 {cap!r} 没有任何模块 provides"
+                )
+            if field == "requires":
+                owner = provider[cap]
+                if owner != mid:  # 依赖自己提供的能力不构成环
+                    hard_edges[mid].add(owner)
+
+    # ③ 循环依赖：沿「能力 → 提供者模块」的硬边遍历（软依赖缺了不死，不参与）
+    white, gray, black = 0, 1, 2
+    color: dict[str, int] = dict.fromkeys(found, white)
+
+    def visit(node: str, path: list[str]) -> None:
+        color[node] = gray
+        for nxt in sorted(hard_edges.get(node, ())):
+            if nxt not in found:  # 规则①已拦，此处防御性跳过
+                continue
+            if color[nxt] == gray:
+                raise ManifestError("检测到循环硬依赖：" + " → ".join([*path, node, nxt]))
+            if color[nxt] == white:
+                visit(nxt, [*path, node])
+        color[node] = black
+
+    for mid in sorted(found):
+        if color[mid] == white:
+            visit(mid, [])
+
+
 def discover_modules(modules_dir: str | Path) -> list[tuple[Manifest, Path]]:
     """扫描 modules/*/manifest.json，返回 (manifest, 目录) 列表。
 
@@ -131,6 +212,9 @@ def discover_modules(modules_dir: str | Path) -> list[tuple[Manifest, Path]]:
             raise ManifestError(f"模块 id 重复：{m.id!r}（{sub.name} 与已发现模块冲突）")
         found[m.id] = (m, sub)
         results.append((m, sub))
+
+    # ★ TX-DEG-01：全部发现后统一过「依赖声明闸门」（①实存 ②禁内核 ③环 ④软硬互斥）
+    _gate_dependency_declarations(found)
 
     return results
 
