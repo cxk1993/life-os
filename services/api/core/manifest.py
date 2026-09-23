@@ -7,14 +7,17 @@
 from __future__ import annotations
 
 import importlib
+import logging
 from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core.errors import ManifestError
+
+log = logging.getLogger("kernel.manifest")
 
 _KINDS = {"core", "builtin", "third-party"}
 _ID_RE = __import__("re").compile(r"^[a-z][a-z0-9-]*$")
@@ -63,7 +66,28 @@ class Manifest(BaseModel):
     activates_on: list[str] = []
     migrations: str | None = None
     settingsSchema: str | None = None
+    # ★ D′-1（2026-09-23 · 唯一读法之内核侧）：这两个字段**原文通道一直在用、模型通道
+    #   却从未声明**（pydantic 默认 extra="ignore" 把它们静默吞掉）——
+    #   实测：所有内置 manifest 都写着 `entry` 与 `window`，而 `Manifest` 模型看不见它们，
+    #   导致同一份 manifest 两套口径（模型通道 / 原文通道）。此处补齐，让模型也"看得见"。
+    #   前端侧（PluginContext 改读模型）**刻意留后**：那是 E5 在制区，改动必撞车。
+    entry: str | None = None
+    window: dict[str, Any] | None = None
     lifecycle: dict[str, Any] = Field(default_factory=dict)
+
+    # ── D′-2（2026-09-23）：未知字段必须**被报告**，不再静默吞 ──
+    # 为什么是 class-level：pydantic v2 的 extra 策略在模型级生效，而我们要按 manifest 的
+    # kind **分档**（内置严、第三方宽）→ 故模型级放 allow（不丢信息），分档判定放到 _validate。
+    model_config = ConfigDict(extra="allow")
+
+    @property
+    def unknown_fields(self) -> dict[str, Any]:
+        """本 manifest 里模型不认识的顶层字段（`extra="allow"` 会收在这里）。
+
+        ★ 静默失败防御：旧行为下这些字段被**直接丢弃且不留痕**——
+          `requires` 拼成 `requiers` 时，作者以为声明了硬依赖，实际 `requires` 仍是空表。
+        """
+        return dict(self.model_extra or {})
 
     def as_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json", exclude_none=True)
@@ -105,6 +129,33 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
                 f"模块「{m.id}」activates_on 条目 {act!r} 非法：只支持 "
                 "startup:always 或 event:<topic>（点分小写、至少两段，如 event:note.created）"
             )
+
+    # ★ D′-2（2026-09-23）：未知字段分档处理 —— 不再静默吞
+    #   留扩展位：`x_` 前缀 与 `extensions` 对象一律放行（对齐 Agent Plugins 的 extensions
+    #   命名空间思路：客户端特定数据有明确的落脚处，不必挤进顶层）。
+    unknown = {
+        k: v
+        for k, v in m.unknown_fields.items()
+        if not k.startswith("x_") and k != "extensions"
+    }
+    if unknown:
+        names = sorted(unknown)
+        if m.kind == "builtin":
+            # 内置插件由我们自己写 → 拼错必须当场拒（这正是 D 提案的原始 bug：
+            # `requires` 拼成 `requiers` 时，作者以为声明了硬依赖，实际是空表）
+            raise ManifestError(
+                f"模块「{m.id}」manifest 含内核不认识的字段 {names}；"
+                "内置插件的字段名必须字面正确（拼错会静默失效）。"
+                "确需携带客户端私有数据请用 `extensions` 对象或 `x_` 前缀。"
+            )
+        # 第三方插件：报告但继续（对齐 Agent Plugins Spec「未知字段 MUST report」）
+        log.warning(
+            "模块 %s（kind=%s）manifest 含未知字段 %s —— 已忽略（第三方允许扩展）",
+            m.id,
+            m.kind,
+            names,
+        )
+
     return m
 
 
