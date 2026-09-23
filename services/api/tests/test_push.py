@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import base64
 import os
 
 os.environ["DB_PATH"] = "./data/tmp_push.db"
@@ -263,3 +264,64 @@ def test_active_subscription_ceiling(db: Session, monkeypatch) -> None:
         },
     )
     assert refreshed.p256dh == "BKrefresh"
+
+
+# ──────────── 静默失败防御（讨论第五轮 · 提案 G1）────────────
+# vapid_ready 从「只查非空」升级为「查格式可解」。以下前三条**故意造坏输入**，
+# 遵纪律「加闸门必须证明它对坏输入能变红」——旧实现在这三条上都会误报 ready:true。
+
+_GOOD_PUB = base64.urlsafe_b64encode(b"\x04" + b"\x11" * 64).rstrip(b"=").decode()
+
+
+def test_vapid_ready_rejects_malformed_public_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """★ 反例①：公钥形状不对（非 65B/0x04）→ 必须 not ready。"""
+    monkeypatch.setattr(sender, "vapid_keys", lambda: ("tooshort", "x" * 43, "mailto:a@b"))
+    assert sender.vapid_ready() is False
+
+
+def test_vapid_ready_rejects_undersized_public_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """★ 反例②：公钥长度对但首字节不是 0x04（非未压缩点）→ not ready。"""
+    bad = base64.urlsafe_b64encode(b"\x02" + b"\x11" * 64).rstrip(b"=").decode()
+    monkeypatch.setattr(sender, "vapid_keys", lambda: (bad, "x" * 43, "mailto:a@b"))
+    assert sender.vapid_ready() is False
+
+
+def test_vapid_ready_rejects_unparseable_private_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """★ 反例③：公钥形状对、但私钥解不开 → 仍须 not ready（旧实现会误报 ready）。"""
+    monkeypatch.setattr(
+        sender, "vapid_keys", lambda: (_GOOD_PUB, "not-a-valid-private-key", "mailto:a@b")
+    )
+    assert sender.vapid_ready() is False
+
+
+def test_vapid_ready_accepts_a_real_generated_pair(monkeypatch: pytest.MonkeyPatch) -> None:
+    """正例：真实生成器产出的密钥对 → ready（确保新校验不误杀好密钥）。"""
+    from cryptography.hazmat.primitives import serialization
+    from py_vapid import Vapid
+
+    v = Vapid()
+    v.generate_keys()
+    pub = (
+        base64.urlsafe_b64encode(
+            v.public_key.public_bytes(
+                serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+            )
+        )
+        .rstrip(b"=")
+        .decode()
+    )
+    priv = (
+        base64.urlsafe_b64encode(
+            v.private_key.private_numbers().private_value.to_bytes(32, "big")
+        )
+        .rstrip(b"=")
+        .decode()
+    )
+    monkeypatch.setattr(sender, "vapid_keys", lambda: (pub, priv, "mailto:a@b"))
+    assert sender.vapid_ready() is True
+
+
+def test_vapid_ready_still_false_when_keys_absent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """回归：空值仍 not ready（不因新增校验改坏原有语义）。"""
+    monkeypatch.setattr(sender, "vapid_keys", lambda: ("", "", "mailto:a@b"))
+    assert sender.vapid_ready() is False

@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import base64
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -77,9 +78,48 @@ def vapid_keys() -> tuple[str, str, str]:
     return pub, priv, claims
 
 
+def _public_key_shape_ok(pub_b64: str) -> bool:
+    """公钥必须是 base64url 解码后 65 字节、首字节 0x04 的未压缩点。
+
+    ★ 这正是前端 `applicationServerKey` 要求的形状，也是 VAPID 生成器
+      （`tools/gen_vapid_keys.py`）三重自验之一 —— 同一个判据两处复用。
+    """
+    try:
+        raw = base64.urlsafe_b64decode(pub_b64 + "=" * (-len(pub_b64) % 4))
+    except Exception:  # noqa: BLE001 — 任何解码失败都算"形状不对"
+        return False
+    return len(raw) == 65 and raw[0] == 0x04
+
+
+def _private_key_parseable(priv_b64: str) -> bool:
+    """私钥必须能被 py_vapid 反解（from_string 规则：去换行 → b64url → 32B from_raw / DER）。"""
+    try:
+        from py_vapid import Vapid  # type: ignore[import-untyped]  # noqa: PLC0415
+
+        Vapid.from_string(priv_b64)
+        return True
+    except Exception:  # noqa: BLE001 — 解不开就算不可用
+        return False
+
+
 def vapid_ready() -> bool:
+    """VAPID 是否就绪。
+
+    ★ 静默失败防御（讨论第五轮 · 提案 G1）：**不只查"非空"**。
+      旧实现 `bool(pub and priv)` 下，私钥粘错位置 / 少一位 / 带空格副本 / 公私填反，
+      都会让 `/push/health` 报 `vapid_ready: true`，**直到真正发送才炸**（"假成功"）。
+      现补两道格式校验：
+        - 公钥：base64url → 65 字节未压缩点（0x04 开头）
+        - 私钥：可被 py_vapid 反解
+      ★ 惰性容错：未装 pywebpush 时**跳过私钥解析**（health 另有 `pywebpush_installed`
+        单独上报），不改变"没装依赖时插件仍可加载"的既有设计。
+    """
     pub, priv, _ = vapid_keys()
-    return bool(pub and priv)
+    if not (pub and priv):
+        return False
+    if not _public_key_shape_ok(pub):
+        return False
+    return _private_key_parseable(priv) if pywebpush_available() else True
 
 
 def pywebpush_available() -> bool:
