@@ -18,7 +18,7 @@ from typing import Any
 
 import httpx
 
-from core.config import get_settings
+from core.config import read_setting
 
 
 # 与 bridge.protocol 同一 canonical 格式
@@ -49,9 +49,14 @@ class BridgeClient:
         psk: str | None = None,
         timeout: float = 5.0,
     ) -> None:
-        settings = get_settings()
-        self.base_url = (base_url or getattr(settings, "bridge_url", "") or "").rstrip("/")
-        self.psk = psk or getattr(settings, "bridge_psk", "") or ""
+        # ★ 统一走 core.config.read_setting（os.environ 优先，缺失回退项目根 .env）。
+        #   背景：Settings 未声明 bridge_* 字段（extra="ignore" 吞值），getattr(settings,...)
+        #   恒为空 → 生产报「未配置 BRIDGE_URL」。与 finance 模块 BeeCount 同步故障同源，
+        #   修法同先例（见 beecount_mcp.py:49 注释）。构造参数显式注入仍最优先（测试用）。
+        env_base = read_setting("BRIDGE_URL", "") or ""
+        env_psk = read_setting("BRIDGE_PSK", "") or ""
+        self.base_url = (base_url or env_base).rstrip("/")
+        self.psk = psk or env_psk
         self.timeout = timeout
 
     def _headers(self, method: str, path: str, body: bytes = b"") -> dict[str, str]:

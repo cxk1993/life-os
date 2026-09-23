@@ -19,7 +19,7 @@ from typing import Any
 import httpx
 from sqlmodel import Session, col, select
 
-from core.config import get_settings, read_setting
+from core.config import read_setting
 from core.events import event_bus
 from modules.calendar.models import CalendarEvent, CalendarReminderLog
 
@@ -60,9 +60,9 @@ def _poll_seconds() -> int:
 
 def bridge_notify(title: str, body: str, *, channel: str = "auto", timeout: float = 5.0) -> dict:
     """云侧 → 本机桥 /bridge/notify（签名含 JSON body）。"""
-    settings = get_settings()
-    base = (getattr(settings, "bridge_url", "") or "").rstrip("/")
-    psk = getattr(settings, "bridge_psk", "") or ""
+    # ★ 同 notes/bridge_client 的先例：走 read_setting，避开 Settings 未声明字段的坑。
+    base = (read_setting("BRIDGE_URL", "") or "").rstrip("/")
+    psk = read_setting("BRIDGE_PSK", "") or ""
     if not base or not psk:
         raise RuntimeError("未配置 BRIDGE_URL / BRIDGE_PSK")
     payload = {"title": title, "body": body, "app_id": "Life-OS", "channel": channel}
