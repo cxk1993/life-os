@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlmodel import Session, col, select
 
@@ -26,6 +27,47 @@ log = logging.getLogger("push")
 
 # 失效订阅的 HTTP 状态（RFC 8030/8292 惯例：404/410 = gone）
 _GONE_STATUS = {404, 410}
+
+# ── F3 加固：从源头收窄「可被登记的对象」 ────────────────────────────────
+# 依据：CodeArts 知默《无鉴权端点全扫描》F3。`/push/subscribe` 不鉴权是 **Web Push
+# 惯例**（Service Worker 在后台续订时拿不到前端 token，endpoint 本身即设备能力
+# 凭证）—— 故本轮**不动鉴权语义**，改为两条源头收窄：
+#   ① 主机白名单：只接受主流推送服务商的 endpoint（可配置，`*` = 不限制）
+#   ② 活跃订阅上限：防灌爆订阅表
+_DEFAULT_ALLOWED_HOST_SUFFIXES: tuple[str, ...] = (
+    "fcm.googleapis.com",  # Chrome / Edge（Chromium 系）
+    "updates.push.services.mozilla.com",  # Firefox autopush
+    "push.services.mozilla.com",  # Firefox（旧端点）
+    ".notify.windows.com",  # Edge 原生 WNS
+    ".push.apple.com",  # Safari APNs
+)
+
+# 活跃订阅上限（单用户系统：20 台设备足够；防"灌爆订阅表"）
+MAX_ACTIVE_SUBSCRIPTIONS = 20
+
+
+def allowed_host_suffixes() -> tuple[str, ...] | None:
+    """允许的 endpoint 主机后缀；返回 None 表示不限制（配置为 `*`）。"""
+    raw = (read_setting("PUSH_ENDPOINT_ALLOWED_HOSTS", "") or "").strip()
+    if raw == "*":
+        return None
+    if raw:
+        return tuple(x.strip().lower() for x in raw.split(",") if x.strip())
+    return _DEFAULT_ALLOWED_HOST_SUFFIXES
+
+
+def endpoint_host_allowed(endpoint: str) -> bool:
+    """endpoint 主机是否在白名单内（`example.com` 与 `.example.com` 两种写法都支持）。"""
+    allowed = allowed_host_suffixes()
+    if allowed is None:
+        return True
+    host = (urlparse(endpoint).hostname or "").lower()
+    if not host:
+        return False
+    for suf in allowed:
+        if host == suf.lstrip(".") or host.endswith(suf if suf.startswith(".") else f".{suf}"):
+            return True
+    return False
 
 
 def vapid_keys() -> tuple[str, str, str]:
@@ -58,11 +100,22 @@ def subscribe(
     auth = str(keys.get("auth") or "").strip()
     if not endpoint or not p256dh or not auth:
         raise ValidationError("订阅缺 endpoint/keys.p256dh/keys.auth")
+    # F3①：主机白名单（挡垃圾 endpoint 登记）
+    if not endpoint_host_allowed(endpoint):
+        raise ValidationError(
+            "订阅端点主机不在允许列表内（仅接受主流推送服务）；"
+            "自建推送服务请配置 PUSH_ENDPOINT_ALLOWED_HOSTS"
+        )
     stmt = select(PushSubscription).where(col(PushSubscription.endpoint) == endpoint)
     row = db.exec(stmt).first()
     ua_raw = user_agent or data.get("user_agent")
     ua = (str(ua_raw)[:200] if ua_raw else None)
     if row is None:
+        # F3②：新增订阅前检查上限（已存在订阅的刷新不受限）
+        if len(list_active(db)) >= MAX_ACTIVE_SUBSCRIPTIONS:
+            raise ValidationError(
+                f"活跃订阅已达上限 {MAX_ACTIVE_SUBSCRIPTIONS} 条，请先注销不用的设备"
+            )
         row = PushSubscription(
             endpoint=endpoint, p256dh=p256dh, auth=auth, user_agent=ua,
         )

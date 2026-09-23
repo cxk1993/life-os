@@ -15,13 +15,15 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlmodel import Session, select  # noqa: E402
 
 from core.app import create_app  # noqa: E402
+from core.errors import ValidationError  # noqa: E402
 from core.security import create_access_token  # noqa: E402
 from db.engine import get_engine, init_engine  # noqa: E402
 from db.models.system import PluginState  # noqa: E402
 from modules.push import push_link, sender  # noqa: E402
 from modules.push.models import PushLog, PushSubscription  # noqa: E402
 
-ENDPOINT = "https://push.example.test/subscribe/abc123def456"
+# ★ F3 加固后 endpoint 主机需在白名单内 → 测试用真实服务商域名形态
+ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc123def456"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -194,3 +196,70 @@ def test_manifest_registers_and_mcp_tool_visible(client: TestClient) -> None:
         "provides 未映射进 MCP；当前 push_* 工具："
         f"{sorted(n for n in names if n.startswith('push'))}"
     )
+
+
+# ────────────────────── F3 加固（2026-09-23）：源头收窄 ──────────────────────
+# 依据：CodeArts 知默《无鉴权端点全扫描》F3。subscribe 不鉴权是 Web Push 惯例
+# （SW 后台续订拿不到 token），故改为「主机白名单 + 活跃订阅上限」两条源头收窄。
+
+
+def test_endpoint_host_not_in_allowlist_is_rejected(db: Session) -> None:
+    """F3①：非白名单主机的 endpoint 一律拒绝（挡垃圾登记）。"""
+    with pytest.raises(ValidationError):
+        sender.subscribe(
+            db,
+            {"endpoint": "https://evil.example.com/x", "keys": {"p256dh": "BK", "auth": "a"}},
+        )
+
+
+def test_allowlist_can_be_configured_off(db: Session, monkeypatch) -> None:
+    """F3①：白名单可配置 —— `*`（返回 None）表示不限制，供自建推送服务场景。"""
+    monkeypatch.setattr(sender, "allowed_host_suffixes", lambda: None)
+    row = sender.subscribe(
+        db,
+        {"endpoint": "https://self-hosted.push.internal/x", "keys": {"p256dh": "BK", "auth": "a"}},
+    )
+    assert row.active is True
+
+
+def test_mainstream_hosts_pass_allowlist() -> None:
+    """F3①：主流服务商域名形态均通过（含子域与逐字匹配两种写法）。"""
+    for host in (
+        "fcm.googleapis.com",
+        "updates.push.services.mozilla.com",
+        "wns2-by3p.notify.windows.com",
+        "web.push.apple.com",
+    ):
+        assert sender.endpoint_host_allowed(f"https://{host}/x"), host
+    assert not sender.endpoint_host_allowed("https://tracker.example.com/x")
+    assert not sender.endpoint_host_allowed("not-a-url")
+
+
+def test_active_subscription_ceiling(db: Session, monkeypatch) -> None:
+    """F3②：活跃订阅达上限后拒绝新增（已存在的刷新不受限）。"""
+    monkeypatch.setattr(sender, "MAX_ACTIVE_SUBSCRIPTIONS", 2)
+    for i in range(2):
+        sender.subscribe(
+            db,
+            {
+                "endpoint": f"https://fcm.googleapis.com/fcm/send/sub{i}",
+                "keys": {"p256dh": "BK" + "x" * (i + 1), "auth": "authok"},
+            },
+        )
+    with pytest.raises(ValidationError):
+        sender.subscribe(
+            db,
+            {
+                "endpoint": "https://fcm.googleapis.com/fcm/send/overflow",
+                "keys": {"p256dh": "BKov", "auth": "authov"},
+            },
+        )
+    # 刷新已有订阅（非新增）不受上限限制
+    refreshed = sender.subscribe(
+        db,
+        {
+            "endpoint": "https://fcm.googleapis.com/fcm/send/sub0",
+            "keys": {"p256dh": "BKrefresh", "auth": "authrf"},
+        },
+    )
+    assert refreshed.p256dh == "BKrefresh"
