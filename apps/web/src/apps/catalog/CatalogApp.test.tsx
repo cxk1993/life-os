@@ -94,6 +94,7 @@ function switchTab(name: RegExp) {
 describe("CatalogApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     apiMock.getCatalog.mockResolvedValue(sampleCatalog);
     apiMock.mcpTools.mockResolvedValue(sampleMcpTools);
     // E2：默认 calendar 插件持 db:own（无网络）；各用例可覆盖
@@ -345,5 +346,144 @@ describe("CatalogApp", () => {
       ".catalog-item",
     ) as HTMLElement;
     expect(manualCard.querySelector(".catalog-perms")).toBeFalsy();
+  });
+
+  // ─────────── ★ 增量①：记住上次页签（localStorage） ───────────
+
+  it("增量①：切页签后重新打开，默认落在上次页签", async () => {
+    const { unmount } = renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    switchTab(/^手动导入/);
+    await screen.findByText("我的 API");
+    expect(window.localStorage.getItem("lifeos.catalog.activeTab")).toBe("manual");
+    unmount();
+    renderApp();
+    // 默认页已是手动页 → 手动条目可见、插件条目不在当前页
+    expect(await screen.findByText("我的 API")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /^手动导入/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+  });
+
+  it("增量①：localStorage 无记录或值非法时回落插件能力页", async () => {
+    window.localStorage.setItem("lifeos.catalog.activeTab", "bogus-tab");
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    expect(screen.getByRole("tab", { name: /^插件能力/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+  });
+
+  // ─────────── ★ 增量②：←/→ 方向键循环切页签 ───────────
+
+  it("增量②：←/→ 在页签间循环切换（插件→内核→…→MCP→插件）", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    // 插件 → 内核
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: /^内核基础/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    // 内核 → 网页
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: /^网页入口/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    // 网页 → 内核（左向同理）
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: /^内核基础/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    // 内核 → 插件
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: /^插件能力/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    // 从插件页按 ← 回绕到 MCP 页
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: /^AI 工具/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+  });
+
+  it("增量②：焦点在搜索输入框时方向键不切页签", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    const input = screen.getByPlaceholderText(/搜索能力/);
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: /^插件能力/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+  });
+
+  // ─────────── ★ 增量③：MCP 工具按插件分组可折叠 ───────────
+
+  it("增量③：MCP 插件组默认展开，点击标题折叠/再点展开", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    switchTab(/^AI 工具/);
+    const panel = screen.getByRole("tabpanel");
+    await waitFor(() => {
+      expect(panel.querySelectorAll(".catalog-mcp-table tbody tr").length).toBe(2);
+    });
+    // 折叠 calendar 组
+    const calendarTitle = panel.querySelector(".catalog-mcp-plugin-title") as HTMLButtonElement;
+    expect(calendarTitle.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(calendarTitle);
+    expect(panel.querySelectorAll(".catalog-mcp-table tbody tr").length).toBe(1);
+    expect(calendarTitle.getAttribute("aria-expanded")).toBe("false");
+    // 再点展开
+    fireEvent.click(calendarTitle);
+    expect(panel.querySelectorAll(".catalog-mcp-table tbody tr").length).toBe(2);
+    expect(calendarTitle.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  // ─────────── ★ 增量④：手动导入表单前端校验 ───────────
+
+  it("增量④：空名称提交给出错误提示，不调用 API", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "+ 手动导入" }));
+    const save = await screen.findByRole("button", { name: "保存" });
+    fireEvent.click(save);
+    expect(await screen.findByText("名称必填")).toBeTruthy();
+    expect(apiMock.createManual).not.toHaveBeenCalled();
+  });
+
+  it("增量④：非法 url 与 REST 缺 endpoint 均拦截", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "+ 手动导入" }));
+    const nameInput = await screen.findByPlaceholderText("名称 *");
+    fireEvent.change(nameInput, { target: { value: "我的 API" } });
+    // 非法 url
+    fireEvent.change(screen.getByPlaceholderText(/url（http\/https）/), {
+      target: { value: "not-a-url" },
+    });
+    // REST 类型缺 endpoint
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "web+rest" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    expect(await screen.findByText(/url 格式不正确/)).toBeTruthy();
+    expect(screen.getByText(/REST API 必填 endpoint/)).toBeTruthy();
+    expect(apiMock.createManual).not.toHaveBeenCalled();
+  });
+
+  it("增量④：capabilities 非法字符被拦截，合法后正常提交", async () => {
+    renderApp();
+    await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "+ 手动导入" }));
+    const nameInput = await screen.findByPlaceholderText("名称 *");
+    fireEvent.change(nameInput, { target: { value: "我的 API" } });
+    fireEvent.change(screen.getByPlaceholderText("capabilities，逗号分隔"), {
+      target: { value: "bad!!chars" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    expect(await screen.findByText(/capabilities 用逗号分隔/)).toBeTruthy();
+    // 修正后提交成功
+    fireEvent.change(screen.getByPlaceholderText("capabilities，逗号分隔"), {
+      target: { value: "myapi.read, myapi.list" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(apiMock.createManual).toHaveBeenCalled());
   });
 });

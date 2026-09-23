@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs } from "@/shared/components/Tabs";
 import {
@@ -22,6 +22,21 @@ const TAB_DEFS: { id: TabId; label: string }[] = [
   { id: "mcp", label: "AI 工具（MCP）" },
 ];
 
+// ★ 增量①：←/→ 方向键循环切页签 + 记住上次页签（localStorage）共用页签顺序
+const TAB_IDS: TabId[] = TAB_DEFS.map((t) => t.id);
+const TAB_STORAGE_KEY = "lifeos.catalog.activeTab";
+
+// 记住上次页签：localStorage 优先（隐私模式/存储异常时静默回落「插件能力」）
+function initialTab(): TabId {
+  try {
+    const saved = window.localStorage.getItem(TAB_STORAGE_KEY);
+    if (saved && (TAB_IDS as string[]).includes(saved)) return saved as TabId;
+  } catch {
+    /* 存储不可用时不阻断 */
+  }
+  return "plugin";
+}
+
 const KIND_LABEL: Record<string, string> = {
   web: "网页",
   "web+rest": "REST API",
@@ -32,8 +47,37 @@ export default function CatalogApp() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
-  // ★ 令29：默认落在「插件能力」页签
-  const [activeTab, setActiveTab] = useState<TabId>("plugin");
+  // ★ 令29：默认落在「插件能力」页签；增量①：改由 localStorage 记住上次页签
+  const [activeTab, setActiveTabState] = useState<TabId>(initialTab);
+
+  // ★ 增量①：切页签即写入 localStorage（下次打开记住）
+  const setActiveTab = (id: TabId) => {
+    setActiveTabState(id);
+    try {
+      window.localStorage.setItem(TAB_STORAGE_KEY, id);
+    } catch {
+      /* 存储不可用时不阻断 */
+    }
+  };
+
+  // ★ 增量②：←/→ 方向键循环切页签（焦点在输入控件时让位给文本编辑，不触发）
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const t = e.target as HTMLElement | null;
+      if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
+      e.preventDefault();
+      const idx = TAB_IDS.indexOf(activeTab);
+      if (idx < 0) return;
+      const next =
+        e.key === "ArrowRight"
+          ? TAB_IDS[(idx + 1) % TAB_IDS.length]
+          : TAB_IDS[(idx - 1 + TAB_IDS.length) % TAB_IDS.length];
+      setActiveTab(next);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeTab]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "entries"],
@@ -482,6 +526,17 @@ function McpToolsSection({
     return [...map.entries()];
   }, [tools]);
 
+  // ★ 增量③：MCP 工具按插件分组可折叠（默认全部展开，点击标题折叠/展开）
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const togglePlugin = (pluginId: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(pluginId)) next.delete(pluginId);
+      else next.add(pluginId);
+      return next;
+    });
+  };
+
   return (
     <section className="catalog-group catalog-mcp-section">
       {isLoading && <div className="catalog-hint">工具加载中…</div>}
@@ -499,38 +554,51 @@ function McpToolsSection({
       )}
       {!isLoading &&
         !error &&
-        byPlugin.map(([pluginId, list]) => (
-          <div key={pluginId} className="catalog-mcp-plugin">
-            <div className="catalog-mcp-plugin-title">
-              {pluginId} <span className="catalog-group-count">{list.length}</span>
+        byPlugin.map(([pluginId, list]) => {
+          const isCollapsed = collapsed.has(pluginId);
+          return (
+            <div key={pluginId} className="catalog-mcp-plugin">
+              <button
+                type="button"
+                className="catalog-mcp-plugin-title"
+                aria-expanded={!isCollapsed}
+                onClick={() => togglePlugin(pluginId)}
+              >
+                <span className="catalog-mcp-caret" aria-hidden="true">
+                  {isCollapsed ? "▸" : "▾"}
+                </span>
+                {pluginId} <span className="catalog-group-count">{list.length}</span>
+              </button>
+              {!isCollapsed && (
+                <table className="catalog-mcp-table">
+                  <thead>
+                    <tr>
+                      <th>工具名</th>
+                      <th>调用</th>
+                      <th>scope</th>
+                      <th>说明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map((t) => (
+                      <tr key={t.name}>
+                        <td className="catalog-mcp-mono">{t.name}</td>
+                        <td>
+                          <span className={`catalog-mcp-badge ${MCP_METHOD_BADGE[t.method] ?? ""}`}>
+                            {t.method}
+                          </span>{" "}
+                          <span className="catalog-mcp-mono catalog-mcp-path">{t.path}</span>
+                        </td>
+                        <td className="catalog-mcp-mono">{t.scope}</td>
+                        <td className="catalog-mcp-desc">{t.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
-            <table className="catalog-mcp-table">
-              <thead>
-                <tr>
-                  <th>工具名</th>
-                  <th>调用</th>
-                  <th>scope</th>
-                  <th>说明</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((t) => (
-                  <tr key={t.name}>
-                    <td className="catalog-mcp-mono">{t.name}</td>
-                    <td>
-                      <span className={`catalog-mcp-badge ${MCP_METHOD_BADGE[t.method] ?? ""}`}>
-                        {t.method}
-                      </span>{" "}
-                      <span className="catalog-mcp-mono catalog-mcp-path">{t.path}</span>
-                    </td>
-                    <td className="catalog-mcp-mono">{t.scope}</td>
-                    <td className="catalog-mcp-desc">{t.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
+          );
+        })}
     </section>
   );
 }
@@ -546,7 +614,7 @@ function ManualForm({ onDone }: { onDone: () => void }) {
   const [authRef, setAuthRef] = useState("");
   const [caps, setCaps] = useState("");
   const [note, setNote] = useState("");
-  const [err, setErr] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const createMut = useMutation({
     mutationFn: () =>
@@ -563,42 +631,79 @@ function ManualForm({ onDone }: { onDone: () => void }) {
       qc.invalidateQueries({ queryKey: ["catalog"] });
       onDone();
     },
-    onError: (e) => setErr((e as Error).message),
+    onError: (e) => setFieldErrors({ form: (e as Error).message }),
   });
+
+  // ★ 增量④：手动导入表单前端校验（名称必填 / url 合法 / REST·MCP 必填 endpoint / caps 格式）
+  function validate(): boolean {
+    const errors: Record<string, string> = {};
+    if (!name.trim()) errors.name = "名称必填";
+    if (url.trim()) {
+      try {
+        const u = new URL(url.trim());
+        if (u.protocol !== "http:" && u.protocol !== "https:")
+          errors.url = "url 需以 http:// 或 https:// 开头";
+      } catch {
+        errors.url = "url 格式不正确（需 http/https 完整地址）";
+      }
+    }
+    if (kind !== "web" && !endpoint.trim())
+      errors.endpoint = `${kind === "web+rest" ? "REST API" : "MCP"} 必填 endpoint`;
+    if (endpoint.trim() && !/^\/|^https?:\/\//.test(endpoint.trim()))
+      errors.endpoint = "endpoint 需以 / 或 http(s):// 开头";
+    if (caps.trim() && !/^[A-Za-z0-9_.:+-]+(?:[,，\s]+[A-Za-z0-9_.:+-]+)*$/.test(caps.trim()))
+      errors.caps = "capabilities 用逗号分隔，只含字母/数字/._:+-";
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   return (
     <form
       className="catalog-form"
       onSubmit={(ev) => {
         ev.preventDefault();
-        if (!name.trim()) {
-          setErr("名称必填");
-          return;
-        }
-        setErr("");
+        if (!validate()) return;
         createMut.mutate();
       }}
     >
       <div className="catalog-form-row">
-        <input placeholder="名称 *" value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          placeholder="名称 *"
+          value={name}
+          aria-invalid={!!fieldErrors.name}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: "" }));
+          }}
+        />
         <select value={kind} onChange={(e) => setKind(e.target.value)}>
           <option value="web">网页</option>
           <option value="web+rest">REST API</option>
           <option value="web+mcp">MCP</option>
         </select>
       </div>
+      {fieldErrors.name && <div className="catalog-form-err">{fieldErrors.name}</div>}
       <div className="catalog-form-row">
         <input
           placeholder="url（http/https）"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          aria-invalid={!!fieldErrors.url}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            if (fieldErrors.url) setFieldErrors((p) => ({ ...p, url: "" }));
+          }}
         />
       </div>
+      {fieldErrors.url && <div className="catalog-form-err">{fieldErrors.url}</div>}
       <div className="catalog-form-row">
         <input
           placeholder="endpoint（REST/MCP 必填）"
           value={endpoint}
-          onChange={(e) => setEndpoint(e.target.value)}
+          aria-invalid={!!fieldErrors.endpoint}
+          onChange={(e) => {
+            setEndpoint(e.target.value);
+            if (fieldErrors.endpoint) setFieldErrors((p) => ({ ...p, endpoint: "" }));
+          }}
         />
         <input
           placeholder="auth_ref（如 pat:env:TOKEN）"
@@ -606,20 +711,26 @@ function ManualForm({ onDone }: { onDone: () => void }) {
           onChange={(e) => setAuthRef(e.target.value)}
         />
       </div>
+      {fieldErrors.endpoint && <div className="catalog-form-err">{fieldErrors.endpoint}</div>}
       <div className="catalog-form-row">
         <input
           placeholder="capabilities，逗号分隔"
           value={caps}
-          onChange={(e) => setCaps(e.target.value)}
+          aria-invalid={!!fieldErrors.caps}
+          onChange={(e) => {
+            setCaps(e.target.value);
+            if (fieldErrors.caps) setFieldErrors((p) => ({ ...p, caps: "" }));
+          }}
         />
       </div>
+      {fieldErrors.caps && <div className="catalog-form-err">{fieldErrors.caps}</div>}
       <div className="catalog-form-row">
         <input placeholder="备注（可选）" value={note} onChange={(e) => setNote(e.target.value)} />
         <button type="submit" disabled={createMut.isPending}>
           {createMut.isPending ? "保存中…" : "保存"}
         </button>
       </div>
-      {err && <div className="catalog-form-err">{err}</div>}
+      {fieldErrors.form && <div className="catalog-form-err">{fieldErrors.form}</div>}
     </form>
   );
 }

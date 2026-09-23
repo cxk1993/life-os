@@ -352,7 +352,19 @@
   padding: 2px 6px;
   background: rgba(128, 128, 128, 0.08);
   border-radius: 4px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ★ 增量③：折叠/展开箭头指示符 */
+.catalog-mcp-caret {
+  font-size: 10px;
+  opacity: 0.7;
+  transition: transform 0.12s ease;
 }
 
 .catalog-mcp-table {
