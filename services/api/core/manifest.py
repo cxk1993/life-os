@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import importlib
+from collections.abc import Collection
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -180,6 +182,41 @@ def _gate_dependency_declarations(found: dict[str, tuple[Manifest, Path]]) -> No
     for mid in sorted(found):
         if color[mid] == white:
             visit(mid, [])
+
+
+# ── TX-DEG-01 · 软依赖缺失的运行时判定（#009 的 degraded 半边）────────────
+# 硬依赖缺失 = 启动期 fail-fast（T14 语义），**运行时不会出现** —— 所以运行期只判软依赖。
+# 产出 degraded + reason_code，供 O1 四态面板消费（#009：「增加 reason_code 字段即可
+# 对齐，不动 schema 主结构」）。
+#
+# health / O1 侧接入示例（无需改本模块即可用）：
+#     avail = {cap for m, _ in discovered for cap in m.provides}
+#     st = dependency_status(manifest, avail)
+#     # st.state ∈ {"ok", "degraded"}
+#     # st.reason_code 形如 "optional_dependency_missing:finance.beeccount.read"
+@dataclass(frozen=True)
+class DependencyStatus:
+    """模块依赖态判定结果（运行期；只覆盖软依赖半边）。"""
+
+    state: str  # "ok" | "degraded"
+    reason_code: str | None
+    missing: tuple[str, ...]
+
+
+def dependency_status(m: Manifest, available: Collection[str]) -> DependencyStatus:
+    """按软依赖声明 + 当前可用能力集合，判定模块依赖态。
+
+    ★ 只判软依赖（`optionalDependencies`）：硬依赖缺失已由启动期 fail-fast 拦下，
+      运行期不会出现 —— 此处不重复判定，避免两处语义打架。
+    """
+    missing = tuple(sorted(c for c in m.optionalDependencies if c not in available))
+    if not missing:
+        return DependencyStatus(state="ok", reason_code=None, missing=())
+    return DependencyStatus(
+        state="degraded",
+        reason_code="optional_dependency_missing:" + ",".join(missing),
+        missing=missing,
+    )
 
 
 def discover_modules(modules_dir: str | Path) -> list[tuple[Manifest, Path]]:

@@ -13,7 +13,26 @@ from pathlib import Path
 
 import pytest
 
-from core.manifest import ManifestError, discover_modules
+from core.manifest import (
+    Manifest,
+    ManifestApi,
+    ManifestError,
+    dependency_status,
+    discover_modules,
+)
+
+
+def _manifest(mid: str, **extra: object) -> Manifest:
+    """直接构造 Manifest 对象（用于第二部分的纯函数判定测试）。"""
+    base: dict[str, object] = {
+        "id": mid,
+        "name": mid,
+        "version": "0.1.0",
+        "kind": "builtin",
+        "api": ManifestApi(base=f"/api/v1/{mid}"),
+        **extra,
+    }
+    return Manifest(**base)  # type: ignore[arg-type]
 
 
 def _write(root: Path, mid: str, **extra: object) -> None:
@@ -120,3 +139,45 @@ def test_existing_id_vs_dirname_rule_still_holds(tmp_path: Path) -> None:
     )
     with pytest.raises(ManifestError, match="必须等于目录名"):
         discover_modules(tmp_path)
+
+
+# ══════════ TX-DEG-01 第二部分：软依赖缺失的运行时判定（degraded 半边）══════════
+# 硬依赖缺失 = 启动期 fail-fast（运行时不会出现）；运行期只判软依赖。
+
+
+def test_dependency_status_ok_when_no_soft_deps() -> None:
+    st = dependency_status(_manifest("a"), set())
+    assert st.state == "ok"
+    assert st.reason_code is None
+    assert st.missing == ()
+
+
+def test_dependency_status_ok_when_soft_deps_all_available() -> None:
+    m = _manifest("a", optionalDependencies=["x.read", "y.read"])
+    st = dependency_status(m, {"x.read", "y.read", "z.read"})
+    assert st.state == "ok"
+    assert st.reason_code is None
+
+
+def test_dependency_status_degraded_when_soft_dep_missing() -> None:
+    m = _manifest("a", optionalDependencies=["x.read", "y.read"])
+    st = dependency_status(m, {"x.read"})  # y.read 缺失
+    assert st.state == "degraded"
+    assert st.reason_code == "optional_dependency_missing:y.read"
+    assert st.missing == ("y.read",)
+
+
+def test_dependency_status_reason_code_lists_all_missing_sorted() -> None:
+    """多条缺失时 reason_code 按字典序全列（供 O1 面板直接展示）。"""
+    m = _manifest("a", optionalDependencies=["zeta.read", "alpha.read", "mid.read"])
+    st = dependency_status(m, set())
+    assert st.state == "degraded"
+    assert st.reason_code == "optional_dependency_missing:alpha.read,mid.read,zeta.read"
+    assert st.missing == ("alpha.read", "mid.read", "zeta.read")
+
+
+def test_dependency_status_ignores_hard_deps() -> None:
+    """★ 硬依赖不参与运行期判定（缺失已在启动期 fail-fast，不能重复语义）。"""
+    m = _manifest("a", requires=["hard.read"])
+    st = dependency_status(m, set())  # hard.read 不在可用集
+    assert st.state == "ok", "硬依赖缺失不该在运行期被判 degraded"
