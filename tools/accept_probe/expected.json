@@ -6,7 +6,8 @@
       "gate": "ACCEPT-T30 判据 A6 三快腿（02:23 全验判定帖 §1；02:53 延迟探针加固；11:4x 路线A 对表复绿）",
       "hash": "生产入口 hash 基线链（02:36 判定帖 §5 追记 → 令8 §4 生产三项快照 12:00 复测未漂移）",
       "modules": "modules 17 口径（总监令8 §4 12:00 实测；11:4x 本席逐数 id 复验）",
-      "docsprobe": "BUG-T16-1 销账 + T17 幂等线上判据（MiMo 09:15 库内盘点 + hermes 10:26 三合一眼验 + 本席 docs/nodes API 对表）"
+      "docsprobe": "BUG-T16-1 销账 + T17 幂等线上判据（MiMo 09:15 库内盘点 + hermes 10:26 三合一眼验 + 本席 docs/nodes API 对表）",
+      "readyz": "ISSUE-010 修复基线（hermes 12:4x 四判据全绿 + MiMo A2 规格）"
     }
   },
   "targets": {
@@ -41,9 +42,24 @@
       "enabled": true,
       "count": 18,
       "ids": [
-        "agents", "auth", "calendar", "catalog", "dashboard", "diary", "docs",
-        "finance", "habits", "health", "mcp", "notes", "persona", "plugins",
-        "push", "review", "todo", "web"
+        "agents",
+        "auth",
+        "calendar",
+        "catalog",
+        "dashboard",
+        "diary",
+        "docs",
+        "finance",
+        "habits",
+        "health",
+        "mcp",
+        "notes",
+        "persona",
+        "plugins",
+        "push",
+        "review",
+        "todo",
+        "web"
       ],
       "source": "2026-09-23 11:2x push 上线后实测（重启前 discover_modules 预检 18 + 线上 /api/v1/modules count=18；原 17 为总监令8 §4 快照）"
     },
@@ -57,17 +73,32 @@
       "enabled": true,
       "count": 26,
       "names": [
-        "agents_task_read", "agents_task_write",
-        "calendar_event_read", "calendar_event_write", "calendar_slot_free",
-        "dashboard_overview_read", "dashboard_system-health_read", "dashboard_today_read",
-        "docs_node_read", "docs_node_write",
-        "finance_beeccount_read", "finance_entry_read", "finance_entry_write", "finance_snapshot_read",
-        "habits_habit_read", "habits_habit_write",
-        "health_record_read", "health_record_write",
+        "agents_task_read",
+        "agents_task_write",
+        "calendar_event_read",
+        "calendar_event_write",
+        "calendar_slot_free",
+        "dashboard_overview_read",
+        "dashboard_system-health_read",
+        "dashboard_today_read",
+        "docs_node_read",
+        "docs_node_write",
+        "finance_beeccount_read",
+        "finance_entry_read",
+        "finance_entry_write",
+        "finance_snapshot_read",
+        "habits_habit_read",
+        "habits_habit_write",
+        "health_record_read",
+        "health_record_write",
         "push_subscription_read",
-        "review_daily_read", "review_note_write", "review_source_read",
-        "todo_item_read", "todo_item_write",
-        "web_entry_read", "web_entry_write"
+        "review_daily_read",
+        "review_note_write",
+        "review_source_read",
+        "todo_item_read",
+        "todo_item_write",
+        "web_entry_read",
+        "web_entry_write"
       ],
       "source": "2026-09-23 11:2x push 上线后实测：生产 build_tool_map() 逐名核对 26 个（25 + push_subscription_read，源自 push manifest provides 机械映射）；其余 25 名零漂移。ISSUE-008 契约（25 名）由本条机械扩展。动前声明见 workbuddy《push上线完成-八步部署与契约定动声明》§4"
     },
@@ -75,9 +106,31 @@
       "enabled": true,
       "skip_if_404": true,
       "count": 17,
-      "status_enum": ["healthy", "degraded", "disabled", "unknown"],
+      "status_enum": [
+        "healthy",
+        "degraded",
+        "disabled",
+        "unknown"
+      ],
       "scheduler_enabled": false,
       "source": "判据先行（TX-O1-01，总监令41 语境）：契约源=MiMo《字段契约卡》17:55（源头 schema.py/module_status.py，入库 00915b1）——ok=true/count=len(modules)=17/id 集合≡modules 段（契约卡 §2.4-3）/status 四态/summary 四态和=count/reconcile.scheduler_enabled=false 默认；O1 未部署（生产 404）时 SKIP 不判红，部署后转实验 7 判据；契约卡若有修订以 MiMo A 角新帖为准并回帖改本段"
+    },
+    "readyz": {
+      "enabled": true,
+      "status": 200,
+      "content_type": "application/json",
+      "must_not_start_with": [
+        "<!doctype",
+        "<html"
+      ],
+      "census_fields": [
+        "ok",
+        "modules",
+        "status",
+        "registered",
+        "activated"
+      ],
+      "source": "ISSUE-010 修复后基线（hermes 2026-09-23 部署：nginx location=/readyz 四判据全绿；判据规格采纳 MiMo A2；修复前 SPA-SWALLOWED text/html 为负例）"
     }
   }
 }

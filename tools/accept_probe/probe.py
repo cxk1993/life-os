@@ -312,11 +312,29 @@ def suite_deploycheck(client: Client, exp: dict[str, Any], user: str, pwd: str) 
     return ok_row and ok_gate and ok_mod and ok_hash
 
 
+def suite_readyz(client: Client, exp: dict[str, Any]) -> bool:
+    """ISSUE-010 判据：/readyz 必须返回 JSON 而非 SPA 壳（采纳 MiMo A2 规格）。
+
+    说明：_send 未保留 Content-Type 头，故本套件以 body 形状判定——
+    JSON 以 `{` 开头，SPA 壳以 `<!doctype`/`<html` 开头，二者可 100% 区分。
+    """
+    e = exp["suites"]["readyz"]
+    rows = Row()
+    status, _, raw = client.get("/readyz")
+    body_text = str(raw) if isinstance(raw, str) else ""
+    ok_spa = bool(body_text) and not any(
+        body_text.lstrip().lower().startswith(p) for p in e.get("must_not_start_with", [])
+    )
+    rows.add("readyz http", str(e.get("status", 200)), str(status), status == e.get("status", 200))
+    rows.add("body 非 SPA 壳", "not <!doctype/<html", body_text[:30] if body_text else "(empty)", ok_spa)
+    return rows.render("readyz · ISSUE-010")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="L2 验收判据自动化套件（只读）")
     ap.add_argument("--target", default="production", choices=["production", "local"])
     ap.add_argument("--suite", default="all",
-                    choices=["gate", "hash", "modules", "docsprobe", "o1status", "deploycheck", "all"])
+                    choices=["gate", "hash", "modules", "docsprobe", "o1status", "readyz", "deploycheck", "all"])
     ap.add_argument("--password", default=None, help="不推荐；优先用环境变量 LIFEOS_ADMIN_PASSWORD")
     ap.add_argument("--emit-verdict", action="store_true",
                     help="RFC-001：在人读表格之外追加一行机读 verdict JSON（schema=lifeos.probe.verdict/1）")
@@ -348,6 +366,8 @@ def main() -> int:
         results.append(suite_docsprobe(client, exp, user, pwd))
     if args.suite in ("o1status", "all"):
         results.append(suite_o1status(client, exp, user, pwd))
+    if args.suite == "readyz":
+        results.append(suite_readyz(client, exp))
     if args.suite == "deploycheck":
         results.append(suite_deploycheck(client, exp, user, pwd))
 
