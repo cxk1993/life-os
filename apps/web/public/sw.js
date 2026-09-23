@@ -19,9 +19,19 @@ self.addEventListener("install", (e) => {
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
+    (async () => {
+      // ★ H3（2026-09-23）：开启 navigation preload —— 让浏览器在 SW 启动期间**并行**
+      //   发起导航请求，省掉 SW 冷启动给首屏带来的那段延迟。
+      //   不支持该 API 的浏览器（self.registration.navigationPreload 为 undefined）自动跳过。
+      if (self.registration.navigationPreload) {
+        await self.registration.navigationPreload.enable();
+      }
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))
+      );
+      await self.clients.claim();
+    })()
   );
 });
 
@@ -58,8 +68,13 @@ self.addEventListener("fetch", (e) => {
   }
 
   // 导航与其他静态：network-first，失败回退缓存，再失败回退壳
+  // ★ H3（2026-09-23）：导航请求优先用 navigation preload 的响应（浏览器在 SW 启动期间
+  //   就已并行发起），省掉冷启动延迟；非导航请求 e.preloadResponse 为 undefined → 正常 fetch。
+  const net = e.preloadResponse
+    ? e.preloadResponse.then((r) => r || fetch(req))
+    : fetch(req);
   e.respondWith(
-    fetch(req)
+    net
       .then((res) => {
         if (res.ok && (req.mode === "navigate" || url.pathname.startsWith("/icons/"))) {
           const clone = res.clone();

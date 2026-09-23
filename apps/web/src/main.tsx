@@ -67,6 +67,15 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
       refreshed = true;
       window.location.reload();
     });
+
+    // ★ H2（2026-09-23）：请求存储豁免驱逐。
+    //   离线壳（SW 缓存）是"每天要用"的东西，而浏览器在磁盘压力下可能**静默清掉**它 ——
+    //   那会让"断网能开壳"这项能力无声失效（又一例静默失败：
+    //   the absence of an error reads as success）。
+    //   Chrome 对已安装应用会自动授予，Firefox 会询问用户；不支持该 API 的浏览器直接跳过。
+    if (navigator.storage && typeof navigator.storage.persist === "function") {
+      void navigator.storage.persist();
+    }
   });
 }
 
