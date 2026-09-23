@@ -6,7 +6,11 @@
  * 职责二：Web Push 接收端（push 插件）——push 事件 → showNotification，
  *         notificationclick → 聚焦/新开窗口。详见文件末两段。
  */
-const CACHE = "lifeos-shell-v1";
+// ★★ 改本文件时**必须 bump 下面这个版本号**（H1 · 2026-09-23）：
+//   ① 不 bump → 旧 hash 的 /assets/* 会永远留在同一个 cache 里（cache-first 只增不减）
+//   ② 浏览器对 sw.js 只做**字节比较** → 不 bump 等于"没有新版本"，用户永远收不到更新
+//   参考：bump the cache name every deploy and delete old caches on activate。
+const CACHE = "lifeos-shell-v2";
 const SHELL = ["/", "/login.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -19,6 +23,14 @@ self.addEventListener("activate", (e) => {
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// H1（2026-09-23）：响应前端"立即切换"指令。
+// 背景：install 里本来就有无条件 skipWaiting（我们的 /assets/* 是 hash 命名、旧页面不会
+// 404，业界明确说这种场景可无条件 skipWaiting，故保留不改）。本监听是给"用户点了刷新条"
+// 这条路径用的，同时为将来若改成"温和更新（等待用户确认才激活）"留好口子。
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (e) => {
