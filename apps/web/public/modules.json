@@ -224,5 +224,20 @@
       "minW": 520,
       "minH": 360
     }
+  },
+  {
+    "id": "push",
+    "name": "推送",
+    "version": "0.1.0",
+    "kind": "builtin",
+    "icon": "推",
+    "description": "Web Push 浏览器推送：订阅管理 + 手动广播 + 投递流水（桌面 Toast 走桥）。",
+    "entry": "@/apps/push",
+    "window": {
+      "w": 760,
+      "h": 520,
+      "minW": 480,
+      "minH": 360
+    }
   }
 ]

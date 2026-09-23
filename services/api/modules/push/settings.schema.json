@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "push 插件设置（占位；VAPID 密钥走服务器 .env，不经本设置面）",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}

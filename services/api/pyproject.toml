@@ -37,6 +37,9 @@ dependencies = [
   "argon2-cffi==23.1.0",
   "pyjwt==2.10.1",
   "pyotp==2.9.0",
+
+  # ── Web Push（push 插件：VAPID JWT + aes128gcm；纯 Python，无系统编译依赖）──
+  "pywebpush==2.5.0",
 ]
 
 [project.optional-dependencies]
