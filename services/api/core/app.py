@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, FastAPI, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -36,6 +36,12 @@ from core.plugins.activator import PluginActivator
 from core.plugins.discover import PluginInfo
 from core.plugins.migrations import make_startup_lifespan
 from core.registry import ModuleRegistry
+from core.security import (
+    User,
+    create_sse_ticket,
+    decode_sse_ticket,
+    get_current_user,
+)
 
 log = get_logger("kernel.app")
 
@@ -145,17 +151,39 @@ def create_app(
     # ── 事件总线 SSE 订阅 ──
     events_router = APIRouter()
 
+    @events_router.post("/events/ticket")
+    async def issue_sse_ticket(
+        user: Annotated[User, Depends(get_current_user)],
+    ) -> dict[str, Any]:
+        """签发 SSE 入场券（需 Bearer）。
+
+        ★ F2 加固：浏览器原生 `EventSource` **不能带自定义 header**，SSE 鉴权
+          只能走 query；而把 access token 直接塞进 URL 会进浏览器历史 / 代理
+          日志 / Referer —— 故用「60 秒 + type=sse」的短时票据代替。前端先用
+          已鉴权的 HTTP 请求在本端点换票，再拼到 SSE URL 上。
+        """
+        return {"ticket": create_sse_ticket(user.sub), "expires_in": 60}
+
     @events_router.get("/events/subscribe")
     async def subscribe_events(
         # ★ 必须标注为 Request。写成 `Any` 时 FastAPI 认不出这是请求对象，
         #   会把它当成**必填查询参数**，于是不带 ?request=... 就一律 422。
         #   卡片要求的命令是不带参数直接订阅，所以这里不能图省事写 Any。
         request: Request,
+        # ★ F2 加固（2026-09-23）：SSE 入场券。**刻意设为可选参数** ——
+        #   「端点参数层面无必填查询参数」的既有判据（test_kernel）保持不变，
+        #   鉴权失败在函数体内以 401 表达（而不是 FastAPI 的 422）。
+        ticket: str | None = Query(
+            default=None,
+            description="SSE 入场券（先 POST /api/v1/events/ticket 换取，60 秒有效）",
+        ),
         topics: str | None = Query(
             default=None,
             description="逗号分隔的 topic 模式，如 order.*,task.*；留空收全部",
         ),
     ) -> StreamingResponse:
+        # 无票 / 票据无效 / 过期 / 类型不匹配 → 401（decode_sse_ticket 内部抛）
+        decode_sse_ticket(ticket or "")
         patterns = [t.strip() for t in (topics or "").split(",") if t.strip()]
         return event_bus.sse_response(request, patterns)
 

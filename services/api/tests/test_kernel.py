@@ -197,8 +197,58 @@ def test_events_subscribe_needs_no_required_query_params() -> None:
     params = {p["name"]: p for p in op.get("parameters", [])}
 
     assert "request" not in params, "request 被错当成查询参数了（会要求 ?request=...）"
-    assert set(params) <= {"topics"}, f"出现了未预期的参数：{set(params)}"
+    assert set(params) <= {"topics", "ticket"}, f"出现了未预期的参数：{set(params)}"
     assert not any(p.get("required") for p in params.values()), "订阅端点不该有必填查询参数"
+    # ★ F2 加固（2026-09-23）：「ticket 有意设为可选」—— 鉴权失败走函数体里的
+    #   401，而不是 FastAPI 的 422（必填参数缺失）。这条与该测试原意图（防 422）
+    #   同源，故一并钉住。
+    assert params["ticket"].get("required") is not True, (
+        "ticket 必须可选，否则裸连会变成 422 而不是 401"
+    )
+
+
+# ────────── 4.6 SSE 入场券（F2 加固 · 2026-09-23）──────────
+def test_events_subscribe_without_ticket_is_401() -> None:
+    """无入场券不得订阅：401（不是 422、更不是放行）。
+
+    ★ 为什么是 401 而不是 422：ticket 是可选查询参数，缺失时 FastAPI 不会拦，
+      由函数体里 `decode_sse_ticket("")` 抛 UnauthorizedError。
+    ★ 本测试不读流：401 在进入 StreamingResponse 之前就抛出，不会挂住 pytest。
+    """
+    client = TestClient(create_app())
+    r = client.get("/api/v1/events/subscribe")
+    assert r.status_code == 401, f"无 ticket 应 401，实测 {r.status_code}"
+
+
+def test_events_subscribe_with_garbage_ticket_is_401() -> None:
+    """伪造/过期/类型不符的票据一律 401（票据不可与 access/refresh 互换）。"""
+    client = TestClient(create_app())
+    r = client.get("/api/v1/events/subscribe?ticket=not-a-real-ticket")
+    assert r.status_code == 401, f"伪票应 401，实测 {r.status_code}"
+
+
+def test_events_ticket_endpoint_requires_auth_then_issues() -> None:
+    """换票端点：无 Bearer → 401；有 Bearer → 200 且票据 type=sse、60 秒有效。"""
+    from core.security import create_access_token, decode_sse_ticket
+
+    client = TestClient(create_app())
+
+    assert client.post("/api/v1/events/ticket").status_code == 401
+
+    tk = create_access_token("admin")
+    r = client.post("/api/v1/events/ticket", headers={"Authorization": f"Bearer {tk}"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["expires_in"] == 60
+    payload = decode_sse_ticket(body["ticket"])  # 必须能按 sse 类型解出
+    assert payload["sub"] == "admin"
+
+    # 类型隔离：access token 不能当票据用
+    try:
+        decode_sse_ticket(tk)
+        raise AssertionError("access token 不该能当 SSE 票据")
+    except Exception as exc:  # noqa: BLE001
+        assert "类型不匹配" in str(exc) or "无效" in str(exc)
 
 
 # ─────────────────── 5. 幂等 ───────────────────

@@ -9,6 +9,8 @@
 
 import { useEffect } from "react";
 
+import { api, ApiError } from "./client";
+
 export interface PluginEventEnvelope {
   type: string;
   payload?: unknown;
@@ -24,6 +26,8 @@ class EventBus {
   private handlers = new Map<string, Set<Handler>>();
   private retry = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** 取票期间的重入保护：多个订阅同时触发时只换一次票。 */
+  private connecting = false;
 
   subscribe(type: string, handler: Handler): () => void {
     let set = this.handlers.get(type);
@@ -32,7 +36,7 @@ class EventBus {
       this.handlers.set(type, set);
     }
     set.add(handler);
-    this.connect();
+    void this.connect();
     return () => {
       const s = this.handlers.get(type);
       if (!s) return;
@@ -52,14 +56,39 @@ class EventBus {
     });
   }
 
-  private connect(): void {
-    if (this.es || typeof EventSource === "undefined") return;
+  /**
+   * 换取 SSE 入场券（F2 加固，2026-09-23）。
+   *
+   * 为什么需要：浏览器原生 `EventSource` **不能带自定义 header**，所以 SSE 的
+   * 鉴权只能走 query；而把 access token 直接拼进 URL 会进浏览器历史 / 代理日志 /
+   * Referer —— 故先用已鉴权的 HTTP 请求换一张「60 秒 + type=sse」的短时票据。
+   *
+   * 返回 null 的语义 = 「本次不连」（未登录 / 票据拿不到），调用方静默等待，
+   * **不做无谓的退避轰炸** —— 登录后组件重新订阅会自然触发重连。
+   */
+  private async fetchTicket(): Promise<string | null> {
+    try {
+      const res = await api.post<{ ticket: string }>("/api/v1/events/ticket", {});
+      return res?.ticket ?? null;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) return null; // 未登录：静默等
+      throw e; // 网络/后端异常：交给上层退避重连
+    }
+  }
+
+  private async connect(): Promise<void> {
+    if (this.es || this.connecting || typeof EventSource === "undefined") return;
+    this.connecting = true;
     let es: EventSource;
     try {
-      es = new EventSource(SSE_URL);
+      const ticket = await this.fetchTicket();
+      if (!ticket) return; // 未登录：不发无谓重连
+      es = new EventSource(`${SSE_URL}?ticket=${encodeURIComponent(ticket)}`);
     } catch {
       this.scheduleReconnect();
       return;
+    } finally {
+      this.connecting = false;
     }
     this.es = es;
     es.onmessage = (ev: MessageEvent) => {
@@ -73,7 +102,7 @@ class EventBus {
     };
     es.onerror = () => {
       this.disconnect();
-      this.scheduleReconnect();
+      this.scheduleReconnect(); // 票据 60s 过期后重连会自动换新票
     };
   }
 
@@ -83,7 +112,7 @@ class EventBus {
     this.retry += 1;
     this.timer = setTimeout(() => {
       this.timer = null;
-      this.connect();
+      void this.connect();
     }, delay);
   }
 

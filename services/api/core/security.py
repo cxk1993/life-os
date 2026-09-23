@@ -96,6 +96,23 @@ async def get_current_user(
     return User(sub=payload.get("sub", USER_SUB), scopes=[])
 
 
+# ── SSE 入场券（F2 加固：事件流不再裸奔）───────────────────────────────
+# 为什么需要：浏览器原生 EventSource **不能带自定义 header**，所以 SSE 的鉴权
+# 只能走 query；而直接把 access token 塞进 URL 会进浏览器历史 / 代理日志 /
+# Referer —— 故改用「短时 + 类型隔离」的入场券，由已鉴权的 HTTP 端点换取。
+SSE_TICKET_TTL_SECONDS = 60
+
+
+def create_sse_ticket(sub: str) -> str:
+    """签发 SSE 入场券（60 秒、type=sse，与 access/refresh 类型隔离，不可互换）。"""
+    return create_token(sub, "sse", timedelta(seconds=SSE_TICKET_TTL_SECONDS))
+
+
+def decode_sse_ticket(token: str) -> dict[str, Any]:
+    """校验 SSE 入场券；无效 / 过期 / 类型不对 → 401。"""
+    return decode_token(token, expected_type="sse")
+
+
 def require_scope(scope: str) -> Callable[..., Any]:
     """作用域依赖工厂（单用户系统默认放通；保留接口给插件鉴权）。"""
 

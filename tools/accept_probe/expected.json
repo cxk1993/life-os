@@ -34,18 +34,18 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "CJ02Znoy",
-      "source": "2026-09-23 00:2x PWA 部署批次（主人令「PWA做一下」：manifest+SW+图标入 public/，main.tsx 生产注册 SW，nginx mime 补 application/manifest+json；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy）"
+      "entry_hash": "Dc8yk4bh",
+      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》"
     },
     "modules": {
       "enabled": true,
-      "count": 17,
+      "count": 18,
       "ids": [
         "agents", "auth", "calendar", "catalog", "dashboard", "diary", "docs",
         "finance", "habits", "health", "mcp", "notes", "persona", "plugins",
-        "review", "todo", "web"
+        "push", "review", "todo", "web"
       ],
-      "source": "总监令8 §4 生产三项快照（12:00）"
+      "source": "2026-09-23 11:2x push 上线后实测（重启前 discover_modules 预检 18 + 线上 /api/v1/modules count=18；原 17 为总监令8 §4 快照）"
     },
     "docsprobe": {
       "enabled": true,
@@ -55,7 +55,7 @@
     },
     "mcp_tools": {
       "enabled": true,
-      "count": 25,
+      "count": 26,
       "names": [
         "agents_task_read", "agents_task_write",
         "calendar_event_read", "calendar_event_write", "calendar_slot_free",
@@ -64,11 +64,12 @@
         "finance_beeccount_read", "finance_entry_read", "finance_entry_write", "finance_snapshot_read",
         "habits_habit_read", "habits_habit_write",
         "health_record_read", "health_record_write",
+        "push_subscription_read",
         "review_daily_read", "review_note_write", "review_source_read",
         "todo_item_read", "todo_item_write",
         "web_entry_read", "web_entry_write"
       ],
-      "source": "总监令40 头号派单（名级 tools/list 对表闸门）：ISSUE-008 方案A 修复后 25 工具全名单（26→25 因 habits.log.write 嵌套路由不可达被删 provides，见 4483c98）；本清单=工具集合契约，provides/声明任何增删必须回帖改契约（禁静默放宽）"
+      "source": "2026-09-23 11:2x push 上线后实测：生产 build_tool_map() 逐名核对 26 个（25 + push_subscription_read，源自 push manifest provides 机械映射）；其余 25 名零漂移。ISSUE-008 契约（25 名）由本条机械扩展。动前声明见 workbuddy《push上线完成-八步部署与契约定动声明》§4"
     },
     "o1_status": {
       "enabled": true,
