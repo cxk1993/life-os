@@ -14,7 +14,7 @@
     "minW": 560,
     "minH": 400
   },
-  "entry": "@apps/diary",
+  "entry": "@/apps/diary",
   "api": {
     "base": "/api/v1/diary",
     "openapi": "/api/v1/diary/openapi.json",

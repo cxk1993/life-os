@@ -18,6 +18,18 @@ class DiaryEntryOut(BaseModel):
     date: str
 
 
+class DiaryEntryUpdateIn(BaseModel):
+    """日记编辑请求（总监令60 CRUD 补全）。
+
+    - title：日记标题（= docs 节点 name）
+    - date：目标日期 YYYY-MM-DD（变更 → 移动节点到新日期目录，幂等 get-or-create）
+    正文内容编辑走 docs 的 PUT /nodes/{id}/content（本薄壳不重复代理）。
+    """
+
+    title: str | None = Field(default=None, max_length=200, description="日记标题")
+    date: str | None = Field(default=None, description="目标日期 YYYY-MM-DD")
+
+
 class DiaryTodayOut(BaseModel):
     """今天（按 settings.tz）。"""
 
@@ -25,6 +37,19 @@ class DiaryTodayOut(BaseModel):
     node_id: str
     path: str
     exists: bool
+
+
+class DiaryTodaySummaryOut(BaseModel):
+    """今日日记摘要（U2 小日历聚合 · 总监令62）。
+
+    BFF 透传 data（R-1 内核零业务），本模块只返回当日摘要数据。
+    """
+
+    date: str
+    exists: bool
+    title: str | None = None
+    marks: int = 0
+    items: list[str] = []
 
 
 class DiaryMonthOut(BaseModel):

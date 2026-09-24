@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlmodel import Session
 
 from core.deps import get_current_user, get_db, get_plugin_client
@@ -21,9 +21,11 @@ from .schema import (
     DiaryConsolidateIn,
     DiaryConsolidateOut,
     DiaryEntryOut,
+    DiaryEntryUpdateIn,
     DiaryInboxOut,
     DiaryMonthOut,
     DiaryTodayOut,
+    DiaryTodaySummaryOut,
 )
 from .service import DiaryService
 
@@ -104,6 +106,29 @@ def today(
     }
 
 
+@router.get("/today-summary", response_model=DiaryTodaySummaryOut)
+def today_summary(
+    request: Request,
+    db: DbDep = Depends(get_db),
+    user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """今日日记摘要（U2 小日历聚合 · 总监令62）。
+
+    BFF 透传 data（R-1 内核零业务），本模块只返回当日摘要数据。
+    复用 /today 的 get_or_create_entry，加 marks/items 字段。
+    """
+    svc = _svc(request, user)
+    d = svc.today()
+    entry = svc.get_or_create_entry(d.isoformat())
+    return {
+        "date": d.isoformat(),
+        "exists": entry["exists"],
+        "title": entry.get("name", None),
+        "marks": 1 if entry["exists"] else 0,
+        "items": [entry.get("name", "")] if entry["exists"] else [],
+    }
+
+
 @router.get("/entry", response_model=DiaryEntryOut)
 def get_entry(
     request: Request,
@@ -169,3 +194,35 @@ def consolidate(
 ) -> dict[str, Any]:
     """归纳：把收件箱条目移到目标日期月份下。"""
     return _svc(request, user).consolidate(body.node_id, body.date)
+
+@router.patch("/entry/{node_id}", response_model=DiaryEntryOut)
+def update_entry(
+    node_id: str,
+    request: Request,
+    body: DiaryEntryUpdateIn,
+    db: DbDep = Depends(get_db),
+    user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """编辑日记：改标题 / 改日期（移动节点到新日期目录）。
+
+    正文内容编辑走 docs 的 PUT /nodes/{id}/content（本薄壳不重复代理）。
+    """
+    svc = _svc(request, user)
+    result = svc.update_entry(node_id, title=body.title, raw_date=body.date)
+    return {
+        "node_id": result["id"],
+        "path": result.get("path", ""),
+        "exists": True,
+        "date": result.get("meta_json", {}).get("diary_date", ""),
+    }
+
+
+@router.delete("/entry/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_entry(
+    node_id: str,
+    request: Request,
+    db: DbDep = Depends(get_db),
+    user: UserDep = Depends(get_current_user),
+) -> None:
+    """软删日记（docs 回收站语义，可恢复）。"""
+    _svc(request, user).delete_entry(node_id)
