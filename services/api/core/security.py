@@ -96,6 +96,21 @@ async def get_current_user(
     return User(sub=payload.get("sub", USER_SUB), scopes=[])
 
 
+async def get_optional_user(
+    creds: HTTPAuthorizationCredentials | None = Depends(_BEARER),  # noqa: B008
+) -> User | None:
+    """可选 Bearer 依赖注入（ISSUE-011 案 C）：无令牌 -> None；令牌无效 -> 401。
+
+    用途：公开面端点（如 /api/v1/modules 裸调只见精简字段）在无令牌时
+    走 public 面，持有效令牌时走 full 面；**令牌无效/过期仍 401**
+    （与 /api/v1/plugins 口径对齐，避免「假 token 反而少信息」的怪行为）。
+    """
+    if creds is None or not creds.credentials:
+        return None
+    payload = decode_token(creds.credentials, expected_type="access")
+    return User(sub=payload.get("sub", USER_SUB), scopes=[])
+
+
 # ── SSE 入场券（F2 加固：事件流不再裸奔）───────────────────────────────
 # 为什么需要：浏览器原生 EventSource **不能带自定义 header**，所以 SSE 的鉴权
 # 只能走 query；而直接把 access token 塞进 URL 会进浏览器历史 / 代理日志 /
