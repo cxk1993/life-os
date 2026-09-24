@@ -22,6 +22,13 @@
   --dock-h: 0px;
 }
 
+/* ★ U1 收起彻底化（主人 09-24 反馈「残留细条」）：收起类下强制隐藏本体 ——
+   就算条件渲染漏了，这里也是第二道防线（display:none 让位最彻底）。 */
+.desktop--top-collapsed .topbar,
+.desktop--bottom-collapsed .dock {
+  display: none !important;
+}
+
 /* 收起后的悬浮把手（点击恢复；键盘可达，判据 U1-5） */
 .desktop__chrome-handle {
   position: fixed;
@@ -48,10 +55,6 @@
   top: 10px;
   right: calc(var(--sp-3) + 90px);
   z-index: 40;
-  background-image:
-    linear-gradient(var(--bg-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
-  background-size: 32px 32px;
   color: var(--txt);
   font-family: var(--font-sans);
   overflow: hidden;

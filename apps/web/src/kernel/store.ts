@@ -154,7 +154,8 @@ function clampGeo(g: WinGeo, manifest: ModuleManifest): WinGeo {
   const maxX = Math.max(0, vw() - w);
   const maxY = Math.max(TOPBAR, vh() - DOCK - h);
   const x = Math.min(Math.max(0, Math.round(g.x)), maxX);
-  const y = Math.min(Math.max(TOPBAR, Math.round(g.y)), maxY);
+  // ★ V1（主人令）：窗口可移到顶栏之上（上界放宽为 0；一键整理可找回，无需强制弹回）
+  const y = Math.min(Math.max(0, Math.round(g.y)), maxY);
   return { x, y, w, h };
 }
 

@@ -20,6 +20,7 @@ export function TopBar({ onOpenSearch, onTidy, onLogout }: Props) {
   const workspaces = useDesktopStore((s) => s.workspaces);
   // ★ U1（2026-09-24）：顶栏收放（收起按钮 → 悬浮把手恢复）
   const toggleTopbar = useDesktopStore((s) => s.toggleTopbar);
+  const toggleBottombar = useDesktopStore((s) => s.toggleBottombar);
   const activeWorkspaceId = useDesktopStore((s) => s.activeWorkspaceId);
   const switchWorkspace = useDesktopStore((s) => s.switchWorkspace);
   const createWorkspace = useDesktopStore((s) => s.createWorkspace);
@@ -77,6 +78,17 @@ export function TopBar({ onOpenSearch, onTidy, onLogout }: Props) {
           onClick={toggleTopbar}
         >
           ⌃
+        </button>
+        {/* ★ U1：收起底栏（Dock 收起入口此前缺失 —— 主人反馈「底端栏无法收起」） */}
+        <button
+          type="button"
+          className="icon-btn"
+          aria-expanded={true}
+          aria-label="收起底栏"
+          title="收起底栏"
+          onClick={toggleBottombar}
+        >
+          ⌄
         </button>
         <button
           type="button"
