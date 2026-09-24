@@ -126,8 +126,31 @@ def _window_days(frm: str, to: str) -> int:
         return 9999
 
 
+def _redact(msg: str) -> str:
+    """错误摘要进对话上下文前的脱敏：token 一律打星（绝不让凭据流进 LLM/日志）。"""
+    import re
+
+    msg = re.sub(r"(Bearer\s+)[A-Za-z0-9_.\-]+", r"\1***", msg)
+    msg = re.sub(r"(Authorization['\"]?[:=]\s*)[^,}\s]+", r"\1***", msg)
+    msg = re.sub(r"(key=)[^&\s]+", r"\1***", msg, flags=re.I)
+    return msg
+
+
 def make_tools(request: Request) -> dict[str, Callable[[dict[str, Any]], dict[str, Any]]]:
     client = get_plugin_client(request, _CAPS)
+
+    def _jump(fn: Callable[[dict[str, Any]], dict[str, Any]], name: str):
+        """fail-soft：一跳网络/解析挂了 → 把错误作为 tool 数据回给 LLM 综答，
+        绝不让整个对话端点 500（工具失败 ≠ 聊天失败；错误摘要不带 token）。"""
+
+        def wrapped(args: dict[str, Any]) -> dict[str, Any]:
+            try:
+                return fn(args)
+            except Exception as e:  # noqa: BLE001 — 工具边界就是要吞一切并上报
+                return {"ok": False, "tool": name, "error": _redact(str(e))[:200]}
+
+        return wrapped
+
 
     def calendar_event_read(args: dict[str, Any]) -> dict[str, Any]:
         frm = str(args.get("from") or "")
@@ -146,7 +169,9 @@ def make_tools(request: Request) -> dict[str, Callable[[dict[str, Any]], dict[st
             frm, to = want["from"], want["to"]
         data = client.get(
             "/api/v1/calendar/events",
-            params={"frm": frm, "to": to, "include_children": False, "flat": True},
+            # ★ 路由声明 Query(..., alias="from") —— 必须用别名 from，
+            #   传 frm 会被当缺参 → 422（生产 500 根因之一，实测钉出）。
+            params={"from": frm, "to": to, "include_children": False, "flat": True},
         )
         items = data if isinstance(data, list) else []
         slim = [
@@ -194,8 +219,8 @@ def make_tools(request: Request) -> dict[str, Callable[[dict[str, Any]], dict[st
         return {"ok": True, "today": data}
 
     return {
-        "calendar_event_read": calendar_event_read,
-        "todo_item_read": todo_item_read,
-        "health_record_read": health_record_read,
-        "dashboard_today_read": dashboard_today_read,
+        "calendar_event_read": _jump(calendar_event_read, "calendar_event_read"),
+        "todo_item_read": _jump(todo_item_read, "todo_item_read"),
+        "health_record_read": _jump(health_record_read, "health_record_read"),
+        "dashboard_today_read": _jump(dashboard_today_read, "dashboard_today_read"),
     }

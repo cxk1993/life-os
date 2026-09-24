@@ -128,3 +128,15 @@ def test_manifest_requires_covers_tool_caps():
     requires = set(manifest["requires"])
     need = {"calendar.event.read", "todo.item.read", "health.record.read", "dashboard.today.read"}
     assert need <= requires, f"缺声明: {need - requires}"
+
+
+def test_calendar_jump_uses_alias_not_python_name():
+    """★ 别名钉（生产 500 教训）：路由声明 Query(..., alias="from")，
+    内部调用必须传 from= 而不是 frm=——传错=422=对话窗整链 500。"""
+    src = (_MOD_DIR / "tools.py").read_text(encoding="utf-8")
+    i = src.find('"/api/v1/calendar/events"')
+    assert i > 0, "calendar 调用点被挪走了？"
+    # 取调用点后 400 字符窗口（params 是多行字典，不能用第一个 ) 截断）
+    win = src[i : i + 400]
+    assert '"from":' in win, "calendar 内部调用必须用别名 from"
+    assert '"frm"' not in win, "frm 是 Python 形参名，不是查询键——会 422"
