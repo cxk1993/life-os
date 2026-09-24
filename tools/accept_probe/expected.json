@@ -45,6 +45,15 @@
         "to": 22,
         "reason": "与 modules.count 同批联动（探针实跑发现漏改：o1 仍钉 17，生产 22）",
         "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
+      },
+      {
+        "at": "2026-09-26T03:40",
+        "by": "hermes",
+        "field": "suites.hash.entry_hash",
+        "from": "BaAgvSxg",
+        "to": "BGPhpz0E",
+        "reason": "U1 顶栏底栏收放热推 dist（本批构建晚于 U1 提交，二次构建）",
+        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
       }
     ]
   },
@@ -73,8 +82,8 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "BaAgvSxg",
-      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）"
+      "entry_hash": "BGPhpz0E",
+      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）"
     },
     "modules": {
       "enabled": true,
