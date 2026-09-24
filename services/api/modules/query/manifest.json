@@ -1,0 +1,33 @@
+{
+  "id": "query",
+  "name": "跨模块查询",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "search",
+  "description": "TX-QUERY-01 Q1：五条预置跨模块查询（零新表，只读）",
+  "author": "yunxi",
+  "window": { "w": 720, "h": 480, "minW": 480, "minH": 320 },
+  "entry": "@/apps/query",
+  "api": {
+    "base": "/api/v1/query",
+    "openapi": "/api/v1/query/openapi.json",
+    "health": "/api/v1/query/health"
+  },
+  "provides": ["query.read"],
+  "requires": [],
+  "optionalDependencies": [
+    "todo.item.read",
+    "calendar.event.read",
+    "habits.habit.read",
+    "finance.entry.read"
+  ],
+  "slots": ["dashboard.card", "desktop.dock"],
+  "emits": [],
+  "consumes": [],
+  "permissions": ["db:own"],
+  "activates_on": [],
+  "migrations": null,
+  "lifecycle": { "onInstall": null, "onEnable": null, "onDisable": null, "onUninstall": null }
+}

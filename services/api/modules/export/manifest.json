@@ -1,0 +1,28 @@
+{
+  "id": "export",
+  "name": "导出中心",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "download",
+  "description": "TX-EXPORT-01 搬家包：数据/文档导出，密钥截断，checksum 可回滚",
+  "author": "yunxi",
+  "window": { "w": 560, "h": 420, "minW": 400, "minH": 300 },
+  "entry": "@/apps/export",
+  "api": {
+    "base": "/api/v1/export",
+    "openapi": "/api/v1/export/openapi.json",
+    "health": "/api/v1/export/health"
+  },
+  "provides": ["export.job.read", "export.job.write"],
+  "requires": [],
+  "optionalDependencies": [],
+  "slots": ["desktop.dock"],
+  "emits": [],
+  "consumes": [],
+  "permissions": ["db:own"],
+  "activates_on": [],
+  "migrations": null,
+  "lifecycle": { "onInstall": null, "onEnable": null, "onDisable": null, "onUninstall": null }
+}
