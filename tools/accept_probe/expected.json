@@ -36,6 +36,15 @@
         "to": 22,
         "reason": "新模块上线：ai-chat（E7）/query（TX-QUERY）/export（TX-EXPORT）/summary（U2 薄壳）",
         "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
+      },
+      {
+        "at": "2026-09-26T03:20",
+        "by": "hermes",
+        "field": "suites.o1_status.count",
+        "from": 17,
+        "to": 22,
+        "reason": "与 modules.count 同批联动（探针实跑发现漏改：o1 仍钉 17，生产 22）",
+        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
       }
     ]
   },
@@ -138,7 +147,7 @@
     "o1_status": {
       "enabled": true,
       "skip_if_404": true,
-      "count": 17,
+      "count": 22,
       "status_enum": [
         "healthy",
         "degraded",
