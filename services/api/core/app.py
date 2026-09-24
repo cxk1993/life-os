@@ -242,11 +242,14 @@ def create_app(
     #       S-2 token 只透传给插件自有端点、不落日志不进 URL + 单家超时（防 hang 放大）
     #       S-3 审计只记操作与状态，不含 Authorization
     # ★ 鉴权：聚合的是用户数据，端点本身必须先过 get_current_user（不能成为新的裸奔口）。
-    _SUMMARY_PROVIDERS: tuple[tuple[str, str], ...] = (
-        ("calendar", "/api/v1/calendar/today-summary"),
-        ("todo", "/api/v1/todo/today-summary"),
-        ("diary", "/api/v1/diary/today-summary"),
-        ("review", "/api/v1/review/today-summary"),
+    # ★ 自查修正（2026-09-24 深夜 · 主人「严格检验」轮）：原硬编码四家违反
+    #   「一切皆插件」ADR-0003 —— 新插件加聚合源要改内核代码。
+    #   改为**从 manifest 动态发现**：插件在 provides 声明 x.summary.today
+    #   即自动成为聚合源，零内核改动（Manifest 模型 D′ 后字段可见）。
+    _summary_providers: tuple[tuple[str, str], ...] = tuple(
+        (m.id, f"/api/v1/{m.id}/today-summary")
+        for m, _ in discovered
+        if "x.summary.today" in (m.provides or ())
     )
     _SUMMARY_TIMEOUT = 3.0  # ★ S-2：单家超时（秒）
 
@@ -267,7 +270,7 @@ def create_app(
                         _fetch_one(
                             client, pid, base + path, headers, _SUMMARY_TIMEOUT
                         )
-                        for pid, path in _SUMMARY_PROVIDERS
+                        for pid, path in _summary_providers
                     )
                 )
             )
