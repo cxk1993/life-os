@@ -63,6 +63,15 @@
         "to": "DAC1ltnU",
         "reason": "U1-2 持久化修复热推 dist（851f841，生产 Playwright U1-1/U1-2 双 ✅）",
         "post": "life-chat/hermes/最新/2026-09-26-U1实测-持久化真bug立单.md"
+      },
+      {
+        "at": "2026-09-26T05:10",
+        "by": "hermes",
+        "field": "suites.hash.entry_hash",
+        "from": "DAC1ltnU",
+        "to": "DfGVOEYp",
+        "reason": "E7 大部署终批：PluginProvider 接线 + ai-chat 工具桥/别名修复/fail-soft + 豆包批次 + 契约收编，二次构建热推",
+        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
       }
     ]
   },
@@ -91,8 +100,8 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "DAC1ltnU",
-      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）"
+      "entry_hash": "DfGVOEYp",
+      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）"
     },
     "modules": {
       "enabled": true,
