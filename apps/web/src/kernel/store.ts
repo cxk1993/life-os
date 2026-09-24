@@ -102,6 +102,10 @@ interface PersistedShape {
   /** @deprecated v1 遗留 */
   seq?: number;
   enabled: Record<string, boolean>;
+  /** ★ U1-2 修复（hermes）：顶栏/底栏收放跨会话持久化。
+   *  旧快照缺字段 → hydrate 的 typeof 守卫不误折叠（向后兼容）。 */
+  topbarCollapsed?: boolean;
+  bottombarCollapsed?: boolean;
 }
 
 /** ★ T23 默认工作区 id（旧数据也迁到这里）。 */
@@ -194,6 +198,10 @@ function savePersisted(s: DesktopState): void {
       workspaces: s.workspaces,
       activeWorkspaceId: s.activeWorkspaceId,
       enabled,
+      // ★ U1-2 修复（hermes）：折叠字段此前被白名单丢弃 → toggle 写了快照但
+      //   序列化没带上，hydrate 永远读 undefined（实测 reload 弹回 48px）。
+      topbarCollapsed: s.topbarCollapsed,
+      bottombarCollapsed: s.bottombarCollapsed,
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(data));
   } catch {

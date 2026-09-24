@@ -217,3 +217,42 @@ describe("hydrate —— 持久化恢复与旧数据兼容", () => {
     expect(() => useDesktopStore.getState().hydrate()).not.toThrow();
   });
 });
+
+// ─────────────────── ★ U1-2 收放跨会话往返（hermes 立单修复） ───────────────────
+// 真 bug 回放：toggle 调了 savePersisted，但快照白名单没带折叠字段 →
+// localStorage 永远没写进去，reload 弹回展开态（生产 Playwright 实测）。
+// 本组测试走「toggle → localStorage 序列化 → 清态 → hydrate」全链，防再发。
+describe("U1-2 顶栏/底栏收放跨会话持久化", () => {
+  it("★ toggleTopbar → 快照 JSON 里真的有 topbarCollapsed（序列化白名单回归钉）", () => {
+    useDesktopStore.setState({ topbarCollapsed: false, bottombarCollapsed: false });
+    useDesktopStore.getState().toggleTopbar();
+    const raw = localStorage.getItem(STORE_KEY);
+    expect(raw).toBeTruthy();
+    const snap = JSON.parse(raw!);
+    expect(snap.topbarCollapsed).toBe(true); // ★ 断裂点：曾经这里永远是 undefined
+  });
+
+  it("toggle → hydrate（重建态）→ 折叠保持（reload 语义）", () => {
+    useDesktopStore.setState({ topbarCollapsed: false, bottombarCollapsed: false });
+    useDesktopStore.getState().toggleTopbar();
+    useDesktopStore.getState().toggleBottombar();
+    // 模拟 reload：状态清空再从 localStorage 恢复
+    useDesktopStore.setState({ topbarCollapsed: false, bottombarCollapsed: false });
+    useDesktopStore.getState().hydrate();
+    const st = useDesktopStore.getState();
+    expect(st.topbarCollapsed).toBe(true);
+    expect(st.bottombarCollapsed).toBe(true);
+  });
+
+  it("旧快照（无折叠字段）→ hydrate 不误折叠（向后兼容）", () => {
+    localStorage.setItem(
+      STORE_KEY,
+      JSON.stringify({ windows: [], workspaces: [makeWorkspace(1)], activeWorkspaceId: DEFAULT_WORKSPACE_ID, enabled: {} }),
+    );
+    useDesktopStore.setState({ topbarCollapsed: false, bottombarCollapsed: false });
+    useDesktopStore.getState().hydrate();
+    const st = useDesktopStore.getState();
+    expect(st.topbarCollapsed).toBe(false);
+    expect(st.bottombarCollapsed).toBe(false);
+  });
+});
