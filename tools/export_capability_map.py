@@ -110,6 +110,14 @@ def build(modules_dir: Path) -> dict:
         e["to"] == m.id for e in edges
     ))
 
+    # ★ U2（2026-09-24 · 副总监拍案 1 号）：today-summary 提供者审计
+    #   约定：插件在 manifest `provides` 里声明 `x.summary.today` = 本插件提供
+    #   `GET /api/v1/<id>/today-summary`（规范见 docs/specs/today-summary数据源规范-v1.md）。
+    #   声明走 provides（已知字段，D′ 后模型可见；能力名非顶层字段，不触 extra 分档）。
+    summary_providers = sorted(
+        m.id for m in manifests if "x.summary.today" in m.provides
+    )
+
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "modules": modules_out,
@@ -118,6 +126,7 @@ def build(modules_dir: Path) -> dict:
             "single_point": single_point,
             "isolated": isolated,
             "degraded": soft_missing_all,
+            "summary_providers": summary_providers,
         },
     }
 
