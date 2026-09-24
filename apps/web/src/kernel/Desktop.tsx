@@ -7,6 +7,7 @@ import { useDesktopStore, normalStack, topmostNormalId, type WindowState } from 
 import { installIframeAuthBridge } from "./iframeAuthBridge";
 import type { ModuleManifest } from "./types";
 import { AuthGate } from "./AuthGate";
+import { PluginProvider } from "./plugins/PluginContext";
 import { logout } from "@/shared/api/auth";
 import { Dock } from "./Dock";
 import { TimeWidget } from "./shell/TimeWidget";
@@ -123,109 +124,115 @@ export function Desktop() {
 
   return (
     <AuthGate>
-      <div
-        className={
-          "desktop" +
-          (topbarCollapsed ? " desktop--top-collapsed" : "") +
-          (bottombarCollapsed ? " desktop--bottom-collapsed" : "")
-        }
-      >
-        {topbarCollapsed ? (
-          // ★ U1-4：顶栏收起后时钟仍可达（悬浮胶囊，点击仍开 U2 今日摘要面板）
-          <div className="desktop__clock-pill">
-            <TimeWidget />
+      {/* ★ T02 预留集成缝正式接线（2026-09-26 hermes）：挂载后拉 /api/v1/plugins
+          → syncPluginsToStore → Dock 出现后端注册模块（ai-chat/query/export 等），
+          并加载各插件入口贡献 E5 sidecar / U3 dock-right 等 slot。
+          必须在 AuthGate 之内：登录后才 refresh，避免登录前 401 空跑。 */}
+      <PluginProvider>
+        <div
+          className={
+            "desktop" +
+            (topbarCollapsed ? " desktop--top-collapsed" : "") +
+            (bottombarCollapsed ? " desktop--bottom-collapsed" : "")
+          }
+        >
+          {topbarCollapsed ? (
+            // ★ U1-4：顶栏收起后时钟仍可达（悬浮胶囊，点击仍开 U2 今日摘要面板）
+            <div className="desktop__clock-pill">
+              <TimeWidget />
+            </div>
+          ) : (
+            <TopBar onOpenSearch={openSearch} onTidy={tidy} onLogout={() => void logout()} />
+          )}
+          {topbarCollapsed && (
+            <button
+              type="button"
+              className="desktop__chrome-handle"
+              style={{ top: 10 }}
+              aria-expanded={false}
+              onClick={toggleTopbar}
+            >
+              ▾ 顶栏
+            </button>
+          )}
+          <div className="desktop__mid">
+            {/* U3：桌面级双侧栏（左=导航/结构，右=摘要/情境；折叠持久化） */}
+            <DesktopSidebar side="left" />
+            <div className="windows">
+              <WindowManager />
+            </div>
+            <DesktopSidebar side="right" />
           </div>
-        ) : (
-          <TopBar onOpenSearch={openSearch} onTidy={tidy} onLogout={() => void logout()} />
-        )}
-        {topbarCollapsed && (
-          <button
-            type="button"
-            className="desktop__chrome-handle"
-            style={{ top: 10 }}
-            aria-expanded={false}
-            onClick={toggleTopbar}
-          >
-            ▾ 顶栏
-          </button>
-        )}
-        <div className="desktop__mid">
-          {/* U3：桌面级双侧栏（左=导航/结构，右=摘要/情境；折叠持久化） */}
-          <DesktopSidebar side="left" />
-          <div className="windows">
-            <WindowManager />
-          </div>
-          <DesktopSidebar side="right" />
-        </div>
-        {!bottombarCollapsed && <Dock />}
-        {bottombarCollapsed && (
-          <button
-            type="button"
-            className="desktop__chrome-handle"
-            style={{ bottom: 10 }}
-            aria-expanded={false}
-            onClick={toggleBottombar}
-          >
-            ▴ 底栏
-          </button>
-        )}
-        <ToastHost />
+          {!bottombarCollapsed && <Dock />}
+          {bottombarCollapsed && (
+            <button
+              type="button"
+              className="desktop__chrome-handle"
+              style={{ bottom: 10 }}
+              aria-expanded={false}
+              onClick={toggleBottombar}
+            >
+              ▴ 底栏
+            </button>
+          )}
+          <ToastHost />
 
-        {searchOpen ? (
-          <>
-            <div className="search-backdrop" onClick={closeSearch} />
-            <div className="search" role="dialog" aria-modal="true" aria-label="全局搜索">
-              <input
-                className="search__input"
-                autoFocus
-                placeholder="搜索模块…"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setActiveIdx(0);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    setActiveIdx((i) => Math.min(items.length - 1, i + 1));
-                  } else if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    setActiveIdx((i) => Math.max(0, i - 1));
-                  } else if (e.key === "Enter") {
-                    const m = items[activeIdx];
-                    if (m) {
-                      closeSearch();
-                      pluginHost.open(m.id);
-                    }
-                  } else if (e.key === "Escape") {
-                    e.stopPropagation(); // ★ BUG-T02-1：Esc 只关搜索层，不许冒泡成"关窗"
-                    closeSearch();
-                  }
-                }}
-              />
-              <div className="search__list">
-                {items.length ? (
-                  items.map((m, i) => (
-                    <div
-                      key={m.id}
-                      className={`search__item${i === activeIdx ? " search__item--active" : ""}`}
-                      onMouseEnter={() => setActiveIdx(i)}
-                      onClick={() => {
+          {searchOpen ? (
+            <>
+              <div className="search-backdrop" onClick={closeSearch} />
+              <div className="search" role="dialog" aria-modal="true" aria-label="全局搜索">
+                <input
+                  className="search__input"
+                  autoFocus
+                  placeholder="搜索模块…"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setActiveIdx(0);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setActiveIdx((i) => Math.min(items.length - 1, i + 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setActiveIdx((i) => Math.max(0, i - 1));
+                    } else if (e.key === "Enter") {
+                      const m = items[activeIdx];
+                      if (m) {
                         closeSearch();
                         pluginHost.open(m.id);
-                      }}
-                    >
-                      {m.name}
-                    </div>
-                  ))
-                ) : (
-                  <div className="search__empty">没有匹配的模块</div>
-                )}
+                      }
+                    } else if (e.key === "Escape") {
+                      e.stopPropagation(); // ★ BUG-T02-1：Esc 只关搜索层，不许冒泡成"关窗"
+                      closeSearch();
+                    }
+                  }}
+                />
+                <div className="search__list">
+                  {items.length ? (
+                    items.map((m, i) => (
+                      <div
+                        key={m.id}
+                        className={`search__item${i === activeIdx ? " search__item--active" : ""}`}
+                        onMouseEnter={() => setActiveIdx(i)}
+                        onClick={() => {
+                          closeSearch();
+                          pluginHost.open(m.id);
+                        }}
+                      >
+                        {m.name}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="search__empty">没有匹配的模块</div>
+                  )}
+                </div>
               </div>
-            </div>
-          </>
-        ) : null}
-      </div>
+            </>
+          ) : null}
+        </div>
+      </PluginProvider>
     </AuthGate>
   );
 }
