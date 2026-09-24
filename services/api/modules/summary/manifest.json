@@ -1,0 +1,39 @@
+{
+  "id": "summary",
+  "name": "今日摘要聚合",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "dashboard",
+  "description": "U2 小日历聚合：并发请求 calendar/todo/diary/review 的 today-summary 端点，缺一不塌",
+  "author": "yunxi",
+  "window": {
+    "w": 360,
+    "h": 520
+  },
+  "entry": "@/apps/summary",
+  "api": {
+    "base": "/api/v1/summary",
+    "openapi": "/api/v1/summary/openapi.json",
+    "health": "/api/v1/summary/health"
+  },
+  "provides": [],
+  "requires": [],
+  "optionalDependencies": [
+    "calendar.event.read",
+    "todo.item.read"
+  ],
+  "slots": ["desktop.widget"],
+  "emits": [],
+  "consumes": [],
+  "permissions": ["net:out:localhost"],
+  "activates_on": [],
+  "migrations": null,
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}
