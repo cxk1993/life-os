@@ -91,8 +91,94 @@
 }
 
 .notes-detail__content {
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: inherit;
   margin: 0;
+}
+
+/* —— V7 渲染栈：md-view 排版（表格/公式/代码/图片） —— */
+.md-view {
+  font-size: 13px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+.md-view > :first-child {
+  margin-top: 0;
+}
+.md-view h1,
+.md-view h2,
+.md-view h3,
+.md-view h4 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+.md-view h1 {
+  font-size: 17px;
+}
+.md-view h2 {
+  font-size: 15px;
+}
+.md-view h3 {
+  font-size: 14px;
+}
+.md-view p {
+  margin: 6px 0;
+}
+.md-view ul,
+.md-view ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.md-view li {
+  margin: 2px 0;
+}
+.md-view code {
+  background: color-mix(in srgb, var(--line, #333) 25%, transparent);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.md-view pre {
+  background: color-mix(in srgb, var(--line, #333) 12%, transparent);
+  padding: 8px;
+  border-radius: 6px;
+  overflow: auto;
+  margin: 8px 0;
+}
+.md-view pre code {
+  background: none;
+  padding: 0;
+}
+/* GFM 表格（主人 Boyle 定律验收样例） */
+.md-view table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+  font-size: 12px;
+}
+.md-view th,
+.md-view td {
+  border: 1px solid var(--line, #333);
+  padding: 4px 8px;
+  text-align: left;
+}
+.md-view th {
+  background: color-mix(in srgb, var(--line, #333) 15%, transparent);
+  font-weight: 600;
+}
+.md-view blockquote {
+  margin: 8px 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--line, #333);
+  color: var(--txt-dim, inherit);
+}
+/* KaTeX 公式块 */
+.md-view .katex-display {
+  margin: 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* 图片（Obsidian 附件：路径由桥契约映射，视图直通） */
+.md-view img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 6px 0;
 }

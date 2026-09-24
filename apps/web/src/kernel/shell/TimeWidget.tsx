@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { api } from "@/shared/api/client";
+import { api, ApiError } from "@/shared/api/client";
 import { useDesktopStore } from "../store";
 
 /**
@@ -93,7 +93,7 @@ function normalizeItems(items: unknown): TodaySummaryItem[] {
  * provider.status 三态 = ok / not-implemented（未安装）/ unavailable（暂时不可用）。 */
 function ProvSection({ id, moduleId, label }: { id: string; moduleId: string; label: string }) {
   const openWindow = useDesktopStore((s) => s.openWindow);
-  const { data, isError, isLoading } = useQuery({
+  const { data, isError, isLoading, error } = useQuery({
     queryKey: ["summary-today"],
     queryFn: (): Promise<SummaryTodayResp> => api.get<SummaryTodayResp>("/api/v1/summary/today"),
     retry: 1,
@@ -115,10 +115,17 @@ function ProvSection({ id, moduleId, label }: { id: string; moduleId: string; la
       {isLoading ? (
         <div className="today-sum__empty">…</div>
       ) : isError ? (
-        // BFF 端点本身 5xx/404 → 全面板降级（单点，非「没数据」）
-        <div className="today-sum__empty" data-testid={`today-sum-${id}-err`}>
-          暂时不可用
-        </div>
+        // V4-01：BFF 端点 401（未登录/会话过期）→ 「未登录」子态，不再混进「暂时不可用」
+        error instanceof ApiError && error.status === 401 ? (
+          <div className="today-sum__empty" data-testid={`today-sum-${id}-auth`}>
+            未登录 · 请重新登录
+          </div>
+        ) : (
+          // BFF 端点本身 5xx/404 → 全面板降级（单点，非「没数据」）
+          <div className="today-sum__empty" data-testid={`today-sum-${id}-err`}>
+            暂时不可用
+          </div>
+        )
       ) : prov?.status === "not-implemented" ? (
         // 该源未实现：占位 + 引导（★ 副总监铁律：不消失，可操作）
         <div className="today-sum__na" data-testid={`today-sum-${id}-na`}>
@@ -286,7 +293,7 @@ const PEEK_LABELS: Record<string, string> = {
 /** 选中日聚合：day-peek 四源（历史/未来日；软失败空态）。 */
 function DayPeekPanel({ date }: { date: string }) {
   const openWindow = useDesktopStore((s) => s.openWindow);
-  const { data, isError, isLoading } = useQuery({
+  const { data, isError, isLoading, error } = useQuery({
     queryKey: ["day-peek", date],
     queryFn: async (): Promise<DayPeekResp> =>
       api.get<DayPeekResp>(`/api/v1/dashboard/day-peek?date=${date}`),
@@ -297,8 +304,8 @@ function DayPeekPanel({ date }: { date: string }) {
   if (isLoading) return <div className="today-sum__empty">…</div>;
   if (isError)
     return (
-      <div className="today-sum__empty" data-testid="day-peek-err">
-        暂时不可用
+      <div className="today-sum__empty" data-testid={error instanceof ApiError && error.status === 401 ? "day-peek-auth" : "day-peek-err"}>
+        {error instanceof ApiError && error.status === 401 ? "未登录 · 请重新登录" : "暂时不可用"}
       </div>
     );
 

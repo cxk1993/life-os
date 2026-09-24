@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notesApi, type NoteBrief } from "./api";
+import MdView from "@/shared/components/MdView";
 
 /**
  * 笔记窗口：搜索索引 + 点开看全文（全文经本机桥按需拉取）。
@@ -78,9 +79,10 @@ export default function NotesApp() {
             <>
               <h3 className="notes-detail__title">{detail.data.title}</h3>
               <div className="notes-detail__path">{detail.data.rel_path}</div>
-              <pre className="notes-detail__content">
-                {detail.data.content || "（全文暂不可用——本机桥未连接）"}
-              </pre>
+              <MdView
+                className="notes-detail__content"
+                content={detail.data.content || "（全文暂不可用——本机桥未连接）"}
+              />
             </>
           )}
         </div>

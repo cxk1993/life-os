@@ -288,4 +288,17 @@ describe("U2 · TimeWidget（聚合小日历视图侧）", () => {
     fireEvent.click(screen.getByLabelText(/当前时间/));
     await waitFor(() => expect(screen.getByText("复盘了本周")).toBeTruthy());
   });
+
+  it("J13 · BFF 401 → 分区显示「未登录 · 请重新登录」（V4-01：不再混为暂时不可用）", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url.startsWith("/api/v1/dashboard/day-dots")) return {};
+      throw new ApiError({ type: "about:blank", title: "401", status: 401, detail: "unauthorized" });
+    });
+    const { el } = wrapper();
+    render(el);
+    fireEvent.click(screen.getByLabelText(/当前时间/));
+    await waitFor(() => expect(screen.getByTestId("today-sum-calendar-auth")).toBeTruthy());
+    expect(screen.getAllByText("未登录 · 请重新登录").length).toBe(4); // BFF 401 → 四分区全显未登录
+    expect(screen.queryByText("暂时不可用")).toBeNull();
+  });
 });

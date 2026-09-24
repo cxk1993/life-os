@@ -94,18 +94,15 @@ describe("NotesApp", () => {
     expect(screen.getByText("进度摘要")).toBeTruthy();
   });
 
-  it("点开列表项加载全文（详情）", async () => {
+  it("点开列表项加载全文（详情 · V7 MdView 渲染）", async () => {
     render(<NotesApp />, { wrapper: makeWrapper() });
     await waitFor(() => screen.getByText("周报"));
     fireEvent.click(screen.getByText("周报"));
     await waitFor(() => {
-      // content 整段在 <pre> 里，text 节点是 "# 周报\n正文"，不能精确匹配「正文」
-      expect(
-        screen.getByText(
-          (_, el) => el?.tagName === "PRE" && el.textContent?.includes("正文") === true,
-        ),
-      ).toBeTruthy();
+      // V7 渲染栈：md 由 MdView 渲染为标题+段落（不再是 <pre> 裸文本）
+      expect(screen.getByRole("heading", { level: 1, name: "周报" })).toBeTruthy();
     });
+    expect(screen.getByText("正文")).toBeTruthy();
     expect(notesApi.get).toHaveBeenCalledWith("n1");
     expect(screen.getByText("a/one.md")).toBeTruthy();
   });
@@ -160,6 +157,25 @@ describe("NotesApp", () => {
     await waitFor(() => {
       expect(screen.getByText("（全文暂不可用——本机桥未连接）")).toBeTruthy();
     });
+  });
+
+  it("V7 验收样例：Boyle 定律表格 + KaTeX 公式渲染", async () => {
+    vi.mocked(notesApi.get).mockResolvedValue({
+      ...brief,
+      content:
+        "| 定律 | 控制条件 | 结论 | 关系式 |\n" +
+        "|---|---|---|---|\n" +
+        "| **Boyle 定律** | $n$、$T$ 一定 | $V$ 与 $p$ 成**反比** | $V \\propto \\dfrac{1}{p}$ |",
+    });
+    render(<NotesApp />, { wrapper: makeWrapper() });
+    await waitFor(() => screen.getByText("周报"));
+    fireEvent.click(screen.getByText("周报"));
+    await waitFor(() => {
+      expect(document.querySelector(".md-view table")).toBeTruthy(); // GFM 表格
+    });
+    expect(document.querySelectorAll(".md-view table th").length).toBe(4); // 四列表头
+    expect(document.querySelector(".md-view .katex")).toBeTruthy(); // KaTeX 公式（含 \dfrac）
+    expect(screen.getByText("Boyle 定律")).toBeTruthy();
   });
 
   it("同步按钮只同步 enabled 库", async () => {
