@@ -355,6 +355,29 @@ def test_search_empty_query(client, auth):
     assert r.status_code == 422
 
 
+def test_search_o2_title_weight_beats_body(client, auth):
+    """O2：标题命中排在仅正文命中之前（短词与长词均适用）。"""
+    a = _create(client, auth, kind="doc", name="无关文档")
+    _save(client, auth, a["id"], body="这里提到一次旅行见闻")
+    b = _create(client, auth, kind="doc", name="旅行计划")
+    _save(client, auth, b["id"], body="普通内容")
+    r = client.get("/api/v1/docs/search", params={"q": "旅行"}, headers=auth)
+    ids = [h["id"] for h in r.json()["items"]]
+    assert b["id"] in ids and a["id"] in ids
+    assert ids.index(b["id"]) < ids.index(a["id"])
+
+
+def test_search_o2_highlight_fields(client, auth):
+    """O2：结果带 score / highlight，且高亮含 [[ ]] 标记。"""
+    doc = _create(client, auth, kind="doc", name="高亮测试甲")
+    _save(client, auth, doc["id"], body="正文里有独特短语乙丙丁")
+    r = client.get("/api/v1/docs/search", params={"q": "独特短语"}, headers=auth)
+    hit = next(h for h in r.json()["items"] if h["id"] == doc["id"])
+    assert "score" in hit
+    blob = (hit.get("highlight") or "") + (hit.get("title_highlight") or "")
+    assert "[[" in blob
+
+
 # ───────────────────────── 大文档（10 万字） ─────────────────────────
 def test_large_document(client, auth):
     doc = _create(client, auth, kind="doc", name="十万字")

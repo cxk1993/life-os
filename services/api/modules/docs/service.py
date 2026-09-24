@@ -327,6 +327,15 @@ class DocsService:
                 )
             ).all()
             hit_ids.update(n.id for n in rows)
+            # O2：短词也搜正文（标题优先靠 score）
+            for t in short:
+                plike = f"%{t}%"
+                for (nid,) in self.db.execute(
+                    text("SELECT node_id FROM docs_content WHERE body LIKE :like").bindparams(
+                        like=plike
+                    )
+                ).all():
+                    hit_ids.add(str(nid))
         if not hit_ids:
             return [], None
         rows, next_cursor = self._page_rows(
@@ -336,7 +345,35 @@ class DocsService:
             conditions=(col(DocsNode.deleted_at).is_(None), col(DocsNode.id).in_(list(hit_ids))),
             order_by=col(DocsNode.updated_at).desc(),
         )
-        return [_dump_node(r) for r in rows], next_cursor
+        out = []
+        for r in rows:
+            d = _dump_node(r)
+            name = str(d.get("name") or "")
+            content = self.db.get(DocsContent, r.id)
+            body = (content.body if content else "") or ""
+            score = 0.0
+            for t in terms:
+                if t.lower() in name.lower():
+                    score += 3.0
+                if t.lower() in body.lower():
+                    score += 1.0
+            hl_t = name
+            hl_b = body[:160]
+            for t in sorted(terms, key=len, reverse=True):
+                if not t:
+                    continue
+                if t.lower() in hl_t.lower():
+                    hl_t = hl_t.replace(t, f"[[{t}]]", 1) if t in hl_t else hl_t
+                if t.lower() in hl_b.lower():
+                    idx = hl_b.lower().find(t.lower())
+                    if idx >= 0:
+                        hl_b = hl_b[:idx] + f"[[{hl_b[idx:idx+len(t)]}]]" + hl_b[idx + len(t) :]
+            d["score"] = score
+            d["highlight"] = hl_b if "[[" in hl_b else hl_t
+            d["title_highlight"] = hl_t
+            out.append(d)
+        out.sort(key=lambda x: (-float(x.get("score") or 0)))
+        return out, next_cursor
 
     # ───────────────────────── FTS 同步（service 层维护） ─────────────────────────
     def _sync_fts(self, node: DocsNode, body: str | None = None) -> None:
