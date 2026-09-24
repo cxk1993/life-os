@@ -118,6 +118,14 @@ def build(modules_dir: Path) -> dict:
         m.id for m in manifests if "x.summary.today" in m.provides
     )
 
+    # ★ U3 dock 过载守门（dock数据源规范 v1 §4）：两侧合计 >6 卡 → 提示重审信息架构
+    dock_cards = [
+        {"id": m.id, "slot": s}
+        for m in manifests
+        for s in m.slots
+        if s.startswith("desktop.dock-")
+    ]
+
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "modules": modules_out,
@@ -127,6 +135,8 @@ def build(modules_dir: Path) -> dict:
             "isolated": isolated,
             "degraded": soft_missing_all,
             "summary_providers": summary_providers,
+            "dock_cards": dock_cards,
+            "dock_overload": len(dock_cards) > 6,
         },
     }
 
