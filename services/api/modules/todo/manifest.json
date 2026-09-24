@@ -24,7 +24,9 @@
   ],
   "requires": [],
   "slots": [
-    "dashboard.card"
+    "dashboard.card",
+    "window.sidecar",
+    "desktop.dock-right"
   ],
   "emits": [
     "todo.item.created",

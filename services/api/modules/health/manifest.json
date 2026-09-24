@@ -27,7 +27,9 @@
     "health.care.request"
   ],
   "requires": [],
-  "slots": [],
+  "slots": [
+    "window.sidecar"
+  ],
   "emits": [
     "health.record.created",
     "health.record.updated",

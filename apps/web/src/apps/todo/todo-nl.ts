@@ -263,7 +263,7 @@ function findDateTimeSlot(input: string): { slot: Slot | null; date?: Date; hasT
   // 周末（本周六，已过则下周六）
   const wkndM = /周末/.exec(text);
   if (wkndM) {
-    const sat = addDays(today, ((6 - today.getDay() + 7) % 7) || 7);
+    const sat = addDays(today, (6 - today.getDay() + 7) % 7 || 7);
     push(wkndM[0], sat);
   }
 

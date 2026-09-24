@@ -1,0 +1,109 @@
+/* E7 · AI 对话窗 */
+.chat-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.chat-app__msgs {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.chat-app__msg {
+  display: flex;
+}
+.chat-app__msg.is-user {
+  justify-content: flex-end;
+}
+.chat-app__msg.is-assistant {
+  justify-content: flex-start;
+}
+.chat-app__bubble {
+  max-width: 80%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chat-app__msg.is-user .chat-app__bubble {
+  background: var(--accent);
+  color: var(--surface);
+  border-bottom-right-radius: 2px;
+}
+.chat-app__msg.is-assistant .chat-app__bubble {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  border-bottom-left-radius: 2px;
+}
+.chat-app__msg.is-error .chat-app__bubble {
+  color: var(--danger, #d64545);
+}
+.chat-app__audit {
+  padding: 0 10px 4px;
+}
+.chat-app__audit-toggle {
+  border: none;
+  background: transparent;
+  color: var(--txt-faint);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.chat-app__audit-toggle:hover {
+  color: var(--txt-dim);
+}
+.chat-app__audit-list {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  list-style: none;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: 10px;
+  color: var(--txt-dim);
+  max-height: 90px;
+  overflow-y: auto;
+}
+.chat-app__input {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--line);
+}
+.chat-app__input input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+}
+.chat-app__input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.chat-app__send {
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--surface);
+  font: inherit;
+  font-size: 13px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+.chat-app__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
