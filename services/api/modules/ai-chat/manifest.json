@@ -1,0 +1,29 @@
+{
+  "id": "ai-chat",
+  "name": "AI 对话",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "bot",
+  "description": "内置 AI 对话窗：自然语言 → MCP 工具 → 回话（TX-AI-CHAT-01）",
+  "author": "yunxi",
+  "window": { "w": 520, "h": 640, "minW": 360, "minH": 420 },
+  "entry": "@/apps/ai-chat",
+  "api": {
+    "base": "/api/v1/ai-chat",
+    "openapi": "/api/v1/ai-chat/openapi.json",
+    "health": "/api/v1/ai-chat/health"
+  },
+  "provides": [],
+  "requires": [],
+  "optionalDependencies": ["calendar.event.read", "todo.item.read"],
+  "slots": ["desktop.dock"],
+  "emits": [],
+  "consumes": [],
+  "permissions": ["db:own"],
+  "activates_on": [],
+  "migrations": null,
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": { "onInstall": null, "onEnable": null, "onDisable": null, "onUninstall": null }
+}
