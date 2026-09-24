@@ -77,7 +77,7 @@
     },
     "entry": {
       "type": "string",
-      "description": "前端入口（内置插件约定 @apps/<id>；内核按此动态加载窗口组件）。"
+      "description": "前端入口（内置插件约定 @/apps/<id>；内核按此动态加载窗口组件）。"
     },
     "api": {
       "type": "object",
@@ -108,12 +108,19 @@
       "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$" },
       "description": "本插件需要别人提供的能力；没写的能力调用会被拒。"
     },
+    "optionalDependencies": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$" },
+      "description": "TX-DEG-01 软依赖：缺了不阻塞启动，O1 挂 degraded+reason_code。与 requires 互斥（同一条目不得两处都写）。"
+    },
     "slots": {
       "type": "array",
       "items": {
         "type": "string",
         "enum": [
           "desktop.dock",
+          "desktop.dock-left",
+          "desktop.dock-right",
           "desktop.widget",
           "dashboard.card",
           "topbar.action",
@@ -124,10 +131,11 @@
           "search.provider",
           "ai.tool",
           "notification.channel",
-          "command.palette"
+          "command.palette",
+          "window.sidecar"
         ]
       },
-      "description": "本插件要挂到的扩展点（只能从已知 12 个里挑）。"
+      "description": "本插件要挂到的扩展点（只能从已知 14 个里挑；desktop.dock-left/right 为 U3 桌面级侧栏，window.sidecar 为 E5 窗口内测栏，附着目标用 attachTo 声明）。"
     },
     "emits": {
       "type": "array",
