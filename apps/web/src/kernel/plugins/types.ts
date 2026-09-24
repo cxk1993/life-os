@@ -9,7 +9,7 @@ import type { ModuleKind, ModuleManifest } from "../types";
  * `{ manifestId, Component, slots? }`（见 kernel/types.ts 的 PluginModule）。
  */
 
-/** 12 个已知扩展点（与总纲 §1.3.4 一一对应；扩展点是内核资产，第三方不得新增）。 */
+/** 13 个已知扩展点（与总纲 §1.3.4 一一对应；扩展点是内核资产，第三方不得新增）。 */
 export type SlotName =
   | "desktop.dock"
   | "desktop.widget"
@@ -22,7 +22,11 @@ export type SlotName =
   | "search.provider"
   | "ai.tool"
   | "notification.channel"
-  | "command.palette";
+  | "command.palette"
+  | "window.sidecar"
+  // U3（桌面级）：左右侧边栏（E5 window.sidecar 的桌面级兄弟，schema 已会签 14 枚举）
+  | "desktop.dock-left"
+  | "desktop.dock-right";
 
 export interface PluginManifest extends ModuleManifest {
   kernelApi?: string;
@@ -62,6 +66,8 @@ export interface SlotContribution {
   /** 排序权重，越大越靠后。 */
   order?: number;
   title?: string;
+  /** E5：sidecar 附着目标窗口 moduleId；缺省 = 所有窗口。 */
+  attachTo?: string;
 }
 
 /** 注入到 React 树的插件上下文（由 PluginProvider 提供）。 */

@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-
 import { useTheme } from "@/shared/styles/theme";
 import { useDesktopStore } from "./store";
+import { TimeWidget } from "./shell/TimeWidget";
 
 interface Props {
   onOpenSearch: () => void;
@@ -10,31 +9,13 @@ interface Props {
   onLogout?: () => void;
 }
 
-function useClock(): string {
-  const [now, setNow] = useState(() => formatNow());
-  useEffect(() => {
-    const t = setInterval(() => setNow(formatNow()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  return now;
-}
-
-function formatNow(): string {
-  try {
-    return new Date().toLocaleTimeString("zh-CN", { hour12: false });
-  } catch {
-    return "";
-  }
-}
-
 /**
- * 顶栏：品牌 / 全局搜索入口 / 走秒时钟 / 整理桌面 / 主题切换。
+ * 顶栏：品牌 / 全局搜索入口 / 走秒时钟（U2 今日摘要面板）/ 整理桌面 / 主题切换。
  * 锁定的「登录相关」不在内核职责内（鉴权由 T03 提供），这里只留一个无副作用的占位按钮位。
  */
 export function TopBar({ onOpenSearch, onTidy, onLogout }: Props) {
   const theme = useTheme((s) => s.theme);
   const toggle = useTheme((s) => s.toggle);
-  const clock = useClock();
   // ★ T23 工作区切换器
   const workspaces = useDesktopStore((s) => s.workspaces);
   const activeWorkspaceId = useDesktopStore((s) => s.activeWorkspaceId);
@@ -81,9 +62,8 @@ export function TopBar({ onOpenSearch, onTidy, onLogout }: Props) {
       </div>
 
       <span className="topbar__spacer" />
-      <span className="topbar__clock" aria-label="当前时间">
-        {clock}
-      </span>
+      {/* U2：右上角时间 → 点击展开今日摘要面板（跨插件聚合） */}
+      <TimeWidget />
       <div className="topbar__actions">
         <button
           type="button"

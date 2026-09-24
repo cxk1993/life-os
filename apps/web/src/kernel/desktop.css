@@ -70,7 +70,238 @@
   font-size: 13px;
   color: var(--txt-dim);
   white-space: nowrap;
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
 }
+.topbar__clock:hover {
+  background: var(--surface-2);
+  color: var(--txt);
+}
+/* -- U2 聚合小日历 · 今日摘要面板 -- */
+.time-widget {
+  position: relative;
+}
+.today-sum {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(320px, calc(100vw - 24px));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md, 10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  z-index: 91000;
+}
+.today-sum__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--txt);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+}
+.today-sum__sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.today-sum__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt-dim);
+  cursor: pointer;
+  text-align: left;
+}
+.today-sum__head:hover {
+  color: var(--txt);
+}
+.today-sum__sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--txt-faint);
+}
+.today-sum__count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--txt-faint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 0 6px;
+}
+.today-sum__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.today-sum__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: 12px;
+  color: var(--txt);
+}
+.today-sum__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--txt-faint);
+  flex: 0 0 auto;
+}
+.today-sum__item--due .today-sum__dot {
+  background: var(--warn, #d9a13b);
+}
+.today-sum__item--done .today-sum__dot {
+  background: var(--accent, #4a7dff);
+}
+.today-sum__item--alert .today-sum__dot {
+  background: var(--danger, #d64545);
+}
+.today-sum__txt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-sum__cnt {
+  font-size: 10px;
+  color: var(--txt-faint);
+}
+.today-sum__empty {
+  font-size: 11px;
+  color: var(--txt-faint);
+  padding-left: var(--sp-4);
+}
+.today-sum__na {
+  font-size: 11px;
+  color: var(--txt-faint);
+  padding-left: var(--sp-4);
+  font-style: italic;
+}
+.today-sum__na::after {
+  content: "↗";
+  margin-left: 2px;
+}
+/* —— U2 v2：月历 + 按日聚合 —— */
+.today-sum__divider {
+  height: 1px;
+  background: var(--line);
+  margin: var(--sp-1) 0;
+}
+.today-sum__cal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.today-sum__cal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.today-sum__cal-head button {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.today-sum__cal-head button:hover {
+  background: var(--surface-3);
+  color: var(--txt);
+}
+.today-sum__cal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+}
+.today-sum__cal-today {
+  font-size: 10px !important;
+}
+.today-sum__cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 10px;
+  color: var(--txt-faint);
+}
+.today-sum__cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.today-sum__cal-cell {
+  position: relative;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--txt);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.today-sum__cal-cell:hover {
+  background: var(--surface-2);
+}
+.today-sum__cal-cell.is-void {
+  pointer-events: none;
+}
+.today-sum__cal-cell.is-today {
+  font-weight: 700;
+  color: var(--accent);
+}
+.today-sum__cal-cell.is-selected {
+  background: var(--accent);
+  color: var(--surface);
+  font-weight: 700;
+}
+.today-sum__cal-dots {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+.today-sum__cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: transparent;
+}
+.today-sum__cal-dot--calendar.is-on { background: var(--accent); }
+.today-sum__cal-dot--todo.is-on { background: var(--warn, #d9a13b); }
+.today-sum__cal-dot--diary.is-on { background: var(--txt-dim); }
+.today-sum__cal-dot--review.is-on { background: var(--danger, #d64545); }
+
 .topbar__actions {
   display: flex;
   align-items: center;
@@ -98,13 +329,158 @@
   box-shadow: var(--focus-ring);
 }
 
-/* —— 窗口层 —— */
-.windows {
+/* —— 窗口层（U3：左右留侧栏位）—— */
+.desktop__mid {
   position: absolute;
   top: var(--topbar-h);
   left: 0;
   right: 0;
   bottom: var(--dock-h);
+  display: flex;
+  align-items: stretch;
+}
+.windows {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+/* —— U3 桌面级双侧栏 —— */
+.desktop-sidebar {
+  position: relative;
+  flex: 0 0 auto;
+  width: 224px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 80000;
+}
+.desktop-sidebar--right {
+  border-right: none;
+  border-left: 1px solid var(--line);
+}
+.desktop-sidebar.is-collapsed {
+  width: 40px;
+  overflow: visible;
+}
+.desktop-sidebar__toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 2;
+}
+.desktop-sidebar--left .desktop-sidebar__toggle {
+  right: 8px;
+}
+.desktop-sidebar--right .desktop-sidebar__toggle {
+  right: auto;
+  left: 8px;
+}
+.desktop-sidebar__toggle:hover {
+  background: var(--surface-3);
+  color: var(--txt);
+}
+.desktop-sidebar__body {
+  padding: var(--sp-4) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.desktop-side__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--txt-dim);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.desktop-side__today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.desktop-side__today-list button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--txt-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.desktop-side__today-list button:hover {
+  background: var(--surface-2);
+  color: var(--txt);
+}
+.desktop-side__today-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--txt);
+  flex: 0 0 auto;
+}
+.desktop-sidebar__slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.desktop-side__nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.desktop-side__nav-list button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--txt-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.desktop-side__nav-list button:hover {
+  background: var(--surface-2);
+  color: var(--txt);
+}
+.desktop-side__empty {
+  font-size: 12px;
+  color: var(--txt-faint);
 }
 
 /* —— 坞 —— */

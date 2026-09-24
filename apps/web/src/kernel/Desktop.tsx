@@ -12,6 +12,7 @@ import { Dock } from "./Dock";
 import { useShortcuts, type ShortcutHandlers } from "./Shortcuts";
 import { TopBar } from "./TopBar";
 import { WindowManager } from "./WindowManager";
+import { DesktopSidebar } from "./shell/DesktopSidebar";
 
 const MODULES_URL = "/modules.json";
 
@@ -117,8 +118,13 @@ export function Desktop() {
     <AuthGate>
       <div className="desktop">
         <TopBar onOpenSearch={openSearch} onTidy={tidy} onLogout={() => void logout()} />
-        <div className="windows">
-          <WindowManager />
+        <div className="desktop__mid">
+          {/* U3：桌面级双侧栏（左=导航/结构，右=摘要/情境；折叠持久化） */}
+          <DesktopSidebar side="left" />
+          <div className="windows">
+            <WindowManager />
+          </div>
+          <DesktopSidebar side="right" />
         </div>
         <Dock />
         <ToastHost />

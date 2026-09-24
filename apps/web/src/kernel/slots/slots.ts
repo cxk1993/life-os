@@ -1,8 +1,8 @@
 import type { SlotName } from "../plugins/types";
 
 /**
- * 12 个扩展点（总纲 §1.3.4）。扩展点是内核资产：第三方插件只能往这里挂东西，
- * 不得新增扩展点（需要新扩展点走 RFC）。
+ * 13 个扩展点（总纲 §1.3.4）。扩展点是内核资产：第三方插件只能往这里挂东西，
+ * 不得新增扩展点（需要新扩展点走 RFC——E5 起新增 13 号 `window.sidecar`）。
  *
  * 这一层只定义"有哪些扩展点、各自挂在哪个区域、叫什么"，不渲染任何业务内容——
  * 渲染交给 SlotHost + 各插件的贡献组件。
@@ -87,6 +87,25 @@ export const SLOTS: Record<SlotName, SlotMeta> = {
     title: "命令面板",
     description: "命令面板条目",
     mount: "命令面板",
+  },
+  "window.sidecar": {
+    name: "window.sidecar",
+    title: "窗口侧栏卡片",
+    description: "窗口内寄生小面板（attachTo 指定目标窗口，缺省全窗）",
+    mount: "窗口侧栏",
+  },
+  // U3（桌面级）：E5 window.sidecar 的桌面级兄弟——同一机制，两级挂载点。
+  "desktop.dock-left": {
+    name: "desktop.dock-left",
+    title: "桌面左侧栏",
+    description: "桌面级左侧栏（左=导航/结构惯例）；折叠持久化、tooltip、aria-expanded",
+    mount: "桌面左侧栏",
+  },
+  "desktop.dock-right": {
+    name: "desktop.dock-right",
+    title: "桌面右侧栏",
+    description: "桌面级右侧栏（右=摘要/情境惯例：今日摘要、待办、健康趋势）",
+    mount: "桌面右侧栏",
   },
 };
 
