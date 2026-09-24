@@ -18,16 +18,17 @@ import {
 } from "../slots/contributions";
 import { syncPluginsToStore } from "./PluginRegistry";
 import type { PluginContextValue, PluginInfo, SlotContribution, SlotName } from "./types";
+import type { SlotContributionSpec } from "../types";
 
 /**
  * 动态 import 插件入口：与窗口打开共用 ModuleRegistry.resolveLoader
  * （按 src/apps/<目录>/index.tsx 约定自动发现，不在内核写死插件名）。
  */
-async function defaultLoadEntry(
-  entry: string,
-): Promise<{ default: { slots?: Partial<Record<SlotName, ComponentType>> } }> {
+async function defaultLoadEntry(entry: string): Promise<{
+  default: { slots?: Partial<Record<SlotName, ComponentType | SlotContributionSpec>> };
+}> {
   return resolveLoader(entry)() as unknown as Promise<{
-    default: { slots?: Partial<Record<SlotName, ComponentType>> };
+    default: { slots?: Partial<Record<SlotName, ComponentType | SlotContributionSpec>> };
   }>;
 }
 
@@ -38,9 +39,9 @@ export interface PluginProviderProps {
   /** 注入自定义 API 客户端（测试用）。 */
   client?: ApiClient;
   /** 注入自定义入口加载器（测试用）。 */
-  loadEntry?: (
-    entry: string,
-  ) => Promise<{ default: { slots?: Partial<Record<SlotName, ComponentType>> } }>;
+  loadEntry?: (entry: string) => Promise<{
+    default: { slots?: Partial<Record<SlotName, ComponentType | SlotContributionSpec>> };
+  }>;
 }
 
 /**
@@ -70,16 +71,24 @@ export function PluginProvider({
       setPlugins(list);
       syncPluginsToStore(list);
       for (const p of list) {
-        if (p.enabled && p.manifest.entry) {
+        // ISSUE-012 防御：manifest 缺失（后端曾漏字段）→ 该项无入口可加载，跳过不崩。
+        if (p.enabled && p.manifest?.entry) {
           try {
             const mod = await loadEntry(p.manifest.entry);
             const slots = mod.default?.slots;
             if (slots) {
-              const items: SlotContribution[] = (Object.keys(slots) as SlotName[]).map((slot) => ({
-                slot,
-                pluginId: p.id,
-                component: slots[slot] as ComponentType,
-              }));
+              // E5：slots 支持两种形态 —— 简写（ComponentType）与规格（{ component, attachTo }）。
+              const items: SlotContribution[] = (Object.keys(slots) as SlotName[]).map((slot) => {
+                const spec = slots[slot];
+                const isSpec =
+                  typeof spec !== "function" && spec !== null && typeof spec === "object";
+                return {
+                  slot,
+                  pluginId: p.id,
+                  component: (isSpec ? spec.component : spec) as ComponentType,
+                  attachTo: isSpec ? (spec as { attachTo?: string }).attachTo : undefined,
+                };
+              });
               registerContributions(p.id, items);
             }
           } catch (e) {

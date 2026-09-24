@@ -39,9 +39,20 @@ export interface ModuleManifest {
 /**
  * 模块入口默认导出的形状（与总纲插件协议一致）。
  * 内核用 React.lazy 加载，取其 Component 渲染到窗口内。
+ *
+ * slots 支持两种形态（E5 起）：
+ *   - 简写：`"dashboard.card": DashboardCard`（等价于 { component }）
+ *   - 规格：`"window.sidecar": { component: SidecarSummary, attachTo: "calendar" }`
+ *     attachTo = 附着目标窗口 moduleId；缺省 = 所有窗口。
  */
+export interface SlotContributionSpec {
+  component: ComponentType;
+  /** E5：sidecar 附着目标窗口 moduleId；缺省 = 所有窗口渲染。 */
+  attachTo?: string;
+}
+
 export interface PluginModule {
   manifestId: string;
   Component: ComponentType;
-  slots?: Record<string, ComponentType>;
+  slots?: Record<string, ComponentType | SlotContributionSpec>;
 }

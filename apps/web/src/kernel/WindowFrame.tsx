@@ -8,6 +8,8 @@ import { useDesktopStore, workspaceOf, zIndexOf } from "./store";
 import { useDragMove } from "./useDragMove";
 import { useResize, type ResizeDir } from "./useResize";
 import { WindowInstanceContext } from "./windowInstance";
+import { useSlotContributions } from "./slots/contributions";
+import { PluginBoundary } from "./plugins/PluginBoundary";
 
 const RESIZE_DIRS: ResizeDir[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 
@@ -58,6 +60,27 @@ export class ModuleErrorBoundary extends Component<BoundaryProps, BoundaryState>
 interface Props {
   instanceId: string;
 }
+
+/**
+ * E5：窗口侧栏（`window.sidecar` 扩展点）。
+ * - attachTo = 目标窗口 moduleId；缺省贡献在所有窗口渲染。
+ * - ★ 无匹配贡献时**零渲染**（不占位、不影响布局）——判据 J4。
+ */
+function SidecarSlot({ moduleId }: { moduleId: string }) {
+  const items = useSlotContributions("window.sidecar");
+  const matched = items.filter((c) => !c.attachTo || c.attachTo === moduleId);
+  if (matched.length === 0) return null;
+  return (
+    <aside className="win__sidecar" data-sidecar-for={moduleId} aria-label="窗口侧栏">
+      {matched.map((c, i) => (
+        <PluginBoundary key={`${c.pluginId}:${i}`} pluginId={c.pluginId}>
+          <c.component />
+        </PluginBoundary>
+      ))}
+    </aside>
+  );
+}
+export { SidecarSlot };
 
 export function WindowFrame({ instanceId }: Props) {
   const win = useDesktopStore((s) => s.windows.find((w) => w.instanceId === instanceId));
@@ -217,6 +240,8 @@ export function WindowFrame({ instanceId }: Props) {
             </WindowInstanceContext.Provider>
           </Suspense>
         </ModuleErrorBoundary>
+        {/* E5：窗口侧栏（无贡献时零渲染，不占位） */}
+        <SidecarSlot moduleId={win.moduleId} />
       </div>
 
       {/* ★ T22：固定几何时**缩放手柄整个不渲染**（不是渲染了再拦） */}
