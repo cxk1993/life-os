@@ -64,18 +64,32 @@ describe("PushApp", () => {
     vi.clearAllMocks();
   });
 
-  it("渲染三段主体：配置态 / 订阅 / 广播", async () => {
+  it("渲染多页签导航（状态/广播/设备/流水）", async () => {
     render(wrap());
+    expect(screen.getByRole("tab", { name: "状态" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "广播" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "设备" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "流水" })).toBeTruthy();
+    // 默认在状态页：配置态 + 订阅操作可见
     expect(screen.getByText("推送通道")).toBeTruthy();
     expect(screen.getByText("本机订阅")).toBeTruthy();
-    expect(screen.getByText("手动广播")).toBeTruthy();
   });
 
-  it("展示服务端活跃订阅数与订阅清单", async () => {
+  it("切到广播页签：手动广播可见，点「发送测试推送」调用后端 /send", async () => {
     render(wrap());
-    // health 的活跃订阅数
+    fireEvent.click(screen.getByRole("tab", { name: "广播" }));
+    expect(screen.getByText("手动广播")).toBeTruthy();
+    fireEvent.click(screen.getByText("发送测试推送"));
+    await waitFor(() => expect(pushApi.send).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/广播结果：成功 1 条/)).toBeTruthy();
+  });
+
+  it("展示服务端活跃订阅数；切到设备页签显示订阅清单", async () => {
+    render(wrap());
+    // health 的活跃订阅数（状态页可见）
     expect(await screen.findByText("2")).toBeTruthy();
-    // 订阅行的 UA
+    // 切到设备页签：订阅行的 UA 可见（「设备」页签带计数徽章，用正则匹配）
+    fireEvent.click(screen.getByRole("tab", { name: /设备/ }));
     expect(await screen.findByText("Vitest/1.0")).toBeTruthy();
   });
 
@@ -86,6 +100,7 @@ describe("PushApp", () => {
 
   it("点「发送测试推送」调用后端 /send", async () => {
     render(wrap());
+    fireEvent.click(screen.getByRole("tab", { name: "广播" }));
     fireEvent.click(screen.getByText("发送测试推送"));
     await waitFor(() => expect(pushApi.send).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/广播结果：成功 1 条/)).toBeTruthy();
@@ -94,6 +109,7 @@ describe("PushApp", () => {
   it("无订阅时给空态引导", async () => {
     vi.mocked(pushApi.subscriptions).mockResolvedValueOnce([]);
     render(wrap());
+    fireEvent.click(screen.getByRole("tab", { name: "设备" }));
     expect(await screen.findByText(/还没有任何订阅/)).toBeTruthy();
   });
 

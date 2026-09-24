@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { Tabs } from "@/shared/components/Tabs";
+
 import { pushApi, type PushSubscriptionRow } from "./api";
 
 /** VAPID 公钥 base64url → Uint8Array（PushManager 只接受 BufferSource）。 */
@@ -162,141 +164,182 @@ export default function PushApp() {
   const h = health.data;
   const busy = subscribeMut.isPending || unsubscribeMut.isPending || sendMut.isPending;
 
+  // ★ 窗口内多页签（主人 2026-09-23 建议：太密太挤 → 分页）
+  const [tab, setTab] = useState<"status" | "broadcast" | "devices" | "logs">("status");
+  const TABS: { id: typeof tab; label: string }[] = [
+    { id: "status", label: "状态" },
+    { id: "broadcast", label: "广播" },
+    { id: "devices", label: "设备" },
+    { id: "logs", label: "流水" },
+  ];
+
   return (
     <div className="push-root">
-      {/* ── ① 配置态 ── */}
-      <section className="push-card">
-        <header className="push-card__head">
-          <h3>推送通道</h3>
-          <button className="push-btn push-btn--ghost" onClick={refreshAll} disabled={busy}>
-            刷新
-          </button>
-        </header>
-        <div className="push-flags">
-          <Flag ok={!!h?.vapid_ready} label="VAPID 密钥" hint="服务器 .env 的 PUSH_VAPID_*" />
-          <Flag ok={!!h?.pywebpush_installed} label="pywebpush 依赖" hint="发送端库" />
-          <Flag ok={swReady} label="Service Worker" hint="sw.js 已接管本页" />
-          <Flag
-            ok={perm === "granted"}
-            label={`通知权限：${perm === "unsupported" ? "不支持" : perm}`}
-            hint="浏览器站点设置"
-          />
-        </div>
-        <p className="push-meta">
-          服务端活跃订阅 <b>{h?.subscriptions_active ?? "—"}</b> 条 · 本机{" "}
-          {browserSub ? "已订阅" : "未订阅"}
-        </p>
-        {health.isError && <p className="push-warn">健康检查失败：{errText(health.error)}</p>}
-      </section>
-
-      {/* ── ② 订阅操作 ── */}
-      <section className="push-card">
-        <header className="push-card__head">
-          <h3>本机订阅</h3>
-        </header>
-        <div className="push-actions">
-          <button
-            className="push-btn"
-            onClick={() => subscribeMut.mutate()}
-            disabled={busy || !pushSupported()}
-          >
-            开启浏览器推送
-          </button>
-          <button
-            className="push-btn push-btn--ghost"
-            onClick={() => unsubscribeMut.mutate()}
-            disabled={busy || !pushSupported()}
-          >
-            关闭并注销
-          </button>
-        </div>
-        {!pushSupported() && (
-          <p className="push-warn">
-            当前浏览器不支持 Web Push。桌面通知仍可走桥（日历提醒链路），本插件负责浏览器/PWA 通道。
-          </p>
-        )}
-        {h && !h.vapid_ready && (
-          <p className="push-warn">
-            服务端未配置 VAPID 密钥：订阅会失败。请在部署的 `.env` 里补 `PUSH_VAPID_PUBLIC_KEY` /
-            `PUSH_VAPID_PRIVATE_KEY` 后重启后端。
-          </p>
-        )}
-      </section>
-
-      {/* ── ③ 手动广播（验收用）── */}
-      <section className="push-card">
-        <header className="push-card__head">
-          <h3>手动广播</h3>
-          <span className="push-meta">验收/排障用；也验证 SW 的 push 事件链路</span>
-        </header>
-        <div className="push-form">
-          <input
-            className="push-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="通知标题"
-            maxLength={200}
-          />
-          <input
-            className="push-input"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="通知正文"
-            maxLength={2000}
-          />
-          <button
-            className="push-btn"
-            onClick={() => sendMut.mutate()}
-            disabled={busy || !title.trim()}
-          >
-            发送测试推送
-          </button>
-        </div>
-      </section>
-
       {msg && <p className="push-ok">{msg}</p>}
       {err && <p className="push-err">✖ {err}</p>}
 
-      {/* ── ④ 订阅清单 ── */}
-      <section className="push-card push-card--grow">
-        <header className="push-card__head">
-          <h3>订阅设备</h3>
-          <span className="push-meta">{subs.data?.length ?? 0} 条</span>
-        </header>
-        <div className="push-list">
-          {(subs.data ?? []).map((s) => (
-            <SubRow key={s.id} row={s} />
-          ))}
-          {subs.isSuccess && (subs.data ?? []).length === 0 && (
-            <p className="push-empty">还没有任何订阅——点上面「开启浏览器推送」。</p>
-          )}
-          {subs.isError && <p className="push-warn">{errText(subs.error)}</p>}
-        </div>
-      </section>
+      <Tabs
+        tabs={TABS.map((t) => ({
+          id: t.id,
+          label:
+            t.id === "devices" && subs.data?.length ? (
+              <>
+                {t.label} <span className="push-tab__count">{subs.data.length}</span>
+              </>
+            ) : (
+              t.label
+            ),
+        }))}
+        active={tab}
+        onChange={(id) => setTab(id as typeof tab)}
+      />
 
-      {/* ── ⑤ 投递流水 ── */}
-      <section className="push-card push-card--grow">
-        <header className="push-card__head">
-          <h3>投递流水</h3>
-          <span className="push-meta">最近 30 条</span>
-        </header>
-        <div className="push-list">
-          {(logs.data ?? []).map((l) => (
-            <div key={l.id} className="push-logrow">
-              <span className={l.ok ? "push-dot push-dot--ok" : "push-dot push-dot--bad"} />
-              <span className="push-logrow__title">{l.title}</span>
-              <span className="push-meta">
-                {l.topic} · {l.sent_at ? new Date(l.sent_at).toLocaleString() : "—"}
-                {l.detail ? ` · ${l.detail}` : ""}
-              </span>
+      {tab === "status" && (
+        <>
+          {/* ── ① 配置态 ── */}
+          <section className="push-card">
+            <header className="push-card__head">
+              <h3>推送通道</h3>
+              <button className="push-btn push-btn--ghost" onClick={refreshAll} disabled={busy}>
+                刷新
+              </button>
+            </header>
+            <div className="push-flags">
+              <Flag ok={!!h?.vapid_ready} label="VAPID 密钥" hint="服务器 .env 的 PUSH_VAPID_*" />
+              <Flag ok={!!h?.pywebpush_installed} label="pywebpush 依赖" hint="发送端库" />
+              <Flag ok={swReady} label="Service Worker" hint="sw.js 已接管本页" />
+              <Flag
+                ok={perm === "granted"}
+                label={`通知权限：${perm === "unsupported" ? "不支持" : perm}`}
+                hint="浏览器站点设置"
+              />
             </div>
-          ))}
-          {logs.isSuccess && (logs.data ?? []).length === 0 && (
-            <p className="push-empty">暂无投递记录。</p>
-          )}
-          {logs.isError && <p className="push-warn">{errText(logs.error)}</p>}
-        </div>
-      </section>
+            <p className="push-meta">
+              服务端活跃订阅 <b>{h?.subscriptions_active ?? "—"}</b> 条 · 本机{" "}
+              {browserSub ? "已订阅" : "未订阅"}
+            </p>
+            {health.isError && <p className="push-warn">健康检查失败：{errText(health.error)}</p>}
+          </section>
+
+          {/* ── ② 订阅操作 ── */}
+          <section className="push-card">
+            <header className="push-card__head">
+              <h3>本机订阅</h3>
+            </header>
+            <div className="push-actions">
+              <button
+                className="push-btn"
+                onClick={() => subscribeMut.mutate()}
+                disabled={busy || !pushSupported()}
+              >
+                开启浏览器推送
+              </button>
+              <button
+                className="push-btn push-btn--ghost"
+                onClick={() => unsubscribeMut.mutate()}
+                disabled={busy || !pushSupported()}
+              >
+                关闭并注销
+              </button>
+            </div>
+            {!pushSupported() && (
+              <p className="push-warn">
+                当前浏览器不支持 Web Push。桌面通知仍可走桥（日历提醒链路），本插件负责浏览器/PWA 通道。
+              </p>
+            )}
+            {h && !h.vapid_ready && (
+              <p className="push-warn">
+                服务端未配置 VAPID 密钥：订阅会失败。请在部署的 `.env` 里补 `PUSH_VAPID_PUBLIC_KEY` /
+                `PUSH_VAPID_PRIVATE_KEY` 后重启后端。
+              </p>
+            )}
+          </section>
+        </>
+      )}
+
+      {tab === "broadcast" && (
+        <>
+          {/* ── ③ 手动广播（验收用）── */}
+          <section className="push-card">
+            <header className="push-card__head">
+              <h3>手动广播</h3>
+              <span className="push-meta">验收/排障用；也验证 SW 的 push 事件链路</span>
+            </header>
+            <div className="push-form">
+              <input
+                className="push-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="通知标题"
+                maxLength={200}
+              />
+              <input
+                className="push-input"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="通知正文"
+                maxLength={2000}
+              />
+              <button
+                className="push-btn"
+                onClick={() => sendMut.mutate()}
+                disabled={busy || !title.trim()}
+              >
+                发送测试推送
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+
+      {tab === "devices" && (
+        <>
+          {/* ── ④ 订阅清单 ── */}
+          <section className="push-card push-card--grow">
+            <header className="push-card__head">
+              <h3>订阅设备</h3>
+              <span className="push-meta">{subs.data?.length ?? 0} 条</span>
+            </header>
+            <div className="push-list">
+              {(subs.data ?? []).map((s) => (
+                <SubRow key={s.id} row={s} />
+              ))}
+              {subs.isSuccess && (subs.data ?? []).length === 0 && (
+                <p className="push-empty">还没有任何订阅——点「状态」页签开启浏览器推送。</p>
+              )}
+              {subs.isError && <p className="push-warn">{errText(subs.error)}</p>}
+            </div>
+          </section>
+        </>
+      )}
+
+      {tab === "logs" && (
+        <>
+          {/* ── ⑤ 投递流水 ── */}
+          <section className="push-card push-card--grow">
+            <header className="push-card__head">
+              <h3>投递流水</h3>
+              <span className="push-meta">最近 30 条</span>
+            </header>
+            <div className="push-list">
+              {(logs.data ?? []).map((l) => (
+                <div key={l.id} className="push-logrow">
+                  <span className={l.ok ? "push-dot push-dot--ok" : "push-dot push-dot--bad"} />
+                  <span className="push-logrow__title">{l.title}</span>
+                  <span className="push-meta">
+                    {l.topic} · {l.sent_at ? new Date(l.sent_at).toLocaleString() : "—"}
+                    {l.detail ? ` · ${l.detail}` : ""}
+                  </span>
+                </div>
+              ))}
+              {logs.isSuccess && (logs.data ?? []).length === 0 && (
+                <p className="push-empty">暂无投递记录。</p>
+              )}
+              {logs.isError && <p className="push-warn">{errText(logs.error)}</p>}
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -209,3 +209,17 @@
   white-space: nowrap;
   cursor: default;
 }
+
+/* ── 页签计数徽章（页签容器/样式由 shared Tabs 提供，这里只保留徽章）── */
+.push-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #4a9) 30%, transparent);
+  font-size: 11px;
+  line-height: 1;
+}
