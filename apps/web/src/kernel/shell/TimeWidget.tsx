@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { api, ApiError } from "@/shared/api/client";
+import { api } from "@/shared/api/client";
 import { useDesktopStore } from "../store";
 
 /**
@@ -26,10 +26,14 @@ interface TodaySummaryItem {
   state?: "info" | "due" | "done" | "alert";
   count?: number;
 }
-interface TodaySummaryResp {
-  title?: string;
-  items: TodaySummaryItem[];
-  link?: string;
+/** 内核 BFF /api/v1/summary/today（裁决令61 丙案：前端只调这一个，杜绝双份）。 */
+interface SummaryProvider {
+  id: string;
+  status: "ok" | "not-implemented" | "unavailable";
+  data?: { title?: string; items?: unknown[]; link?: string };
+}
+interface SummaryTodayResp {
+  providers: SummaryProvider[];
 }
 
 const PROV_SOURCES = [
@@ -63,52 +67,73 @@ const STATE_CLASS: Record<string, string> = {
   alert: "today-sum__item--alert",
 };
 
-/** 单个插件分区：三态渲染 + 独立降级（U2 判据 J3/J4/J6）。 */
+/** 形状归一（兜底）：四源 today-summary 可能返回 string[] 或 object[]（规范 v1 或各源自定）。
+ * BFF 透传不解析（R-1），视图层必须容忍两种 -> 统一成 {text,state}。 */
+function normalizeItems(items: unknown): TodaySummaryItem[] {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((it): TodaySummaryItem | null => {
+      if (typeof it === "string") return { text: it };
+      if (it && typeof it === "object") {
+        const o = it as Record<string, unknown>;
+        const text = String(o.text ?? o.title ?? "");
+        if (!text) return null;
+        const state = ["info", "due", "done", "alert"].includes(String(o.state))
+          ? (o.state as TodaySummaryItem["state"])
+          : "info";
+        return { text, state, count: typeof o.count === "number" ? o.count : undefined };
+      }
+      return null;
+    })
+    .filter((it): it is TodaySummaryItem => it !== null);
+}
+
+/** 单个插件分区：三态渲染 + 独立降级（U2 判据 J3/J4/J6）。
+ * 裁决令61 丙案：前端只调 BFF /api/v1/summary/today（单请求，四分区共享）；
+ * provider.status 三态 = ok / not-implemented（未安装）/ unavailable（暂时不可用）。 */
 function ProvSection({ id, moduleId, label }: { id: string; moduleId: string; label: string }) {
   const openWindow = useDesktopStore((s) => s.openWindow);
   const { data, isError, isLoading } = useQuery({
-    queryKey: ["today-summary", id],
-    queryFn: async (): Promise<TodaySummaryResp | null> => {
-      try {
-        return await api.get<TodaySummaryResp>(`/api/v1/${id}/today-summary`);
-      } catch (e) {
-        // 404 = 插件未安装 → null（与 C 里程碑卡同族语义：不渲染数据但占位）
-        if (e instanceof ApiError && e.status === 404) return null;
-        throw e; // 5xx 等 → isError → 「暂时不可用」
-      }
-    },
+    queryKey: ["summary-today"],
+    queryFn: (): Promise<SummaryTodayResp> => api.get<SummaryTodayResp>("/api/v1/summary/today"),
     retry: 1,
     refetchOnWindowFocus: false,
   });
 
+  const prov = data?.providers?.find((p) => p.id === id);
+  const body = prov?.data;
+  const items = normalizeItems(body?.items);
   const go = () => openWindow(moduleId);
 
   return (
     <section className="today-sum__sec" data-testid={`today-sum-${id}`}>
       <button type="button" className="today-sum__head" onClick={go}>
         <span>{label}</span>
-        {data && data.title ? <span className="today-sum__sub">{data.title}</span> : null}
-        {data && data.items.length > 0 ? (
-          <span className="today-sum__count">{data.items.length}</span>
-        ) : null}
+        {body?.title ? <span className="today-sum__sub">{body.title}</span> : null}
+        {items.length > 0 ? <span className="today-sum__count">{items.length}</span> : null}
       </button>
       {isLoading ? (
         <div className="today-sum__empty">…</div>
       ) : isError ? (
-        // 5xx：不是「没数据」，是「暂时不可用」（规范 v1：5xx 独立降级）
+        // BFF 端点本身 5xx/404 → 全面板降级（单点，非「没数据」）
         <div className="today-sum__empty" data-testid={`today-sum-${id}-err`}>
           暂时不可用
         </div>
-      ) : data === null ? (
-        // 404 = 未安装：占位 + 引导（★ 副总监铁律：不消失，可操作）
+      ) : prov?.status === "not-implemented" ? (
+        // 该源未实现：占位 + 引导（★ 副总监铁律：不消失，可操作）
         <div className="today-sum__na" data-testid={`today-sum-${id}-na`}>
           未安装 · 去安装
         </div>
-      ) : !data || data.items.length === 0 ? (
+      ) : prov?.status === "unavailable" ? (
+        // 该源 5xx/超时：独立降级（缺一不塌）
+        <div className="today-sum__empty" data-testid={`today-sum-${id}-err`}>
+          暂时不可用
+        </div>
+      ) : items.length === 0 ? (
         <div className="today-sum__empty">今日暂无{label}</div>
       ) : (
         <ul className="today-sum__list">
-          {data.items.map((it, i) => (
+          {items.map((it, i) => (
             <li key={i} className={`today-sum__item ${STATE_CLASS[it.state ?? "info"] ?? ""}`}>
               <span className="today-sum__dot" aria-hidden="true" />
               <span className="today-sum__txt">{it.text}</span>
@@ -148,7 +173,8 @@ function monthGrid(year: number, month: number): (string | null)[] {
   const startDow = (first.getDay() + 6) % 7; // 周一=0
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (string | null)[] = [];
-  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   for (let i = 0; i < startDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(fmt(new Date(year, month, d)));
   while (cells.length % 7 !== 0) cells.push(null);
@@ -201,12 +227,18 @@ function MonthCalendar({
   return (
     <div className="today-sum__cal" data-testid="month-calendar">
       <div className="today-sum__cal-head">
-        <button type="button" aria-label="上个月" onClick={() => shift(-1)}>‹</button>
+        <button type="button" aria-label="上个月" onClick={() => shift(-1)}>
+          ‹
+        </button>
         <span className="today-sum__cal-title">
           {y}年{m + 1}月
         </span>
-        <button type="button" aria-label="下个月" onClick={() => shift(1)}>›</button>
-        <button type="button" className="today-sum__cal-today" onClick={gotoToday}>今</button>
+        <button type="button" aria-label="下个月" onClick={() => shift(1)}>
+          ›
+        </button>
+        <button type="button" className="today-sum__cal-today" onClick={gotoToday}>
+          今
+        </button>
       </div>
       <div className="today-sum__cal-week">
         {weekLabels.map((w) => (
@@ -229,7 +261,10 @@ function MonthCalendar({
               {(dots?.[d]?.length ?? 0) > 0 ? (
                 <span className="today-sum__cal-dots" aria-hidden="true">
                   {DOT_KIND.map((k) => (
-                    <i key={k} className={`today-sum__cal-dot today-sum__cal-dot--${k}${dots?.[d]?.includes(k) ? " is-on" : ""}`} />
+                    <i
+                      key={k}
+                      className={`today-sum__cal-dot today-sum__cal-dot--${k}${dots?.[d]?.includes(k) ? " is-on" : ""}`}
+                    />
                   ))}
                 </span>
               ) : null}
@@ -241,20 +276,31 @@ function MonthCalendar({
   );
 }
 
-const PEEK_LABELS: Record<string, string> = { calendar: "日程", todo: "待办", diary: "日记", review: "复盘" };
+const PEEK_LABELS: Record<string, string> = {
+  calendar: "日程",
+  todo: "待办",
+  diary: "日记",
+  review: "复盘",
+};
 
 /** 选中日聚合：day-peek 四源（历史/未来日；软失败空态）。 */
 function DayPeekPanel({ date }: { date: string }) {
   const openWindow = useDesktopStore((s) => s.openWindow);
   const { data, isError, isLoading } = useQuery({
     queryKey: ["day-peek", date],
-    queryFn: async (): Promise<DayPeekResp> => api.get<DayPeekResp>(`/api/v1/dashboard/day-peek?date=${date}`),
+    queryFn: async (): Promise<DayPeekResp> =>
+      api.get<DayPeekResp>(`/api/v1/dashboard/day-peek?date=${date}`),
     retry: 1,
     refetchOnWindowFocus: false,
   });
 
   if (isLoading) return <div className="today-sum__empty">…</div>;
-  if (isError) return <div className="today-sum__empty" data-testid="day-peek-err">暂时不可用</div>;
+  if (isError)
+    return (
+      <div className="today-sum__empty" data-testid="day-peek-err">
+        暂时不可用
+      </div>
+    );
 
   return (
     <div className="today-sum__peek" data-testid="day-peek-panel">
