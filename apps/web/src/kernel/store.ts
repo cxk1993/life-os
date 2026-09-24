@@ -209,6 +209,11 @@ export interface DesktopState {
   workspaces: WorkspaceState[];
   /** ★ T23：当前工作区 id。 */
   activeWorkspaceId: string;
+  /** ★ U1（2026-09-24）：顶栏/底栏收放。跨会话持久化（判据 U1-2，与窗口几何同 STORE_KEY）。 */
+  topbarCollapsed: boolean;
+  bottombarCollapsed: boolean;
+  toggleTopbar: () => void;
+  toggleBottombar: () => void;
 
   registerModule: (m: ModuleManifest) => void;
   unregisterModule: (id: string) => void;
@@ -268,6 +273,8 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   // ★ T23：默认一个「工作区 1」；v1 旧数据 hydrate 时也整体迁到这里
   workspaces: [newWorkspace(1)],
   activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+  topbarCollapsed: false,
+  bottombarCollapsed: false,
 
   registerModule: (m) => {
     const persisted = loadPersisted();
@@ -424,6 +431,21 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     savePersisted(get());
   },
 
+  // ★ U1（2026-09-24）：顶栏/底栏收放（切换即持久化，判据 U1-2 跨会话保持）。
+  toggleTopbar: () => {
+    set((s) => {
+      const topbarCollapsed = !s.topbarCollapsed;
+      savePersisted({ ...s, topbarCollapsed });
+      return { topbarCollapsed };
+    });
+  },
+  toggleBottombar: () => {
+    set((s) => {
+      const bottombarCollapsed = !s.bottombarCollapsed;
+      savePersisted({ ...s, bottombarCollapsed });
+      return { bottombarCollapsed };
+    });
+  },
   tidyDesktop: () => {
     set((s) => {
       // ★ T23：只整理**当前工作区**的窗口 —— 其它工作区的窗不可见，
@@ -523,6 +545,17 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   hydrate: () => {
     const persisted = loadPersisted();
     if (!persisted) return;
+    // ★ U1（2026-09-24）：恢复顶栏/底栏收放状态（判据 U1-2 跨会话保持）。
+    //   字段缺失（旧快照）→ 保持当前值不动，不误折叠。
+    const ui = persisted as PersistedShape & Partial<DesktopState>;
+    if (typeof ui.topbarCollapsed === "boolean" || typeof ui.bottombarCollapsed === "boolean") {
+      set({
+        ...(typeof ui.topbarCollapsed === "boolean" ? { topbarCollapsed: ui.topbarCollapsed } : {}),
+        ...(typeof ui.bottombarCollapsed === "boolean"
+          ? { bottombarCollapsed: ui.bottombarCollapsed }
+          : {}),
+      });
+    }
     // 快照损坏（windows 不是数组）→ 当作没有，不要崩
     if (!Array.isArray(persisted.windows)) return;
     const s = get();

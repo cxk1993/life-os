@@ -18,6 +18,8 @@ export function TopBar({ onOpenSearch, onTidy, onLogout }: Props) {
   const toggle = useTheme((s) => s.toggle);
   // ★ T23 工作区切换器
   const workspaces = useDesktopStore((s) => s.workspaces);
+  // ★ U1（2026-09-24）：顶栏收放（收起按钮 → 悬浮把手恢复）
+  const toggleTopbar = useDesktopStore((s) => s.toggleTopbar);
   const activeWorkspaceId = useDesktopStore((s) => s.activeWorkspaceId);
   const switchWorkspace = useDesktopStore((s) => s.switchWorkspace);
   const createWorkspace = useDesktopStore((s) => s.createWorkspace);
@@ -65,6 +67,17 @@ export function TopBar({ onOpenSearch, onTidy, onLogout }: Props) {
       {/* U2：右上角时间 → 点击展开今日摘要面板（跨插件聚合） */}
       <TimeWidget />
       <div className="topbar__actions">
+        {/* ★ U1：收起顶栏（判据 U1-5：aria-expanded 语义 + title；恢复走悬浮把手） */}
+        <button
+          type="button"
+          className="icon-btn"
+          aria-expanded={true}
+          aria-label="收起顶栏"
+          title="收起顶栏"
+          onClick={toggleTopbar}
+        >
+          ⌃
+        </button>
         <button
           type="button"
           className="icon-btn"

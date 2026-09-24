@@ -9,6 +9,7 @@ import type { ModuleManifest } from "./types";
 import { AuthGate } from "./AuthGate";
 import { logout } from "@/shared/api/auth";
 import { Dock } from "./Dock";
+import { TimeWidget } from "./shell/TimeWidget";
 import { useShortcuts, type ShortcutHandlers } from "./Shortcuts";
 import { TopBar } from "./TopBar";
 import { WindowManager } from "./WindowManager";
@@ -114,10 +115,40 @@ export function Desktop() {
       .filter((m) => !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
   }, [query, modules]);
 
+  // ★ U1（2026-09-24）：顶栏/底栏收放（状态与持久化在 desktop store；判据 U1-1/U1-2）
+  const topbarCollapsed = useDesktopStore((s) => s.topbarCollapsed);
+  const bottombarCollapsed = useDesktopStore((s) => s.bottombarCollapsed);
+  const toggleTopbar = useDesktopStore((s) => s.toggleTopbar);
+  const toggleBottombar = useDesktopStore((s) => s.toggleBottombar);
+
   return (
     <AuthGate>
-      <div className="desktop">
-        <TopBar onOpenSearch={openSearch} onTidy={tidy} onLogout={() => void logout()} />
+      <div
+        className={
+          "desktop" +
+          (topbarCollapsed ? " desktop--top-collapsed" : "") +
+          (bottombarCollapsed ? " desktop--bottom-collapsed" : "")
+        }
+      >
+        {topbarCollapsed ? (
+          // ★ U1-4：顶栏收起后时钟仍可达（悬浮胶囊，点击仍开 U2 今日摘要面板）
+          <div className="desktop__clock-pill">
+            <TimeWidget />
+          </div>
+        ) : (
+          <TopBar onOpenSearch={openSearch} onTidy={tidy} onLogout={() => void logout()} />
+        )}
+        {topbarCollapsed && (
+          <button
+            type="button"
+            className="desktop__chrome-handle"
+            style={{ top: 10 }}
+            aria-expanded={false}
+            onClick={toggleTopbar}
+          >
+            ▾ 顶栏
+          </button>
+        )}
         <div className="desktop__mid">
           {/* U3：桌面级双侧栏（左=导航/结构，右=摘要/情境；折叠持久化） */}
           <DesktopSidebar side="left" />
@@ -126,7 +157,18 @@ export function Desktop() {
           </div>
           <DesktopSidebar side="right" />
         </div>
-        <Dock />
+        {!bottombarCollapsed && <Dock />}
+        {bottombarCollapsed && (
+          <button
+            type="button"
+            className="desktop__chrome-handle"
+            style={{ bottom: 10 }}
+            aria-expanded={false}
+            onClick={toggleBottombar}
+          >
+            ▴ 底栏
+          </button>
+        )}
         <ToastHost />
 
         {searchOpen ? (

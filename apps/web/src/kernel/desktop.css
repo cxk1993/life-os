@@ -10,6 +10,47 @@
   background-image:
     linear-gradient(var(--bg-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+}
+
+/* ★ U1（2026-09-24）：顶栏/底栏收放 —— 用 CSS 变量归零让出布局位（判据 U1-1
+   收起不占布局位：desktop__mid 的 top/bottom 引用同一变量，自动全扩展）。
+   收起后由 Desktop 渲染悬浮把手与 TimeWidget 胶囊（判据 U1-4 时钟仍可达）。 */
+.desktop--top-collapsed {
+  --topbar-h: 0px;
+}
+.desktop--bottom-collapsed {
+  --dock-h: 0px;
+}
+
+/* 收起后的悬浮把手（点击恢复；键盘可达，判据 U1-5） */
+.desktop__chrome-handle {
+  position: fixed;
+  right: var(--sp-3);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--fg);
+  font-size: var(--fs-xs, 12px);
+  cursor: pointer;
+}
+.desktop__chrome-handle:hover {
+  filter: brightness(1.1);
+}
+
+/* 顶栏收起时的 TimeWidget 悬浮胶囊（判据 U1-4：时钟仍可达，U2 面板仍能点开） */
+.desktop__clock-pill {
+  position: fixed;
+  top: 10px;
+  right: calc(var(--sp-3) + 90px);
+  z-index: 40;
+}
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
   background-size: 32px 32px;
   color: var(--txt);
   font-family: var(--font-sans);
