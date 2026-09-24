@@ -121,6 +121,8 @@ export function Desktop() {
   const bottombarCollapsed = useDesktopStore((s) => s.bottombarCollapsed);
   const toggleTopbar = useDesktopStore((s) => s.toggleTopbar);
   const toggleBottombar = useDesktopStore((s) => s.toggleBottombar);
+  // ★ 主人④（2026-09-24）：一键最小化所有未固定窗口
+  const minimizeAllUnpinned = useDesktopStore((s) => s.minimizeAllUnpinned);
 
   return (
     <AuthGate>
@@ -142,7 +144,12 @@ export function Desktop() {
               <TimeWidget />
             </div>
           ) : (
-            <TopBar onOpenSearch={openSearch} onTidy={tidy} onLogout={() => void logout()} />
+            <TopBar
+            onOpenSearch={openSearch}
+            onTidy={tidy}
+            onLogout={() => void logout()}
+            onMinimizeAll={minimizeAllUnpinned}
+          />
           )}
           {topbarCollapsed && (
             <button

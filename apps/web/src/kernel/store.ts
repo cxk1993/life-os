@@ -233,6 +233,8 @@ export interface DesktopState {
   closeWindow: (instanceId: string) => void;
   focusWindow: (instanceId: string) => void;
   minimizeWindow: (instanceId: string) => void;
+  /** ★ 主人④（2026-09-24）：一键最小化所有未固定窗口（固定窗/已最小化/最大化窗不动）。 */
+  minimizeAllUnpinned: () => void;
   restoreWindow: (instanceId: string) => void;
   toggleMaximize: (instanceId: string) => void;
   setGeo: (instanceId: string, patch: Partial<WinGeo>) => void;
@@ -454,6 +456,14 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
       savePersisted({ ...s, bottombarCollapsed });
       return { bottombarCollapsed };
     });
+  },
+  // ★ 主人④（2026-09-24）：一键最小化所有**未固定**窗口（固定窗/已最小化窗不动）。
+  minimizeAllUnpinned: () => {
+    set((s) => ({
+      windows: s.windows.map((w) =>
+        w.pinned || w.minimized || w.maximized ? w : { ...w, minimized: true },
+      ),
+    }));
   },
   tidyDesktop: () => {
     set((s) => {
