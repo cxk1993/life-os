@@ -57,7 +57,7 @@ export function resolveLoader(entry: string): ModLoader {
   if (demo) return demo;
 
   const appMatch =
-    /^(?:@\/apps\/|\/src\/apps\/)([^/]+?)(?:\/index\.tsx)?$/.exec(entry) ??
+    /^(?:@\/?apps\/|\/src\/apps\/)([^/]+?)(?:\/index\.tsx)?$/.exec(entry) ??
     /^\.\.\/apps\/([^/]+?)(?:\/index\.tsx)?$/.exec(entry);
   if (appMatch) {
     const loader = fromGlob(APP_ENTRY_GLOB, `../apps/${appMatch[1]}/index.tsx`);

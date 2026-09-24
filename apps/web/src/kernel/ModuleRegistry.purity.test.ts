@@ -13,6 +13,14 @@ describe("resolveLoader 目录约定", () => {
     expect(mod.default).toBeTruthy();
   });
 
+  it("生产实测修复：兼容后端清单的 @apps/ 简写（少一个斜杠）", async () => {
+    // 部署批次实测：/api/v1/plugins 的 manifest.entry = "@apps/todo"，
+    // 旧正则只认 @/apps/ 导致所有 slot 贡献注册失败（E5/D1/C′ 生产不可见）。
+    const loader = resolveLoader("@apps/dashboard");
+    const mod = await loader();
+    expect(mod.default).toBeTruthy();
+  });
+
   it("演示 mock 仍可加载", async () => {
     const mod = await resolveLoader("@mocks/alpha")();
     expect(mod.default).toBeTruthy();
