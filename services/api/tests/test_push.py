@@ -287,11 +287,33 @@ def test_vapid_ready_rejects_undersized_public_key(monkeypatch: pytest.MonkeyPat
 
 
 def test_vapid_ready_rejects_unparseable_private_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    """★ 反例③：公钥形状对、但私钥解不开 → 仍须 not ready（旧实现会误报 ready）。"""
+    """★ 反例③：公钥形状对、但私钥解不开 → 仍须 not ready（旧实现会误报 ready）。
+
+    ★ G1 惰性容错：`vapid_ready()` 仅在 `pywebpush_available()` 时才校验私钥
+      （未装 pywebpush 时跳过，health 另有 `pywebpush_installed` 上报）。
+      本地 venv 通常不装 pywebpush（生产才有）→ 此测试必须 monkeypatch
+      `pywebpush_available` 为 True，才能进入私钥校验分支，否则会误判 ready。
+    """
+    monkeypatch.setattr(sender, "pywebpush_available", lambda: True)
     monkeypatch.setattr(
         sender, "vapid_keys", lambda: (_GOOD_PUB, "not-a-valid-private-key", "mailto:a@b")
     )
     assert sender.vapid_ready() is False
+
+
+def test_vapid_ready_skips_private_key_check_when_pywebpush_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """★ 惰性容错分支：未装 pywebpush → 跳过私钥校验，公钥形状对即 ready。
+
+    （G1 设计：不因未装 pywebpush 而让插件加载失败；health 另行上报依赖状态。）
+    """
+    monkeypatch.setattr(sender, "pywebpush_available", lambda: False)
+    monkeypatch.setattr(
+        sender, "vapid_keys", lambda: (_GOOD_PUB, "not-a-valid-private-key", "mailto:a@b")
+    )
+    # 未装 pywebpush → 私钥未校验 → 公钥形状对即 ready（不因坏私钥误杀）
+    assert sender.vapid_ready() is True
 
 
 def test_vapid_ready_accepts_a_real_generated_pair(monkeypatch: pytest.MonkeyPatch) -> None:
