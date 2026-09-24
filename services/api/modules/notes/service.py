@@ -16,7 +16,7 @@ from core.events import event_bus
 
 from .bridge_client import BridgeClient, BridgeError
 from .models import NoteIndex, NoteLib
-from .schema import LibCreate
+from .schema import LibCreate, NoteCreate, NoteUpdate
 
 
 def _dump_brief(row: NoteIndex, lib_key: str = "") -> dict[str, Any]:
@@ -92,18 +92,51 @@ class NotesService:
         lib_id: str | None = None,
         limit: int = 50,
     ) -> dict[str, Any]:
+        terms = [t for t in (q or "").replace('"', " ").split() if t]
         stmt = select(NoteIndex)
         if lib_id:
             stmt = stmt.where(NoteIndex.lib_id == lib_id)
-        if q:
-            like = f"%{q.strip()}%"
-            stmt = stmt.where(
-                col(NoteIndex.title).like(like) | col(NoteIndex.excerpt).like(like)
-            )
+        if terms:
+            cond = None
+            for t in terms:
+                like = f"%{t}%"
+                c = col(NoteIndex.title).like(like) | col(NoteIndex.excerpt).like(like)
+                cond = c if cond is None else (cond | c)
+            stmt = stmt.where(cond)
         stmt = stmt.order_by(col(NoteIndex.mtime).desc()).limit(min(limit, 200))
         rows = list(self.db.exec(stmt).all())
         lib_keys = {lib.id: lib.key for lib in self.db.exec(select(NoteLib)).all()}
-        items = [_dump_brief(r, lib_keys.get(r.lib_id, "")) for r in rows]
+        items = []
+        for r in rows:
+            b = _dump_brief(r, lib_keys.get(r.lib_id, ""))
+            if terms:
+                title = str(b.get("title") or "")
+                ex = str(b.get("excerpt") or "")
+                score = 0.0
+                covered = True
+                for t in terms:
+                    in_t = t.lower() in title.lower()
+                    in_e = t.lower() in ex.lower()
+                    if not (in_t or in_e):
+                        covered = False
+                        break
+                    score += 3.0 if in_t else 0.0
+                    score += 1.0 if in_e else 0.0
+                if not covered:
+                    continue
+                hl = ex
+                for t in sorted(terms, key=len, reverse=True):
+                    if t and t.lower() in hl.lower():
+                        # 简单标记第一处
+                        import re as _re
+
+                        hl = _re.sub(
+                            _re.escape(t), lambda m: f"[[{m.group(0)}]]", hl, count=1, flags=_re.I
+                        )
+                b["score"] = score
+                b["highlight"] = hl[:160]
+            items.append(b)
+        items.sort(key=lambda x: (-float(x.get("score") or 0), -int(x.get("mtime") or 0)))
         return {"items": items, "total": len(items)}
 
     def get_note(self, note_id: str) -> dict[str, Any]:
@@ -183,3 +216,143 @@ class NotesService:
     def sync_all(self) -> list[dict[str, Any]]:
         libs = self.db.exec(select(NoteLib).where(NoteLib.enabled == True)).all()  # noqa: E712
         return [self.sync_lib(lib.id) for lib in libs]
+    # ───────────────────────── 笔记 CRUD ─────────────────────────
+
+    def create_note(self, lib_id: str, body: NoteCreate) -> dict[str, Any]:
+        """新建笔记（写到本机桥）。"""
+        lib = self._require_lib(lib_id)
+        if not lib.enabled:
+            raise ValidationError(f"库 {lib.key} 已禁用，先启用再创建")
+
+        now = datetime.now(UTC)
+        row = NoteIndex(
+            lib_id=lib.id,
+            rel_path=body.rel_path,
+            title=body.title or body.rel_path.split("/")[-1],
+            mtime=int(now.timestamp()),
+            size=len(body.content.encode("utf-8")),
+            synced_at=now,
+        )
+        self.db.add(row)
+        self.db.commit()
+        self.db.refresh(row)
+
+        # 写到本机桥
+        try:
+            self.bridge.write(lib.key, body.rel_path, body.content)
+        except BridgeError as exc:
+            self.db.rollback()
+            raise ValidationError(f"写入失败：{exc.detail}") from exc
+
+        return _dump_brief(row, lib.key)
+
+    def update_note(self, note_id: str, body: NoteUpdate) -> dict[str, Any]:
+        """更新笔记（写到本机桥）。"""
+        row = self.db.get(NoteIndex, note_id)
+        if row is None:
+            raise NotFoundError(f"笔记不存在：{note_id}")
+
+        lib = self._require_lib(row.lib_id)
+        brief = _dump_brief(row, lib.key)
+
+        # 读取当前内容
+        current_content = ""
+        try:
+            data = self.bridge.read(lib.key, row.rel_path)
+            current_content = str(data.get("content") or "")
+        except BridgeError:
+            pass
+
+        # 合并更新
+        new_content = body.content if body.content is not None else current_content
+        new_title = body.title if body.title is not None else row.title
+
+        # 写回本机桥
+        try:
+            self.bridge.write(lib.key, row.rel_path, new_content, title=new_title)
+        except BridgeError as exc:
+            raise ValidationError(f"写入失败：{exc.detail}") from exc
+
+        # 更新索引
+        row.title = new_title
+        row.mtime = int(datetime.now(UTC).timestamp())
+        row.size = len(new_content.encode("utf-8"))
+        self.db.add(row)
+        self.db.commit()
+        self.db.refresh(row)
+
+        return _dump_brief(row, lib.key)
+
+    def delete_note(self, note_id: str) -> None:
+        """删除笔记（删本机桥 + 索引）。"""
+        row = self.db.get(NoteIndex, note_id)
+        if row is None:
+            raise NotFoundError(f"笔记不存在：{note_id}")
+
+        lib = self._require_lib(row.lib_id)
+
+        # 删本机桥
+        try:
+            self.bridge.delete(lib.key, row.rel_path)
+        except BridgeError:
+            pass  # 删不掉也继续
+
+        self.db.delete(row)
+        self.db.commit()
+    # ───────────────────────── 文件夹结构树 ─────────────────────────
+
+    def get_tree(self, lib_id: str) -> dict[str, Any]:
+        """按 rel_path 解析文件夹层级。"""
+        lib = self._require_lib(lib_id)
+        rows = self.db.exec(
+            select(NoteIndex).where(NoteIndex.lib_id == lib.id)
+        ).all()
+
+        # 构建树
+        root: dict[str, Any] = {
+            "id": lib.id,
+            "title": lib.name,
+            "rel_path": "",
+            "is_dir": True,
+            "children": [],
+        }
+
+        for row in rows:
+            parts = row.rel_path.split("/")
+            node = root
+            for i, part in enumerate(parts[:-1]):
+                # 找或创建目录
+                found = None
+                for child in node["children"]:
+                    if child["title"] == part and child["is_dir"]:
+                        found = child
+                        break
+                if found is None:
+                    found = {
+                        "id": f"{lib.id}/{'/'.join(parts[:i+1])}",
+                        "title": part,
+                        "rel_path": "/".join(parts[:i+1]),
+                        "is_dir": True,
+                        "children": [],
+                    }
+                    node["children"].append(found)
+                node = found
+
+            # 添加文件
+            node["children"].append({
+                "id": row.id,
+                "title": row.title or parts[-1],
+                "rel_path": row.rel_path,
+                "is_dir": False,
+            })
+
+        # 排序：目录在前，文件在后
+        def sort_children(node: dict) -> None:
+            node["children"].sort(key=lambda c: (not c["is_dir"], c["title"]))
+            for child in node["children"]:
+                if child["is_dir"]:
+                    sort_children(child)
+
+        sort_children(root)
+
+        return {"lib_id": lib.id, "lib_key": lib.key, "root": root}

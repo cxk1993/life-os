@@ -246,6 +246,30 @@ def test_search_empty_q_returns_all(client, auth):
     assert r.json()["total"] == 2
 
 
+def test_search_o2_title_scores_higher(client, auth):
+    """O2：标题命中分高于仅摘要命中。"""
+    _seed_index(client, auth)
+    r = client.get("/api/v1/notes/search?q=周报", headers=auth)
+    items = r.json()["items"]
+    assert items[0]["score"] >= 3.0
+
+
+def test_search_o2_highlight_marks(client, auth):
+    """O2：高亮摘录带 [[词]] 标记。"""
+    _seed_index(client, auth)
+    r = client.get("/api/v1/notes/search?q=人生管理", headers=auth)
+    items = r.json()["items"]
+    assert items[0]["highlight"]
+    assert "[[人生管理]]" in items[0]["highlight"]
+
+
+def test_search_o2_multi_term_and(client, auth):
+    """O2：多词 AND——缺词条目不进结果。"""
+    _seed_index(client, auth)
+    r = client.get("/api/v1/notes/search?q=周报 人生管理", headers=auth)
+    assert r.json()["total"] == 0  # 两词分属不同笔记
+
+
 def test_get_note_with_content_from_bridge(client, auth, monkeypatch):
     _, note = _seed_index(client, auth)
     fake = FakeBridge()

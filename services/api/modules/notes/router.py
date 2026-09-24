@@ -15,7 +15,7 @@ from sqlmodel import Session
 from core.deps import get_current_user, get_db
 from core.security import User
 
-from .schema import LibCreate, LibOut, NoteDetail, SearchOut, SyncResult
+from .schema import LibCreate, LibOut, NoteCreate, NoteDetail, NoteUpdate, NoteTree, SearchOut, SyncResult
 from .service import NotesService
 
 router = APIRouter()
@@ -44,6 +44,15 @@ def list_libs(
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     return NotesService(db).list_libs()
+
+
+@router.get("/libs/{lib_id}/tree", response_model=NoteTree)
+def get_tree(
+    lib_id: Annotated[str, FPath()],
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    return NotesService(db).get_tree(lib_id)
 
 
 @router.post("/libs", response_model=LibOut, status_code=status.HTTP_201_CREATED)
@@ -90,3 +99,31 @@ def get_note(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
     return NotesService(db).get_note(note_id)
+
+@router.post("/libs/{lib_id}/notes", response_model=NoteDetail, status_code=status.HTTP_201_CREATED)
+def create_note(
+    lib_id: Annotated[str, FPath()],
+    body: NoteCreate,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    return NotesService(db).create_note(lib_id, body)
+
+
+@router.put("/notes/{note_id}", response_model=NoteDetail)
+def update_note(
+    note_id: Annotated[str, FPath()],
+    body: NoteUpdate,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    return NotesService(db).update_note(note_id, body)
+
+
+@router.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_note(
+    note_id: Annotated[str, FPath()],
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> None:
+    NotesService(db).delete_note(note_id)

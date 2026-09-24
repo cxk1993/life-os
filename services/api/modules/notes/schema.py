@@ -28,6 +28,8 @@ class NoteBrief(BaseModel):
     mtime: int = 0
     size: int = 0
     synced_at: datetime | None = None
+    score: float = 0.0
+    highlight: str = ""
 
 
 class NoteDetail(NoteBrief):
@@ -50,3 +52,27 @@ class LibCreate(BaseModel):
     key: str = Field(min_length=1, max_length=64)
     name: str = Field(default="", max_length=120)
     enabled: bool = True
+
+class NoteCreate(BaseModel):
+    lib_id: str
+    title: str = Field(default="", max_length=200)
+    rel_path: str = Field(min_length=1, max_length=512)
+    content: str = ""
+
+
+class NoteUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+
+class TreeNode(BaseModel):
+    id: str
+    title: str
+    rel_path: str
+    is_dir: bool
+    children: list["TreeNode"] = []
+
+
+class NoteTree(BaseModel):
+    lib_id: str
+    lib_key: str
+    root: TreeNode
