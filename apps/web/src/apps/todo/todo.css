@@ -47,6 +47,17 @@
   color: var(--accent, #4a7dff);
   font-weight: 600;
 }
+/* V2-02：纯日期短语提示（点击添加时给出反馈，不再无声禁用） */
+.todo-quick__hint {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--accent, #4a7dff);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px dashed var(--accent, #4a7dff);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent, #4a7dff) 6%, transparent);
+}
+
 /* H4（令56）：提交失败可见（离线/网络错误不再静默） */
 .todo-quick__error {
   flex-basis: 100%;

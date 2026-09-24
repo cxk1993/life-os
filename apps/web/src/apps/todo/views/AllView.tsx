@@ -15,7 +15,7 @@ export default function AllView() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["todo", "all", filterTag],
-    queryFn: () => todoApi.list({ status: "all", limit: 500 }),
+    queryFn: () => todoApi.list({ status: "all", limit: 200 }),
   });
 
   if (isLoading) {

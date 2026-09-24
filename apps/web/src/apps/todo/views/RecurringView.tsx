@@ -12,7 +12,7 @@ import { Skeleton } from "@/shared/components/Skeleton";
 export default function RecurringView() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["todo", "recurring"],
-    queryFn: () => todoApi.list({ status: "all", limit: 500 }),
+    queryFn: () => todoApi.list({ status: "all", limit: 200 }),
   });
 
   if (isLoading) {

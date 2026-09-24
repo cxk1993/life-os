@@ -47,6 +47,14 @@
   background: var(--danger);
   color: var(--danger-fg);
 }
+/* V2-02：禁用态必须有视觉（此前无 :disabled 样式，灰都不灰，用户以为按钮坏了） */
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  pointer-events: none;
+}
 
 .card {
   background: var(--surface);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { todoApi } from "./api";
 import { parseTodoNL } from "./todo-nl";
@@ -9,9 +9,13 @@ import { parseTodoNL } from "./todo-nl";
  * - TX-TODO-NL-01 增量：前端离线解析「更自然的表达」（明天下午3点/下周一/月底…），
  *   命中则结构化提交（带时刻 due_at），未命中原文走服务端语法糖兜底；
  * - 纯本地规则、零网络（隐私边界：不上云）。
+ * - V2-02：纯日期短语（无正文）按钮不再无声禁用——点击聚焦输入框并提示补正文，
+ *   让"点不动"变"点得动、点完告诉你差什么"。
  */
 export default function QuickAdd() {
   const [text, setText] = useState("");
+  const [hint, setHint] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
   // 实时预览：输入时本地解析（纯函数，无副作用）
@@ -48,12 +52,19 @@ export default function QuickAdd() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const r = parseTodoNL(text);
-    // 纯日期短语（无正文）不允许提交
-    if (!text.trim() || mut.isPending || (r.matched && !r.text)) return;
+    // 纯日期短语（无正文）：不提交，聚焦输入框并提示补正文（V2-02）
+    if (text.trim() && r.matched && !r.text) {
+      setHint("已识别截止时间，请补一句待办正文，例如：交房租 明天下午3点");
+      inputRef.current?.focus();
+      return;
+    }
+    setHint(null);
+    if (!text.trim() || mut.isPending) return;
     mut.mutate();
   };
 
-  const canSubmit = !!text.trim() && !mut.isPending && !(preview && !preview.text);
+  const hasText = !!text.trim();
+  const canSubmit = hasText && !mut.isPending;
 
   // H4（令56）：离线/失败不再静默——错误可见、输入保留、可重试。
   const submitError = mut.isError
@@ -65,9 +76,13 @@ export default function QuickAdd() {
   return (
     <form className="todo-quick" onSubmit={submit}>
       <input
+        ref={inputRef}
         className="todo-quick__input"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (hint) setHint(null);
+        }}
         placeholder="快速添加：明天下午3点交房租 / 写周报 @周五 !高 #副业"
         aria-label="快速添加待办"
       />
@@ -82,6 +97,11 @@ export default function QuickAdd() {
               已识别截止时间：<strong>{preview.when}</strong>（补一句待办正文）
             </>
           )}
+        </div>
+      )}
+      {hint && (
+        <div className="todo-quick__hint" role="status" data-testid="todo-quick-hint">
+          {hint}
         </div>
       )}
       {submitError && (
