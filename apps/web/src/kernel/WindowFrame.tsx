@@ -22,15 +22,27 @@ const FALLBACK_MANIFEST = {
   window: { w: 480, h: 320, minW: 360, minH: 240 },
 };
 
-/** 模块入口加载/渲染失败时的占位（容错：只影响这一扇窗，桌面不白屏）。 */
-function ModulePlaceholder({ moduleId, reason }: { moduleId: string; reason?: string }) {
+/** 模块入口加载/渲染失败时的占位（容错：只影响这一扇窗，桌面不白屏）。
+ *  V5：区分「后端模块（合法无 UI，仅 API）」与「真缺失」——薄壳≠未接入。 */
+function ModulePlaceholder({
+  moduleId,
+  reason,
+  variant = "missing",
+}: {
+  moduleId: string;
+  reason?: string;
+  variant?: "missing" | "backend";
+}) {
+  const title = variant === "backend" ? "后端模块 · 仅服务" : "该模块尚未接入";
+  const fallbackText =
+    variant === "backend" ? "该模块只提供 API 服务，无桌面窗口界面。" : "模块入口缺失或加载失败。";
   return (
     <div className="win__placeholder" role="alert">
       <div className="win__placeholder-icon" aria-hidden="true">
-        ⚠
+        {variant === "backend" ? "⚙" : "⚠"}
       </div>
-      <div className="win__placeholder-title">该模块尚未接入</div>
-      <div className="win__placeholder-text">{reason ?? "模块入口缺失或加载失败。"}</div>
+      <div className="win__placeholder-title">{title}</div>
+      <div className="win__placeholder-text">{reason ?? fallbackText}</div>
       <div className="win__placeholder-meta">module: {moduleId}</div>
     </div>
   );
@@ -111,10 +123,17 @@ export function WindowFrame({ instanceId }: Props) {
   const entry = manifest?.entry ?? "";
   const Lazy = useMemo(() => {
     if (!entry) {
+      // V5：有 API 无 UI = 后端模块（薄壳≠未接入）——类型安全取 api.base
+      const apiBase = (manifest?.api as { base?: string } | undefined)?.base;
+      const isBackendOnly = !!apiBase;
       return lazy(() =>
         Promise.resolve({
           default: () => (
-            <ModulePlaceholder moduleId={win?.moduleId ?? ""} reason="清单缺少 entry 字段" />
+            <ModulePlaceholder
+              moduleId={win?.moduleId ?? ""}
+              variant={isBackendOnly ? "backend" : "missing"}
+              reason={isBackendOnly ? `仅提供 API：${apiBase}` : "清单缺少 entry 字段"}
+            />
           ),
         }),
       );
