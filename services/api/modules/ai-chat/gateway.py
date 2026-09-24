@@ -49,9 +49,9 @@ class ModelGateway:
 
         import httpx
 
-        from .chat_loop import ChatTurn
-
         from core.config import read_setting
+
+        from .chat_loop import ChatTurn
 
         base = (read_setting("AI_CHAT_BASE_URL", "") or "").rstrip("/")
         key = read_setting("AI_CHAT_API_KEY", "") or ""

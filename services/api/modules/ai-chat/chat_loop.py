@@ -5,15 +5,18 @@ LLM 网关可插拔（默认 stub，接 model-gateway 另配）。
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Callable
+from typing import Any
 
+# ★ 2026-09-26 与 tools.py 实现严格对齐（hermes 接线）：
+#   只放行**有实现且只读**的四个工具。写工具（todo_item_write/calendar_event_write）
+#   暂不进对话窗——「查东西」是 V1 场景，误写代价不对称；notes_search 依赖本机桥
+#   （V1 不配）。删掉无实现的条目 = 第二道闸：LLM 即使幻觉出写调用也被 denied 挡下。
 ALLOWED_TOOLS: set[str] = {
     "calendar_event_read",
     "todo_item_read",
-    "todo_item_write",
-    "notes_search",
     "health_record_read",
     "dashboard_today_read",
 }
@@ -35,8 +38,16 @@ class ChatSession:
 
 
 def build_system(today: date | None = None) -> str:
-    d = (today or date.today()).isoformat()
-    return f"你是 Life-OS 助手。今天是 {d}。只使用已注册工具；无法完成时明说。"
+    # ★ CST 口径的「今天」（主人时区）：date.today() 在 UTC 机上凌晨会错一天，
+    #   且 LLM 报日期必须与工具强窗（_today_window 同为 CST）同一基准。
+    from datetime import datetime, timedelta, timezone
+
+    d = (today or datetime.now(timezone(timedelta(hours=8))).date()).isoformat()
+    return (
+        f"你是 Life-OS 助手。今天是 {d}（CST）。"
+        "回答涉及日程/待办/健康/今日概况时，必须先调用对应工具取真实数据，"
+        "严禁凭记忆或想象编造；工具返回为空就如实说没有。"
+    )
 
 
 def run_tool_call_loop(
