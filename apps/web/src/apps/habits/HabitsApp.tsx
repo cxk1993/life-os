@@ -1,14 +1,23 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePluginEvent } from "@/shared/api/events";
+import { ApiError } from "@/shared/api/client";
 import { habitsApi } from "./api";
 import HabitRow from "./HabitRow";
+import { loadPrefs, savePrefs, type HabitsPrefs } from "./prefs";
 import "./habits.css";
+
+function errText(e: unknown): string {
+  if (e instanceof ApiError) return e.detail || e.title;
+  return e instanceof Error ? e.message : "请求失败";
+}
 
 /** 习惯打卡主界面：快速添加 + 今日列表。 */
 export default function HabitsApp() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<HabitsPrefs>(() => loadPrefs());
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["habits"] });
   usePluginEvent("habits.habit.created", invalidate);
@@ -17,16 +26,24 @@ export default function HabitsApp() {
   usePluginEvent("habits.log.unchecked", invalidate);
 
   const { data: habits, isLoading } = useQuery({
-    queryKey: ["habits", "list"],
-    queryFn: () => habitsApi.list(),
+    queryKey: ["habits", "list", prefs.showArchived],
+    queryFn: () => habitsApi.list(prefs.showArchived),
   });
+
+  const patchPrefs = (p: Partial<HabitsPrefs>) => {
+    const next = { ...prefs, ...p };
+    setPrefs(next);
+    savePrefs(next);
+  };
 
   const createMut = useMutation({
     mutationFn: (n: string) => habitsApi.create({ name: n }),
     onSuccess: () => {
       setName("");
+      setErr(null);
       invalidate();
     },
+    onError: (e) => setErr(errText(e)),
   });
 
   const submit = (e: React.FormEvent) => {
@@ -58,9 +75,25 @@ export default function HabitsApp() {
         </button>
       </form>
 
-      <div className="tiny" style={{ color: "var(--txt-faint)" }}>
-        {list.length > 0 ? `今日 ${doneCount}/${list.length}` : ""}
+      <div className="habits-toolbar">
+        <div className="tiny" style={{ color: "var(--txt-faint)" }}>
+          {list.length > 0 ? `今日 ${doneCount}/${list.length}` : ""}
+        </div>
+        <label className="tiny" style={{ color: "var(--txt-faint)" }}>
+          <input
+            type="checkbox"
+            checked={prefs.showArchived}
+            onChange={(e) => patchPrefs({ showArchived: e.target.checked })}
+            aria-label="显示已归档"
+          />{" "}
+          显示已归档
+        </label>
       </div>
+      {err ? (
+        <div className="tiny habits-err" role="alert">
+          {err}
+        </div>
+      ) : null}
 
       <div className="habits-list">
         {isLoading ? (

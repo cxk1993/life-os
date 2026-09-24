@@ -30,6 +30,19 @@ export interface HabitCreate {
   target?: string;
   rule?: Rule;
   rest_weekdays?: number[];
+  color?: string;
+  reminder_time?: string;
+}
+
+export interface HabitUpdateBody {
+  name?: string;
+  target?: string;
+  rule?: Rule;
+  rest_weekdays?: number[];
+  color?: string;
+  reminder_time?: string;
+  archived?: boolean;
+  sort?: number;
 }
 
 export interface Summary {
@@ -43,9 +56,10 @@ export interface Summary {
 const BASE = "/api/v1/habits";
 
 export const habitsApi = {
-  list: () => api.get<Habit[]>(`${BASE}/habits`),
+  list: (includeArchived = false) =>
+    api.get<Habit[]>(`${BASE}/habits?include_archived=${includeArchived ? "true" : "false"}`),
   create: (body: HabitCreate) => api.post<Habit>(`${BASE}/habits`, body),
-  update: (id: string, body: Partial<Habit>) => api.patch<Habit>(`${BASE}/habits/${id}`, body),
+  update: (id: string, body: HabitUpdateBody) => api.patch<Habit>(`${BASE}/habits/${id}`, body),
   remove: (id: string) => api.delete<void>(`${BASE}/habits/${id}`),
   checkin: (id: string, body: { value?: string; note?: string } = {}) =>
     api.post<Habit>(`${BASE}/habits/${id}/checkin`, body),

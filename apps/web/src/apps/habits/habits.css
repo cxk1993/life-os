@@ -76,7 +76,7 @@
 .habit-row__check--done {
   border-color: var(--accent);
   background: var(--accent);
-  color: var(--on-accent, #fff);
+  color: var(--on-accent);
 }
 .habit-row__check:focus-visible {
   outline: none;
@@ -108,9 +108,92 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 增减入口常显（opacity:0 + hover 才显 → 触屏/无 hover 等于「按钮不存在」） */
+.habit-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 高度自定义面板 */
+.habit-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  margin-top: 2px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.habit-edit__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 12px;
+  color: var(--txt-faint);
+}
+.habit-edit__row input {
+  flex: 1;
+  height: 28px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--txt);
+  font: inherit;
+}
+.habit-edit__colors,
+.habit-edit__days {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.habit-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  cursor: pointer;
+}
+.habit-swatch--on {
+  border-color: var(--txt);
+}
+.habit-day {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--txt);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.habit-day--on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.habit-edit__actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.habits-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .habit-row__del {
-  opacity: 0;
+  opacity: 0.75;
   flex-shrink: 0;
+}
+.habits-err {
+  color: var(--danger);
 }
 .habit-row:hover .habit-row__del,
 .habit-row__del:focus-visible {

@@ -1,0 +1,52 @@
+.export-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+}
+.export-hint {
+  color: var(--txt-faint);
+}
+.export-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.export-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  cursor: pointer;
+  font: inherit;
+}
+.export-item--on {
+  border-color: var(--accent);
+}
+.export-out {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  background: var(--surface-2);
+  min-height: 160px;
+}
+.export-json {
+  margin: 0;
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.export-err {
+  color: var(--danger);
+}

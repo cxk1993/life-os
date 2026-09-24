@@ -143,15 +143,57 @@ describe("HabitRow", () => {
     });
   });
 
-  it("删除需 confirm，确认后调用 remove", async () => {
+  it("删除两步确认：先点删除再点确认删才 remove", async () => {
     const { habitsApi } = await import("./api");
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     renderRow(habit);
     fireEvent.click(screen.getByRole("button", { name: "删除 早睡" }));
+    expect(habitsApi.remove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "确认删除 早睡" }));
     await waitFor(() => {
       expect(habitsApi.remove).toHaveBeenCalledWith("h1");
     });
-    confirmSpy.mockRestore();
+  });
+
+  it("删除可取消且不调用 remove", async () => {
+    const { habitsApi } = await import("./api");
+    renderRow(habit);
+    fireEvent.click(screen.getByRole("button", { name: "删除 早睡" }));
+    fireEvent.click(screen.getByRole("button", { name: "取消删除 早睡" }));
+    expect(habitsApi.remove).not.toHaveBeenCalled();
+  });
+
+  it("create 失败显示错误（不再静默）", async () => {
+    const { habitsApi } = await import("./api");
+    vi.mocked(habitsApi.create).mockRejectedValueOnce(new Error("Validation Error"));
+    render(<HabitsApp />, { wrapper: makeWrapper() });
+    const input = screen.getByLabelText("添加习惯");
+    fireEvent.change(input, { target: { value: "晨跑" } });
+    fireEvent.click(screen.getByRole("button", { name: "添加" }));
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toMatch(/Validation Error/);
+    });
+  });
+
+  it("delete 失败显示错误且不吞", async () => {
+    const { habitsApi } = await import("./api");
+    vi.mocked(habitsApi.remove).mockRejectedValueOnce(new Error("拒了"));
+    renderRow(habit);
+    fireEvent.click(screen.getByRole("button", { name: "删除 早睡" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认删除 早睡" }));
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toMatch(/拒了/);
+    });
+  });
+
+  it("无 # 色值内联（铁律冒烟：错误条用设计令牌）", async () => {
+    const { habitsApi } = await import("./api");
+    vi.mocked(habitsApi.create).mockRejectedValueOnce(new Error("x"));
+    render(<HabitsApp />, { wrapper: makeWrapper() });
+    fireEvent.change(screen.getByLabelText("添加习惯"), { target: { value: "a" } });
+    fireEvent.click(screen.getByRole("button", { name: "添加" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+    const style = screen.getByRole("alert").getAttribute("style") || "";
+    expect(style).not.toMatch(/#/);
   });
 
   it("streak=0 时不显示连续天数", () => {
