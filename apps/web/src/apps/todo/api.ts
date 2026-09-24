@@ -1,5 +1,5 @@
 /**
- * 待办模块数据请求层（集中在此，不散落各处）。
+ * todo 数据请求层（集中在此，不散落各处）。
  * 跨插件拿数据一律走 HTTP（这里只用 todo 自己的 /api/v1/todo）。
  * 鉴权 / trace_id / RFC7807 解析由 @/shared/api/client 统一处理。
  */
@@ -34,6 +34,15 @@ export interface Summary {
   today: number;
   overdue: number;
   week_done: number;
+}
+
+/** U2 today-summary 规范 v1（workbuddy 定稿）：{title, items≤5:[{text,state,count}], link}。 */
+export interface TodaySummary {
+  title?: string;
+  items: Array<{ text: string; state?: "info" | "due" | "done" | "alert"; count?: number }>;
+  link?: string;
+  /** todo 扩展：今日已完成数（视图可选展示）。 */
+  done?: number;
 }
 
 export interface ImportResult {
@@ -90,4 +99,7 @@ export const todoApi = {
     api.post<ExportResult>(`${BASE}/export`, { status: status ?? "all" }),
 
   summary: () => api.get<Summary>(`${BASE}/summary`),
+
+  /** U2 today-summary（派工令 62 · todo 源）。 */
+  todaySummary: () => api.get<TodaySummary>(`${BASE}/today-summary`),
 };

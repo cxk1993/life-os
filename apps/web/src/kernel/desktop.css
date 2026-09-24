@@ -302,6 +302,96 @@
 .today-sum__cal-dot--diary.is-on { background: var(--txt-dim); }
 .today-sum__cal-dot--review.is-on { background: var(--danger, #d64545); }
 
+/* —— U3 dock 卡（desktop.dock-right 首例）—— */
+.dock-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.dock-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--txt);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.dock-card__head:hover { color: var(--accent); }
+.dock-card__sub {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--txt-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-card__count {
+  min-width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 10px;
+}
+.dock-card__empty {
+  font-size: 11px;
+  color: var(--txt-faint);
+  padding: 2px 0;
+}
+.dock-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dock-card__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--txt);
+}
+.dock-card__item.is-alert .dock-card__txt { color: var(--danger, #d64545); }
+.dock-card__item.is-due .dock-card__txt { color: var(--accent); }
+.dock-card__item.is-done .dock-card__txt { color: var(--txt-faint); text-decoration: line-through; }
+.dock-card__dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--txt-dim);
+}
+.dock-card__item.is-alert .dock-card__dot { background: var(--danger, #d64545); }
+.dock-card__item.is-due .dock-card__dot { background: var(--accent); }
+.dock-card__item.is-done .dock-card__dot { background: var(--txt-faint); }
+.dock-card__txt {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-card__cnt {
+  font-size: 10px;
+  color: var(--txt-dim);
+}
+
 .topbar__actions {
   display: flex;
   align-items: center;
