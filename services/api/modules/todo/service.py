@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -216,6 +216,47 @@ class TodoService:
         week_done = sum(1 for r in rows if r.done and r.done_at
                         and week_start <= r.done_at.astimezone(SH_TZ) < week_end)
         return SummaryOut(today=today, overdue=overdue, week_done=week_done)
+
+    def today_summary(self) -> dict[str, Any]:
+        """U2 今日摘要（today-summary 规范 v1：{title, items<=5:[{text,state,count?}], link}）。
+
+        今日到期 + 逾期未完成 -> items（逾期 state=alert、今日到期 state=due）；
+        今日已完成数 -> done（顶层扩展，视图层可展示）。
+        """
+        now = datetime.now(SH_TZ)
+        day = now.date()
+        day_start = datetime.combine(day, time.min, tzinfo=SH_TZ)
+        day_end = day_start + timedelta(days=1)
+        rows = self.db.exec(select(TodoItem)).all()
+        due: list[tuple[datetime, TodoItem]] = []
+        for r in rows:
+            if r.done or not r.due_at:
+                continue
+            due_d = r.due_at.astimezone(SH_TZ)
+            if due_d.date() == day or due_d < day_start:
+                due.append((due_d, r))
+        due.sort(key=lambda x: x[0])
+        done_today = sum(
+            1
+            for r in rows
+            if r.done
+            and r.done_at
+            and r.done_at.astimezone(SH_TZ).date() == day
+        )
+        items = [
+            {
+                "text": r.text,
+                "state": "alert" if due_d < day_start else "due",
+                "count": 1,
+            }
+            for due_d, r in due[:5]
+        ]
+        return {
+            "title": f"今日待办 {len(due)} 项",
+            "items": items,
+            "done": done_today,
+            "link": "/todo",
+        }
 
     # ───────────────────────── 写 ─────────────────────────
     def create(self, body: TodoCreate) -> dict:

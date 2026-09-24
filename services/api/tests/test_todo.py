@@ -274,6 +274,47 @@ def test_summary_counts(client, auth):
     assert s["week_done"] == 1
 
 
+# ───────────────────────── U2 today-summary（派工令 62）─────────────────────────
+def test_today_summary_200_shape(client, auth):
+    """今日到期 + 逾期 → items（alert 优先），今日完成 → done 计数。"""
+    _create(client, auth, text="今天开会", due_at=_iso(datetime.now(TZ) + timedelta(hours=2)))
+    _create(client, auth, text="昨天逾期", due_at=_iso(datetime.now(TZ) - timedelta(days=1)))
+    done = _create(client, auth, text="已完成项", due_at=_iso(datetime.now(TZ)))
+    client.post(f"/api/v1/todo/items/{done['id']}/toggle", headers=auth)
+
+    r = client.get("/api/v1/todo/today-summary", headers=auth)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # 规范 v1：title / items<=5 / link
+    assert "title" in body and body["title"] != ""
+    assert "link" in body and body["link"] == "/todo"
+    assert len(body["items"]) <= 5
+    texts = [it["text"] for it in body["items"]]
+    assert "今天开会" in texts
+    assert "昨天逾期" in texts
+    # 逾期在前且 state=alert；今日到期 state=due
+    assert body["items"][0]["text"] == "昨天逾期"
+    assert body["items"][0]["state"] == "alert"
+    assert any(it["state"] == "due" for it in body["items"])
+    # 今日完成数
+    assert body["done"] == 1
+
+
+def test_today_summary_empty(client, auth):
+    """无今日待办 → 空结构（200，不抛错）。"""
+    r = client.get("/api/v1/todo/today-summary", headers=auth)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["items"] == []
+    assert body["done"] == 0
+
+
+def test_today_summary_requires_auth(client):
+    """鉴权：无 token → 401。"""
+    r = client.get("/api/v1/todo/today-summary")
+    assert r.status_code == 401
+
+
 # ───────────────────────── 排序 / 优先级 ─────────────────────────
 def test_sort_priority_and_done_last(client, auth):
     soon = _iso(datetime.now(TZ) + timedelta(days=1))

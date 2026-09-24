@@ -176,3 +176,15 @@ def summary(
 ) -> SummaryOut:
     """概览统计：今日待办 / 逾期 / 本周完成。"""
     return TodoService(db).summary()
+
+
+@router.get("/today-summary")
+def today_summary(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """U2 今日摘要（today-summary 规范 v1：{title, items<=5:[{text,state,count?}], link}）。
+
+    内核 BFF /api/v1/summary/today 的转发目标（派工令 62）。
+    """
+    return TodoService(db).today_summary()

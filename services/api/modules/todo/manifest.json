@@ -12,7 +12,7 @@
     "w": 720,
     "h": 520
   },
-  "entry": "@apps/todo",
+  "entry": "@/apps/todo",
   "api": {
     "base": "/api/v1/todo",
     "openapi": "/api/v1/todo/openapi.json",
