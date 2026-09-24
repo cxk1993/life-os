@@ -327,3 +327,39 @@ def test_child_cannot_exceed_parent(client, auth):
     # ★ API 返回 UTC，断言必须按 UTC 写（同上）。
     assert kid["start_at"].endswith("01:00:00Z"), kid["start_at"]
     assert kid["end_at"].endswith("04:00:00Z"), kid["end_at"]
+
+
+# ── U2 聚合数据源（令 62）：/today-summary ──────────────────────────
+
+
+def test_today_summary_200_empty_when_no_events_today(client, auth):
+    """今天没事件 → 200 + 空结构（不抛错，规范 §2「缺数据返回空结构」）。"""
+    r = client.get("/api/v1/calendar/today-summary", headers=auth)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["title"] == "今日日程"
+    assert body["items"] == []
+    assert body["count"] == 0
+
+
+def test_today_summary_includes_todays_event(client, auth):
+    """建一个今天的事件 → 摘要 count=1 且 items 含其标题。"""
+    start = (datetime.now(TZ) + timedelta(hours=2)).isoformat()
+    end = (datetime.now(TZ) + timedelta(hours=3)).isoformat()
+    r = client.post(
+        "/api/v1/calendar/events",
+        json={"title": "U2测试事件", "start_at": start, "end_at": end},
+        headers=auth,
+    )
+    assert r.status_code == 201, r.text
+    r = client.get("/api/v1/calendar/today-summary", headers=auth)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["count"] >= 1
+    assert any("U2测试事件" in it["text"] for it in body["items"])
+
+
+def test_today_summary_401_without_token(client):
+    """★ 令 62 §2-3：绝不裸奔 —— 无 token 一律 401。"""
+    r = client.get("/api/v1/calendar/today-summary")
+    assert r.status_code == 401

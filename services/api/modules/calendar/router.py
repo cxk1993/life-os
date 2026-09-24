@@ -16,7 +16,7 @@ HTTP 契约（全项目统一，不许自创）：
   → FastAPI 认为 204 带了响应体 → 整个后端起不来。
 """
 import json
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 from zoneinfo import ZoneInfo
@@ -71,6 +71,41 @@ def list_events(
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict]:
     return CalendarService(db).list_range(frm, to, include_children, flat)
+
+
+@router.get("/today-summary")
+def today_summary(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict:
+    """U2 聚合数据源（令 62）：当日事件列表 + 条数。
+
+    ★ 形状按 docs/specs/today-summary数据源规范-v1.md；BFF（/api/v1/summary/today）
+    原样透传本响应（R-1：内核不解析业务）。
+    ★ 三态：200（本端点，items 可为空 = 今天没事件）· 401 = 未鉴权。
+    """
+    tz = ZoneInfo("Asia/Shanghai")  # 主人时区；多时区配置候 v2
+    now = datetime.now(tz)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timedelta(days=1)
+    events = CalendarService(db).list_range(
+        day_start.astimezone(UTC).isoformat(),
+        day_end.astimezone(UTC).isoformat(),
+        include_children=False,
+        flat=True,
+    )
+    items = []
+    for e in events[:5]:  # 规范：items ≤ 5，超出聚合
+        start = str(e.get("start_at", "") or "")
+        hhmm = start[11:16] if len(start) >= 16 else ""
+        title = str(e.get("title", "") or "")
+        items.append({"text": f"{hhmm} {title}".strip(), "state": "info"})
+    return {
+        "title": "今日日程",
+        "items": items,
+        "count": len(events),
+        "link": "/calendar",
+    }
 
 
 @router.post("/events", response_model=EventOut, status_code=status.HTTP_201_CREATED)
