@@ -15,7 +15,7 @@
     "minH": 320,
     "singleton": false
   },
-  "entry": "@apps/habits",
+  "entry": "@/apps/habits",
   "api": {
     "base": "/api/v1/habits",
     "openapi": "/api/v1/habits/openapi.json",

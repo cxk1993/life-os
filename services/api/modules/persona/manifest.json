@@ -12,7 +12,7 @@
     "w": 880,
     "h": 640
   },
-  "entry": "@apps/persona",
+  "entry": "@/apps/persona",
   "api": {
     "base": "/api/v1/persona",
     "openapi": "/api/v1/persona/openapi.json",

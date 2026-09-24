@@ -9,7 +9,7 @@
   "description": "Web Push（PWA 浏览器推送）：订阅管理 + VAPID 发送 + 提醒事件转推送。桌面通知走桥（calendar T25），本插件管浏览器侧。",
   "author": "yunxi",
   "window": { "w": 760, "h": 520, "minW": 480, "minH": 360 },
-  "entry": "@apps/push",
+  "entry": "@/apps/push",
   "api": {
     "base": "/api/v1/push",
     "openapi": "/api/v1/push/openapi.json",

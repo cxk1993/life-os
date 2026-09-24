@@ -12,7 +12,7 @@
     "w": 360,
     "h": 520
   },
-  "entry": "@/apps/summary",
+  "entry": "",
   "api": {
     "base": "/api/v1/summary",
     "openapi": "/api/v1/summary/openapi.json",

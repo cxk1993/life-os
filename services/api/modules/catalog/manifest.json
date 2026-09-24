@@ -12,7 +12,7 @@
     "w": 920,
     "h": 600
   },
-  "entry": "@apps/catalog",
+  "entry": "@/apps/catalog",
   "api": {
     "base": "/api/v1/catalog",
     "openapi": "/api/v1/catalog/openapi.json",

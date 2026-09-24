@@ -15,7 +15,7 @@
     "minH": 380,
     "singleton": false
   },
-  "entry": "@apps/calendar",
+  "entry": "@/apps/calendar",
   "api": {
     "base": "/api/v1/calendar",
     "openapi": "/api/v1/calendar/openapi.json",

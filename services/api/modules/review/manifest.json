@@ -14,7 +14,7 @@
     "minW": 480,
     "minH": 360
   },
-  "entry": "@apps/review",
+  "entry": "@/apps/review",
   "api": {
     "base": "/api/v1/review",
     "openapi": "/api/v1/review/openapi.json",

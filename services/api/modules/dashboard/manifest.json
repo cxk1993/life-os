@@ -15,7 +15,7 @@
     "minH": 480,
     "singleton": true
   },
-  "entry": "@apps/dashboard",
+  "entry": "@/apps/dashboard",
   "api": {
     "base": "/api/v1/dashboard",
     "openapi": "/api/v1/dashboard/openapi.json",

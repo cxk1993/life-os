@@ -12,7 +12,7 @@
     "w": 720,
     "h": 520
   },
-  "entry": "@apps/notes",
+  "entry": "@/apps/notes",
   "api": {
     "base": "/api/v1/notes",
     "openapi": "/api/v1/notes/openapi.json",

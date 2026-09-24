@@ -12,7 +12,7 @@
     "w": 720,
     "h": 520
   },
-  "entry": "@apps/finance",
+  "entry": "@/apps/finance",
   "api": {
     "base": "/api/v1/finance",
     "openapi": "/api/v1/finance/openapi.json",

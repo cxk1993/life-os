@@ -14,7 +14,7 @@
     "minW": 560,
     "minH": 400
   },
-  "entry": "@apps/mcp",
+  "entry": "@/apps/mcp",
   "api": {
     "base": "/api/v1/mcp",
     "openapi": "/api/v1/mcp/openapi.json",

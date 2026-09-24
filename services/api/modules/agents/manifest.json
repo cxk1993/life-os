@@ -15,7 +15,7 @@
     "minH": 480,
     "singleton": false
   },
-  "entry": "@apps/agents",
+  "entry": "@/apps/agents",
   "api": {
     "base": "/api/v1/agents",
     "openapi": "/api/v1/agents/openapi.json",
