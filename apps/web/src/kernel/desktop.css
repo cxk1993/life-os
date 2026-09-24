@@ -10,6 +10,10 @@
   background-image:
     linear-gradient(var(--bg-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  /* ★ V1 补最后一行（Zcode 探针 2026-09-24 实测）：background-size 缺省 auto 会把
+     两条 1px 渐变线拉伸成全屏十字 —— 网格淡出可视范围（主人反馈③「网格消失」根因）。
+     32px 平铺 = 主人记忆中的「默认淡线网格」。判据：本规则必须含 background-size。 */
+  background-size: 32px 32px;
 }
 
 /* ★ U1（2026-09-24）：顶栏/底栏收放 —— 用 CSS 变量归零让出布局位（判据 U1-1
