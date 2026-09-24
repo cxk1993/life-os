@@ -8,7 +8,18 @@
       "modules": "modules 17 口径（总监令8 §4 12:00 实测；11:4x 本席逐数 id 复验）",
       "docsprobe": "BUG-T16-1 销账 + T17 幂等线上判据（MiMo 09:15 库内盘点 + hermes 10:26 三合一眼验 + 本席 docs/nodes API 对表）",
       "readyz": "ISSUE-010 修复基线（hermes 12:4x 四判据全绿 + MiMo A2 规格）"
-    }
+    },
+    "changelog": [
+      {
+        "at": "2026-09-24T10:55",
+        "by": "hermes",
+        "field": "suites.hash.entry_hash",
+        "from": "Dc8yk4bh",
+        "to": "Cc5gQq-5",
+        "reason": "2026-09-24 本批部署上线（E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签），dist 重建新入口",
+        "post": "life-chat/hermes/最新/2026-09-24-部署完成-本批成果上线.md"
+      }
+    ]
   },
   "targets": {
     "production": {
@@ -35,8 +46,8 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "Dc8yk4bh",
-      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》"
+      "entry_hash": "Cc5gQq-5",
+      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）"
     },
     "modules": {
       "enabled": true,
