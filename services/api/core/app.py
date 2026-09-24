@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import asyncio
+import httpx
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -41,9 +43,38 @@ from core.security import (
     create_sse_ticket,
     decode_sse_ticket,
     get_current_user,
+    get_optional_user,
 )
 
 log = get_logger("kernel.app")
+
+
+async def _fetch_one(
+    client: httpx.AsyncClient,
+    pid: str,
+    url: str,
+    headers: dict[str, str],
+    timeout: float,
+) -> dict[str, Any]:
+    """转发一家插件的 today-summary（模块级，便于用 httpx.MockTransport 单测注入）。
+
+    状态语义：404 = not-implemented（合法）· 5xx/网络错 = unavailable · 200 = ok（data 原样透传）。
+    ★ R-1（令 57）：这里**不解析** data 的业务字段，只包装状态 —— 内核只许转发，不许解释。
+    """
+    try:
+        r = await client.get(url, headers=headers, timeout=timeout)
+    except Exception:  # noqa: BLE001 — 网络/超时一律 unavailable（缺一不塌）
+        return {"id": pid, "status": "unavailable"}
+    if r.status_code == 404:
+        return {"id": pid, "status": "not-implemented"}
+    if r.status_code >= 500:
+        return {"id": pid, "status": "unavailable"}
+    if r.status_code == 200:
+        try:
+            return {"id": pid, "status": "ok", "data": r.json()}
+        except ValueError:
+            return {"id": pid, "status": "unavailable"}
+    return {"id": pid, "status": "unavailable"}
 
 # 默认模块目录：services/api/modules
 _DEFAULT_MODULES_DIR = Path(__file__).resolve().parents[1] / "modules"
@@ -139,9 +170,27 @@ def create_app(
         }
 
     # ── 模块清单（前端 / AI 都靠它发现能力）──
+    # ISSUE-011 案 C（总监令52 裁1）：裸调只回「能点亮图标」的最小字段
+    # （id/name/icon/version），持有效 token 才回全量能力地图；
+    # 令牌无效/过期仍 401（与 /api/v1/plugins 口径对齐，避免假 token 反而少信息）。
+    _PUBLIC_MODULE_FIELDS = ("id", "name", "icon", "version")
+
     @app.get("/api/v1/modules", tags=["_kernel"])
-    def list_modules() -> dict[str, Any]:
-        return {"modules": list(app.state.modules.values()), "count": len(app.state.modules)}
+    def list_modules(
+        user: User | None = Depends(get_optional_user),  # noqa: B008
+    ) -> dict[str, Any]:
+        modules = list(app.state.modules.values())
+        if user is not None:
+            return {
+                "modules": modules,
+                "count": len(modules),
+                "visibility": "full",
+            }
+        public = [
+            {k: (m.get(k) if isinstance(m, dict) else None) for k in _PUBLIC_MODULE_FIELDS}
+            for m in modules
+        ]
+        return {"modules": public, "count": len(public), "visibility": "public"}
 
     # ── 聚合 OpenAPI（验收要求出现在 /api/docs）──
     @app.get("/api/docs", tags=["_kernel"], include_in_schema=False)
@@ -182,10 +231,53 @@ def create_app(
             description="逗号分隔的 topic 模式，如 order.*,task.*；留空收全部",
         ),
     ) -> StreamingResponse:
-        # 无票 / 票据无效 / 过期 / 类型不匹配 → 401（decode_sse_ticket 内部抛）
         decode_sse_ticket(ticket or "")
         patterns = [t.strip() for t in (topics or "").split(",") if t.strip()]
         return event_bus.sse_response(request, patterns)
+
+    # ── U2 聚合端点（TX-AGG-01 端点层 · BFF 代理，2026-09-24）────────────
+    # ★ 红线 R-1（总监令 57 采纳 astrbot 安全审查）：内核**只许转发，不许解释** ——
+    #   本端点不解析 / 不合并任何插件业务语义，只做「带调用者凭证的 HTTP 转发」+ 状态包装。
+    # 判据：S-1 转发目标由内核注册表决定（防 SSRF，不得由请求参数决定）
+    #       S-2 token 只透传给插件自有端点、不落日志不进 URL + 单家超时（防 hang 放大）
+    #       S-3 审计只记操作与状态，不含 Authorization
+    # ★ 鉴权：聚合的是用户数据，端点本身必须先过 get_current_user（不能成为新的裸奔口）。
+    _SUMMARY_PROVIDERS: tuple[tuple[str, str], ...] = (
+        ("calendar", "/api/v1/calendar/today-summary"),
+        ("todo", "/api/v1/todo/today-summary"),
+        ("diary", "/api/v1/diary/today-summary"),
+        ("review", "/api/v1/review/today-summary"),
+    )
+    _SUMMARY_TIMEOUT = 3.0  # ★ S-2：单家超时（秒）
+
+    @events_router.get("/summary/today")
+    async def summary_today(
+        request: Request,
+        user: Annotated[User, Depends(get_current_user)],  # ★ 聚合的是用户数据，必须鉴权
+    ) -> dict[str, Any]:
+        import httpx
+
+        auth = request.headers.get("authorization")
+        headers = {"Authorization": auth} if auth else {}
+        base = f"{request.url.scheme}://{request.url.netloc}"
+        async with httpx.AsyncClient() as client:
+            providers = list(
+                await asyncio.gather(
+                    *(
+                        _fetch_one(
+                            client, pid, base + path, headers, _SUMMARY_TIMEOUT
+                        )
+                        for pid, path in _SUMMARY_PROVIDERS
+                    )
+                )
+            )
+        # ★ S-3：审计只记「谁、什么状态」，绝不含 Authorization / 业务内容
+        log.info(
+            "summary.today 聚合完成",
+            extra={"providers": {p["id"]: p["status"] for p in providers}},
+        )
+        return {"providers": providers}
+
 
     app.include_router(events_router, prefix="/api/v1")
 
