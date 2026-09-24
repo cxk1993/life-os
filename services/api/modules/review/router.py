@@ -84,6 +84,34 @@ def get_day(
     return ReviewService(db).get_day(date)
 
 
+@router.get("/today-summary")
+def today_summary(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict:
+    """U2 规范 v1（令 62 · MiMo）：{title, items:[{text,state}], link}。
+
+    空结果返回空 items，不抛错；形状对齐 workbuddy 《today-summary 数据源规范 v1》。
+    """
+    svc = ReviewService(db)
+    day = local_today()
+    detail = svc.get_day(day)
+    notes_out = svc.list_notes(day)
+    has_review = not detail.is_empty
+    items: list[dict] = []
+    if has_review:
+        summary = (getattr(detail, "ai_analysis_md", "") or "").strip()
+        items.append({"text": (summary[:40] if summary else "今日复盘"), "state": "info"})
+    for n in getattr(notes_out, "items", [])[:5]:
+        content = (getattr(n, "content_md", "") or "").strip().replace("\n", " ")
+        items.append({"text": content[:40] or "批注", "state": "info"})
+    return {
+        "title": f"今日复盘 {len(items)} 条" if items else "今日复盘",
+        "items": items,
+        "link": "/review",
+    }
+
+
 @router.get("/trend", response_model=TrendOut)
 def get_trend(
     metric: str = Query("total", description="total | category | app"),
