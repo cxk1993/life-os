@@ -134,4 +134,23 @@ describe("QuickAdd", () => {
       expect((input as HTMLInputElement).value).toBe("");
     });
   });
+
+  it("H4 · 提交失败显示错误提示且输入保留（不再静默）", async () => {
+    const { todoApi } = await import("./api");
+    vi.mocked(todoApi.create).mockRejectedValueOnce(new Error("网络不可用"));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <QuickAdd />
+      </QueryClientProvider>,
+    );
+    const input = screen.getByLabelText("快速添加待办");
+    fireEvent.change(input, { target: { value: "断网也要记的待办" } });
+    fireEvent.click(screen.getByRole("button", { name: "添加" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("todo-quick-error")).toBeTruthy();
+    });
+    expect(screen.getByText(/保存失败：网络不可用/)).toBeTruthy();
+    // 输入保留（可重试），不静默清空
+    expect((input as HTMLInputElement).value).toBe("断网也要记的待办");
+  });
 });

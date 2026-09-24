@@ -2,6 +2,52 @@
  * 成长罗盘（dashboard）样式。只使用设计令牌 var(--xxx)，不写死颜色。
  */
 
+/* C′ 里程碑侧栏卡：与 E5 首例 sidecar 卡保持同一视觉语言（命名对齐 todo.sidecar-card） */
+.sidecar-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.sidecar-card__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+}
+.sidecar-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.sidecar-card__item {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 12px;
+}
+.sidecar-card__num {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.sidecar-card__lbl {
+  color: var(--txt-faint);
+}
+.sidecar-card__tag {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--txt-faint);
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.3));
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.sidecar-card__empty {
+  font-size: 11px;
+  color: var(--txt-faint);
+}
+
 .dash-root {
   display: flex;
   flex-direction: column;

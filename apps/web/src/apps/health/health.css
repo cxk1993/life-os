@@ -118,3 +118,74 @@
 .health-root {
   position: relative;
 }
+
+/* —— D1 健康趋势（dashboard.card + window.sidecar 共用）—— */
+.health-trend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-1);
+}
+.health-trend__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.health-trend__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+}
+.health-trend__total {
+  font-size: 12px;
+  color: var(--txt-faint);
+}
+.health-trend__empty {
+  font-size: 12px;
+  color: var(--txt-faint);
+  padding: var(--sp-3) 0;
+}
+.health-trend__chart {
+  width: 100%;
+  height: auto;
+}
+.health-trend__bar {
+  fill: var(--accent, #4a7dff);
+  opacity: 0.85;
+}
+.health-trend__sev-line {
+  stroke: var(--danger, #d64545);
+  stroke-width: 1.5;
+  fill: none;
+}
+.health-trend__sev-dot {
+  fill: var(--danger, #d64545);
+}
+.health-trend__lbl {
+  font-size: 9px;
+  fill: var(--txt-faint, #888);
+}
+.health-trend__legend {
+  display: flex;
+  gap: var(--sp-3);
+  font-size: 10px;
+  color: var(--txt-faint);
+}
+/* D1 迭代 2：惊讶时刻提示（QS 背景层——次强调，不抢图表前景） */
+.health-trend__insight {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+}
+.health-trend__insight--up {
+  border-color: var(--warn, #d9a13b);
+  color: var(--warn, #d9a13b);
+}
+.health-trend__insight--down {
+  border-color: var(--accent, #4a7dff);
+  color: var(--accent, #4a7dff);
+}
