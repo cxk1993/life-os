@@ -12,7 +12,7 @@ function errText(e: unknown): string {
 
 /** TX-QUERY-01 · 跨模块预置查询（只读）。 */
 export default function QueryApp() {
-  const [qid, setQid] = useState<string | null>(null);
+  const [qid, setQid] = useState<string | null>(() => loadPrefs().lastPreset);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -24,6 +24,7 @@ export default function QueryApp() {
 
   const run = async (id: string) => {
     setQid(id);
+    savePrefs({ lastPreset: id });
     setBusy(true);
     setErr(null);
     setResult(null);
