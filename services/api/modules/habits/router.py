@@ -39,7 +39,7 @@ def manifest() -> dict:
     return _MANIFEST
 
 
-@router.get("/habits", response_model=list[HabitOut])
+@router.get("", response_model=list[HabitOut])
 def list_habits(
     include_archived: bool = Query(False),
     db: DbDep = Depends(get_db),
@@ -48,7 +48,14 @@ def list_habits(
     return HabitsService(db).list_habits(include_archived)
 
 
-@router.post("/habits", response_model=HabitOut, status_code=status.HTTP_201_CREATED)
+@router.get("/summary", response_model=SummaryOut)
+def summary(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> SummaryOut:
+    return HabitsService(db).summary()
+
+@router.post("", response_model=HabitOut, status_code=status.HTTP_201_CREATED)
 def create_habit(
     body: HabitCreate,
     db: DbDep = Depends(get_db),
@@ -57,7 +64,7 @@ def create_habit(
     return HabitsService(db).create(body)
 
 
-@router.get("/habits/{habit_id}", response_model=HabitOut)
+@router.get("/{habit_id}", response_model=HabitOut)
 def get_habit(
     habit_id: Annotated[str, FPath()],
     db: DbDep = Depends(get_db),
@@ -66,7 +73,7 @@ def get_habit(
     return HabitsService(db).get(habit_id)
 
 
-@router.patch("/habits/{habit_id}", response_model=HabitOut)
+@router.patch("/{habit_id}", response_model=HabitOut)
 def update_habit(
     habit_id: Annotated[str, FPath()],
     body: HabitUpdate,
@@ -76,7 +83,7 @@ def update_habit(
     return HabitsService(db).update(habit_id, body)
 
 
-@router.delete("/habits/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_habit(
     habit_id: Annotated[str, FPath()],
     db: DbDep = Depends(get_db),
@@ -85,7 +92,7 @@ def delete_habit(
     HabitsService(db).delete(habit_id)
 
 
-@router.post("/habits/{habit_id}/checkin", response_model=HabitOut)
+@router.post("/{habit_id}/checkin", response_model=HabitOut)
 def checkin(
     habit_id: Annotated[str, FPath()],
     body: CheckIn,
@@ -95,7 +102,7 @@ def checkin(
     return HabitsService(db).checkin(habit_id, body)
 
 
-@router.delete("/habits/{habit_id}/checkin/{day}", response_model=HabitOut)
+@router.delete("/{habit_id}/checkin/{day}", response_model=HabitOut)
 def uncheck(
     habit_id: Annotated[str, FPath()],
     day: Annotated[DateType, FPath(description="YYYY-MM-DD 本地日历日")],
@@ -105,7 +112,7 @@ def uncheck(
     return HabitsService(db).uncheck(habit_id, day)
 
 
-@router.get("/habits/{habit_id}/logs", response_model=list[LogOut])
+@router.get("/{habit_id}/logs", response_model=list[LogOut])
 def list_logs(
     habit_id: Annotated[str, FPath()],
     frm: DateType | None = Query(None, alias="from"),
@@ -114,11 +121,3 @@ def list_logs(
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     return HabitsService(db).list_logs(habit_id, frm, to)
-
-
-@router.get("/summary", response_model=SummaryOut)
-def summary(
-    db: DbDep = Depends(get_db),
-    _user: UserDep = Depends(get_current_user),
-) -> SummaryOut:
-    return HabitsService(db).summary()
