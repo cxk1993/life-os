@@ -253,7 +253,7 @@ def test_manifest(client):
     assert r.status_code == 200
     m = r.json()
     assert m["id"] == "diary"
-    assert m["provides"] == []
+    assert m["provides"] == ["x.summary.today"]
     assert sorted(m["requires"]) == ["docs.node.read", "docs.node.write", "docs.search"]
     assert m["permissions"] == []
 

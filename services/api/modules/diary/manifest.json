@@ -20,7 +20,7 @@
     "openapi": "/api/v1/diary/openapi.json",
     "health": "/api/v1/diary/health"
   },
-  "provides": [],
+  "provides": ["x.summary.today"],
   "requires": [
     "docs.node.read",
     "docs.node.write",
