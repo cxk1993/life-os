@@ -115,6 +115,20 @@
   font-size: 13px;
 }
 
+/* V6 罗盘容器化：卡片去内边距，让 MultitabFrame 页签+页体占满卡片。 */
+.dash-card--flush {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.dash-card--flush .dash-card__title {
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+}
+.dash-card--flush .mtab {
+  flex: 1;
+  min-height: 200px;
+}
+
 .dash-card__body {
   display: flex;
   flex-direction: column;

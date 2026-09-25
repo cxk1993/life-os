@@ -227,15 +227,24 @@ describe("DashboardApp 首屏", () => {
     expect(screen.getByTestId("review-online").textContent).toBe("在线");
   });
 
-  it("Growth 占位显示空轴 + 说明", async () => {
+  it("Growth 罗盘容器化：三页签渲染，懒挂载默认只挂习惯页（V6 判据演进，原占位断言退役）", async () => {
     const { dashboardApi } = await import("./api");
     vi.mocked(dashboardApi.overview).mockResolvedValue(overview);
     render(<DashboardApp />, { wrapper: makeWrapper() });
+    // MultitabFrame 容器与三页签同步渲染；
     await waitFor(() => {
-      expect(screen.getByTestId("growth-axes")).toBeTruthy();
+      expect(screen.getByTestId("multitab-frame")).toBeTruthy();
     });
-    expect(screen.getByTestId("growth-axes").textContent).toBe("0");
-    expect(screen.getByText(/完整成长罗盘后补/)).toBeTruthy();
+    expect(screen.getByTestId("mtab-tab-habits").getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("mtab-tab-persona")).toBeTruthy();
+    expect(screen.getByTestId("mtab-tab-health")).toBeTruthy();
+    // 懒挂载：未点过的页不挂载（persona/health 面板不存在）；
+    // 习惯页为 lazy 组件，await 其内容出现（网络层失败显示失败态也算已挂载，不打真实后端由 jsdom 保证）。
+    await waitFor(() => {
+      expect(screen.getByTestId("mtab-panel-habits")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("mtab-panel-persona")).toBeNull();
+    expect(screen.queryByTestId("mtab-panel-health")).toBeNull();
   });
 
   it("系统健康灯渲染全部模块", async () => {
