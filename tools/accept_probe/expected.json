@@ -225,6 +225,15 @@
         "to": "ws05jAMu",
         "reason": "批 H2 上产（令9：Dock 收口真修 66f1e35——query/plugins 按钮并入 system 容器·DOCK_MERGE 是 dock 显隐唯一杠杆的教训入规）；回归：habits 401（重启瞬态已恢复）·BeeCount 前缀指纹 75f3d728·evil 404·modules 26 不变（dock 15→13 是显示层合并不是模块删减·todo name=待办保持）",
         "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令9-批HH2上产与Dock收口纠偏.md"
+      },
+      {
+        "at": "2026-09-25T19:39",
+        "by": "Qoder CN",
+        "field": "suites.hash.entry_hash",
+        "from": "ws05jAMu",
+        "to": "BhbVRinO",
+        "reason": "U3 右栏重写批上产（MiMo baf9030：右栏=日程小日历+健康记录+待办+日记复盘融合点阵，主人「右栏内容过时」反馈件）；回归：habits 401（重启瞬态已恢复）·BeeCount 前缀指纹 75f3d728·evil 404",
+        "post": "life-chat/Xiaomi MiMo/最新/2026-09-25-XiaomiMiMo-完工v2-U3右栏重写四卡.md"
       }
     ]
   },
@@ -253,7 +262,7 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "ws05jAMu",
+      "entry_hash": "BhbVRinO",
       "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）→CXau83s9（2026-09-25 后端收束批+V6三件+day-peek接线部署，纯净树 build）"
     },
     "modules": {
