@@ -126,6 +126,15 @@
         "to": "VlgE8Hzp",
         "reason": "总监令2 小批上产：罗盘补丁（z-index 95000/95001+旧按钮撤+罗盘唯一入口 1a1acee）+待办 title→text 修复（b11b5ea）+retest13 双前缀枚举（4854273）+V1-EXT2 壁纸四态（e4846cb），dist 重建；验收：z-index 已在产 CSS、TopBar 旧按钮确撤（罗盘扇区 aria 正常）、BFF 四源 ok（令2 准翻后 8ffde04）",
         "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令2-小批部署集结.md"
+      },
+      {
+        "at": "2026-09-25T16:50",
+        "by": "Qoder CN",
+        "field": "suites.hash.entry_hash",
+        "from": "VlgE8Hzp",
+        "to": "Dqu8dGC5",
+        "reason": "令3/令4 修复批上产（前端）：罗盘按钮可拖动（36a82cc·title「可拖动位置；点击展开」在产）+壁纸 grid 态显式规则保险（146f13a）+日历 changeView 日周月切换（4e2f66e）；后端 habits 修复尚未随批（工作树 M 未提交，生产 /habits 仍 404=旧码），BeeCount md5=b72d341e/evil404 无回归",
+        "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令4-主人真机问题单与根因实锤.md"
       }
     ]
   },
@@ -154,7 +163,7 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "VlgE8Hzp",
+      "entry_hash": "Dqu8dGC5",
       "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）→CXau83s9（2026-09-25 后端收束批+V6三件+day-peek接线部署，纯净树 build）"
     },
     "modules": {
