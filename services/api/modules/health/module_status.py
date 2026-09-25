@@ -17,6 +17,8 @@ from typing import Any
 
 from sqlmodel import Session
 
+from core.manifest import dependency_status
+
 from .reconcile import list_desired_followups
 from .reconcile_scheduler import scheduler_status
 from .service import EVENT_CARE
@@ -40,10 +42,17 @@ def classify_module_status(
     return "disabled"
 
 
-def _module_entry(mid: str, manifest: Any, *, activated: bool, error: str | None) -> dict[str, Any]:
+def _module_entry(
+    mid: str,
+    manifest: Any,
+    *,
+    activated: bool,
+    error: str | None,
+    available: set[str] | None = None,
+) -> dict[str, Any]:
     data: dict[str, Any] = manifest if isinstance(manifest, dict) else {}
     api = data.get("api") or {}
-    return {
+    entry: dict[str, Any] = {
         "id": mid,
         "name": data.get("name"),
         "kind": data.get("kind"),
@@ -54,6 +63,19 @@ def _module_entry(mid: str, manifest: Any, *, activated: bool, error: str | None
         "api_health_declared": bool(api.get("health")),
         "detail": error,
     }
+    opts = [str(x) for x in (data.get("optionalDependencies") or [])]
+
+    class _DepView:
+        __slots__ = ("optionalDependencies",)
+
+        def __init__(self, o: list[str]) -> None:
+            self.optionalDependencies = o
+
+    dep = dependency_status(_DepView(opts), available or set())
+    entry["dep_state"] = dep.state
+    entry["reason_code"] = dep.reason_code
+    entry["missing"] = list(dep.missing)
+    return entry
 
 
 def dock_module_status(app: Any, db: Session) -> dict[str, Any]:
@@ -68,8 +90,15 @@ def dock_module_status(app: Any, db: Session) -> dict[str, Any]:
 
     items: list[dict[str, Any]] = []
     summary = {s: 0 for s in STATUSES}
+    available: set[str] = set()
+    for manifest in registered.values():
+        data = manifest if isinstance(manifest, dict) else {}
+        for p in (data.get("provides") or []):
+            available.add(str(p))
     for mid, manifest in registered.items():
-        entry = _module_entry(mid, manifest, activated=mid in mounted, error=errors.get(mid))
+        entry = _module_entry(
+            mid, manifest, activated=mid in mounted, error=errors.get(mid), available=available
+        )
         items.append(entry)
         summary[entry["status"]] += 1
     # 兜底目击：激活表里有、注册表里没有——如实报 unknown，不静默吞
@@ -95,6 +124,7 @@ def dock_module_status(app: Any, db: Session) -> dict[str, Any]:
         "count": len(items),
         "modules": items,
         "summary": summary,
+        "dep_degraded_count": sum(1 for m in items if m.get("dep_state") == "degraded"),
         "reconcile": {
             "event_topic": EVENT_CARE,
             "desired_count": len(desired),

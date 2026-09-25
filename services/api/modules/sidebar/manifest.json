@@ -1,0 +1,35 @@
+{
+  "id": "sidebar",
+  "name": "侧栏自定义容器",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "box",
+  "description": "TX-SIDEBAR-02 高度自定义侧栏：link/note/announcement/friend-link，href 白名单",
+  "author": "yunxi",
+  "window": {
+    "w": 720,
+    "h": 520
+  },
+  "entry": "@apps/sidebar",
+  "api": {
+    "base": "/api/v1/sidebar",
+    "openapi": "/api/v1/sidebar/openapi.json",
+    "health": "/api/v1/sidebar/health"
+  },
+  "provides": ["sidebar.item.read", "sidebar.item.write"],
+  "requires": [],
+  "slots": ["desktop.dock-left", "desktop.dock-right"],
+  "emits": [],
+  "consumes": [],
+  "permissions": ["db:own"],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

@@ -94,6 +94,41 @@ def test_dock_tolerates_missing_registry_and_activator() -> None:
     assert out["summary"]["disabled"] == 1
     assert out["reconcile"]["desired_count"] == 0
     assert out["reconcile"]["scheduler_enabled"] is False
+    # O1 契约 v2：无 optionalDependencies → dep 全 ok
+    assert out["modules"][0]["dep_state"] == "ok"
+    assert out["modules"][0]["reason_code"] is None
+    assert out["modules"][0]["missing"] == []
+    assert out["dep_degraded_count"] == 0
+
+
+def test_dock_dep_state_soft_missing_degraded() -> None:
+    """软依赖缺失 → dep_state=degraded + reason_code（TX-DEG-01 消费半边）。"""
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        app = SimpleNamespace(
+            state=SimpleNamespace(
+                modules={
+                    "alpha": {
+                        "id": "alpha",
+                        "name": "Alpha",
+                        "kind": "builtin",
+                        "api": {},
+                        "provides": ["alpha.read"],
+                        "optionalDependencies": ["zeta.read", "alpha.read"],
+                    }
+                },
+                registry=None,
+                activator=None,
+            )
+        )
+        out = dock_module_status(app, session)
+    engine.dispose()
+    row = out["modules"][0]
+    assert row["dep_state"] == "degraded"
+    assert row["reason_code"] == "optional_dependency_missing:zeta.read"
+    assert row["missing"] == ["zeta.read"]
+    assert out["dep_degraded_count"] == 1
 
 
 # ── API 层 ──

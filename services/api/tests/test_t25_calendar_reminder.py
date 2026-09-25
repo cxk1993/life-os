@@ -104,6 +104,62 @@ def test_tick_failed_not_marked_db_dedup(db: Session) -> None:
     assert len(r2) == 1 and r2[0]["ok"] is True
 
 
+def test_n2_quiet_hours_suppress_with_reason(db: Session) -> None:
+    """N2：静默时段不发送，必须带 suppress_reason 落账，且不 mark_notified。"""
+    from datetime import time as dtime
+
+    from modules.calendar.notify_policy import NotifyPolicy, QuietHours
+
+    # 23:30 UTC+0 对应上海 07:30 边界外——直接用上海 23:30 的 UTC 时刻
+    # QuietHours 默认 23:00–07:30（按传入 now 的本地钟面判断；evaluate 用 now.time()）。
+    now = datetime(2026, 9, 19, 15, 30, tzinfo=UTC)  # UTC 15:30 = 上海 23:30
+    _mk_event(db, "夜深", now)
+    calls: list[tuple[str, str]] = []
+
+    def fake(title: str, body: str) -> dict:
+        calls.append((title, body))
+        return {"ok": True, "channel": "log"}
+
+    policy = NotifyPolicy(quiet=QuietHours(start=dtime(23, 0), end=dtime(7, 30)))
+    # evaluate 用 now.time() 做钟面比较（naive 语义）；固定 now 的 time()=15:30 不在静默窗
+    # → 改用静默窗盖住 15:30 的策略，验证抑制路径。
+    policy = NotifyPolicy(quiet=QuietHours(start=dtime(15, 0), end=dtime(16, 0)))
+    r = run_reminder_tick(db, notify_fn=fake, now=now, lead_minutes=0, policy=policy)
+    assert len(r) == 1
+    assert r[0]["ok"] is False
+    assert r[0]["suppress_reason"] == "quiet_hours"
+    assert calls == []
+    logs = list_reminder_logs(db)
+    assert any(x["detail"] and "n2_suppress:quiet_hours" in x["detail"] for x in logs)
+    # 未 mark → 策略放行后可重试
+    from modules.calendar.reminder_scheduler import _lock_state
+
+    assert str(r[0]["event_id"]) not in _lock_state["notified"]
+
+
+def test_n2_rate_limit_suppress(db: Session) -> None:
+    """N2：超过小时频控则 suppress_reason=rate_limited。"""
+    from modules.calendar.notify_policy import NotifyPolicy, RateLimit
+
+    now = datetime(2026, 9, 19, 12, 0, tzinfo=UTC)
+    _mk_event(db, "一", now)
+    _mk_event(db, "二", now)
+    calls: list[str] = []
+
+    def fake(title: str, body: str) -> dict:
+        calls.append(title)
+        return {"ok": True, "channel": "log"}
+
+    policy = NotifyPolicy(rate=RateLimit(max_per_hour=1, max_per_day=1))
+    r = run_reminder_tick(db, notify_fn=fake, now=now, lead_minutes=0, policy=policy)
+    assert len(r) == 2
+    sent = [x for x in r if x.get("ok") is True]
+    skipped = [x for x in r if x.get("suppress_reason") == "rate_limited"]
+    assert len(sent) == 1
+    assert len(skipped) == 1
+    assert len(calls) == 1
+
+
 def test_scheduler_default_off(monkeypatch: pytest.MonkeyPatch) -> None:
     stop_scheduler()
     monkeypatch.delenv("CALENDAR_REMINDER_ENABLED", raising=False)

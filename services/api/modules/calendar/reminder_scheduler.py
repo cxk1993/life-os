@@ -4,6 +4,8 @@
   **逐字节一致**；ISSUE-005 若落地「通用适配器」，本文件的 _sign 可平滑替换。
 ★ 默认关闭：CALENDAR_REMINDER_ENABLED=true 才在进程内启动。
 ★ v0.1 去重：进程内内存表（重启后可能重复弹一次）；持久化去重待正式卡增强。
+★ 发送前一律过 N2 策略闸（notify_policy.evaluate）：静默时段 / 频控 / lead 择时；
+  抑制必须带 reason 落日志，禁止静默丢（与 notify_policy 模块约定一致）。
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ import time
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 from sqlmodel import Session, col, select
@@ -22,6 +25,7 @@ from sqlmodel import Session, col, select
 from core.config import read_setting
 from core.events import event_bus
 from modules.calendar.models import CalendarEvent, CalendarReminderLog
+from modules.calendar.notify_policy import NotifyPolicy, evaluate
 
 log = logging.getLogger("calendar.reminder")
 
@@ -137,6 +141,44 @@ def mark_notified(event_id: str, *, now: float | None = None) -> None:
             notified.pop(k, None)
 
 
+def _count_sent_ok(db: Session, now: datetime) -> tuple[int, int]:
+    """N2 频控计数：近 1 小时 / 今日（Asia/Shanghai）已成功投递条数。"""
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    hour_ago = now - timedelta(hours=1)
+    local = now.astimezone(ZoneInfo("Asia/Shanghai"))
+    day_start = local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
+    hour_n = len(
+        db.exec(
+            select(col(CalendarReminderLog.id)).where(
+                col(CalendarReminderLog.ok) == True,  # noqa: E712
+                col(CalendarReminderLog.fired_at) >= hour_ago,
+            )
+        ).all()
+    )
+    day_n = len(
+        db.exec(
+            select(col(CalendarReminderLog.id)).where(
+                col(CalendarReminderLog.ok) == True,  # noqa: E712
+                col(CalendarReminderLog.fired_at) >= day_start,
+            )
+        ).all()
+    )
+    return hour_n, day_n
+
+
+def _should_log_suppress(event_id: str, reason: str, *, now: float | None = None) -> bool:
+    """同一事件同一抑制原因，1 小时内只落一条日志（防 30s tick 刷屏）。"""
+    state: dict[str, float] = _lock_state.setdefault("suppressed", {})
+    key = f"{event_id}|{reason}"
+    ts = now if now is not None else time.time()
+    last = state.get(key)
+    if last is not None and ts - last < 3600:
+        return False
+    state[key] = ts
+    return True
+
+
 def _write_log(
     db: Session,
     *,
@@ -191,11 +233,20 @@ def run_reminder_tick(
     now: datetime | None = None,
     lead_minutes: int | None = None,
     channel: str = "auto",
+    policy: NotifyPolicy | None = None,
 ) -> list[dict[str, Any]]:
-    """一轮扫描 + 投递。notify_fn(title, body) 可注入（测试用）。"""
+    """一轮扫描 + 投递。notify_fn(title, body) 可注入（测试用）。
+
+    发送前过 N2（evaluate）：不放行则记 suppress_reason，不 mark_notified，
+    下一轮策略放行后仍可投递（静默/频控是推迟，不是丢弃）。
+    """
     lead = _lead_minutes() if lead_minutes is None else lead_minutes
     send = notify_fn or (lambda t, b: bridge_notify(t, b, channel=channel))
+    now = now or datetime.now(UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
     due = collect_due_events(db, now=now, lead_minutes=lead)
+    sent_hour, sent_today = _count_sent_ok(db, now)
     results: list[dict[str, Any]] = []
     for ev in due:
         title = f"日程提醒：{ev.title}"
@@ -204,6 +255,35 @@ def run_reminder_tick(
         row: dict[str, Any] = {"event_id": str(ev.id), "title": ev.title}
         ok = False
         detail: str | None = None
+        planned = ev.start_at if ev.start_at is not None else now
+        if planned.tzinfo is None:
+            planned = planned.replace(tzinfo=UTC)
+        decision = evaluate(
+            planned=planned,
+            now=now,
+            sent_last_hour=sent_hour,
+            sent_today=sent_today,
+            policy=policy,
+        )
+        if not decision.send:
+            reason = decision.suppress_reason or "unknown"
+            row["ok"] = False
+            row["skipped"] = True
+            row["suppress_reason"] = reason
+            if _should_log_suppress(str(ev.id), reason):
+                try:
+                    _write_log(
+                        db,
+                        event_id=str(ev.id),
+                        title=ev.title,
+                        channel="n2",
+                        ok=False,
+                        detail=f"n2_suppress:{reason}",
+                    )
+                except Exception as log_exc:  # noqa: BLE001
+                    log.warning("write n2 suppress log failed: %s", log_exc)
+            results.append(row)
+            continue
         try:
             out = send(title, body)
             ok = bool(isinstance(out, dict) and out.get("ok", True))
@@ -212,6 +292,8 @@ def run_reminder_tick(
             detail = str((out or {}).get("detail") or (out or {}).get("channel") or "")[:200]
             if ok:
                 mark_notified(str(ev.id))
+                sent_hour += 1
+                sent_today += 1
                 try:
                     event_bus.publish(
                         "calendar.reminder.fired",

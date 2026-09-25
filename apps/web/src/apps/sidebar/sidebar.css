@@ -1,0 +1,62 @@
+.sidebar-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  height: 100%;
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+}
+.sidebar-add {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.sidebar-add input {
+  flex: 1;
+  min-width: 100px;
+  height: 32px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+}
+.sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow: auto;
+  flex: 1;
+}
+.sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.sidebar-abbr {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 11px;
+}
+.sidebar-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-err {
+  color: var(--danger);
+}
