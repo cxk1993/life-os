@@ -14,8 +14,9 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from fastapi import Path as FPath
+from fastapi import Query
 
-from core.deps import get_current_user
+from core.deps import get_current_user, get_db
 from core.security import User
 
 from .aggregator import (
@@ -70,6 +71,38 @@ async def today(
 ) -> dict[str, Any]:
     """今日合并视图（日程数 / 待办 / 习惯 x/n）。"""
     return await aggregate_today()
+
+
+@router.get("/day-peek")
+def day_peek_endpoint(
+    date: str | None = None,
+    db: Annotated[Any, Depends(get_db)] = None,
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """U2 小日历：单日聚合（日程/日记/复盘/待办）。只读。"""
+    from datetime import date as _date
+
+    from .day_peek import day_peek as _peek
+
+    d = _date.fromisoformat(date) if date else _date.today()
+    return _peek(db, d)
+
+
+@router.get("/day-dots")
+def day_dots_endpoint(
+    from_: Annotated[str | None, Query(alias="from")] = None,
+    to: str | None = None,
+    db: Annotated[Any, Depends(get_db)] = None,
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """U2 小日历：区间打点（月视图）。只读。"""
+    from datetime import date as _date
+
+    from .day_peek import day_dots as _dots
+
+    start = _date.fromisoformat(from_) if from_ else _date.today().replace(day=1)
+    end = _date.fromisoformat(to) if to else start
+    return _dots(db, start, end)
 
 
 @router.get("/health-of-system", response_model=HealthOfSystemOut)
