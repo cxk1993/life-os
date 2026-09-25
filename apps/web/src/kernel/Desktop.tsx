@@ -265,7 +265,40 @@ export function Desktop() {
                 : undefined
             }
             onKeyDown={(e) => {
-              if (e.key === "Escape") setCompassOpen(false);
+              // ★ 八维升级（2026-09-25）：「功能/无障碍」—— WAI-ARIA menu 键盘导航。
+              //   方向键 = 罗盘四向（↑顶栏 / →右栏 / ↓底栏 / ←左栏，与视觉方位一致）；
+              //   Enter/Space = 中心（全收/全展）；Esc = 关闭；Tab = 常规焦点循环。
+              switch (e.key) {
+                case "ArrowUp":
+                  e.preventDefault();
+                  toggleTopbar();
+                  break;
+                case "ArrowRight":
+                  e.preventDefault();
+                  setSideCollapsed("right", !rightCollapsed);
+                  break;
+                case "ArrowDown":
+                  e.preventDefault();
+                  toggleBottombar();
+                  break;
+                case "ArrowLeft":
+                  e.preventDefault();
+                  setSideCollapsed("left", !leftCollapsed);
+                  break;
+                case "Enter":
+                case " ":
+                  // 仅在焦点不在具体扇区按钮上时，才由容器接管为「全收/全展」
+                  if (e.target === e.currentTarget) {
+                    e.preventDefault();
+                    toggleAllCollapsed();
+                  }
+                  break;
+                case "Escape":
+                  setCompassOpen(false);
+                  break;
+                default:
+                  break;
+              }
             }}
           >
             <button
