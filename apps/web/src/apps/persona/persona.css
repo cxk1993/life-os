@@ -4,6 +4,10 @@
   flex-direction: column;
   height: 100%;
   font-size: 13px;
+  /* 嵌入成长罗盘多页容器后自带留白（原全窗体依赖窗体留白，V6 嵌入后贴边） */
+  padding: var(--sp-3, 12px);
+  box-sizing: border-box;
+  overflow: auto;
 }
 
 .persona-header {
