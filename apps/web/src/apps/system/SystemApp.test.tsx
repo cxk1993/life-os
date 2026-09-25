@@ -16,15 +16,18 @@ describe("SystemApp（V6 系统窗四合一）", () => {
     // persistKey 持久化跨用例泄漏防护（每用例从干净 localStorage 起步）
     localStorage.clear();
   });
-  it("渲染五个一级页签：能力目录/MCP/推送/导出中心/账户与鉴权", () => {
+  it("渲染七个一级页签：目录/MCP/推送/导出/跨查询/插件管理/鉴权", () => {
     render(<SystemApp />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(7);
     expect(screen.getByTestId("mtab-tab-catalog")).toBeTruthy();
     expect(screen.getByTestId("mtab-tab-mcp")).toBeTruthy();
     expect(screen.getByTestId("mtab-tab-push")).toBeTruthy();
     // ★ 主人 2026-09-25：「导出中心」并入系统窗多页
     expect(screen.getByTestId("mtab-tab-export")).toBeTruthy();
+    // ★ 主人 2026-09-25：「跨区块查询」「插件管理」并入系统窗多页
+    expect(screen.getByTestId("mtab-tab-query")).toBeTruthy();
+    expect(screen.getByTestId("mtab-tab-plugins")).toBeTruthy();
     expect(screen.getByTestId("mtab-tab-auth")).toBeTruthy();
     expect(screen.getByTestId("mtab-tab-catalog").getAttribute("aria-selected")).toBe("true");
   });

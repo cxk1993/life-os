@@ -1,0 +1,96 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, ApiError } from "@/shared/api/client";
+
+interface PluginRow {
+  id: string;
+  name?: string;
+  enabled?: boolean;
+  valid?: boolean;
+  kind?: string;
+  version?: string;
+}
+
+function errText(e: unknown): string {
+  if (e instanceof ApiError) return e.detail || e.title;
+  return e instanceof Error ? e.message : "请求失败";
+}
+
+/**
+ * 插件管理（主人⑫：并入「系统」窗多页）。
+ * 列表 / 启停——安装卸载不在此页（危险操作走命令行/总监）。
+ */
+export default function PluginsApp() {
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["plugins", "list"],
+    queryFn: () => api.get<PluginRow[] | { items?: PluginRow[]; plugins?: PluginRow[] }>("/api/v1/plugins"),
+  });
+
+  const rows: PluginRow[] = Array.isArray(data)
+    ? data
+    : ((data as { items?: PluginRow[] })?.items ?? (data as { plugins?: PluginRow[] })?.plugins ?? []);
+
+  const toggle = useMutation({
+    mutationFn: ({ id, enable }: { id: string; enable: boolean }) =>
+      api.post(`/api/v1/plugins/${id}/${enable ? "enable" : "disable"}`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plugins"] }),
+    onError: (e) => alert(errText(e)),
+  });
+
+  return (
+    <div className="plugins-root">
+      <div className="plugins-hint tiny">
+        启用 / 停用即时生效。安装卸载不在此页（安全线）。
+      </div>
+      {isLoading ? (
+        <div className="empty__text">加载中…</div>
+      ) : error ? (
+        <div className="plugins-err" role="alert">
+          {errText(error)}
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="empty__text">没有插件清单</div>
+      ) : (
+        <table className="plugins-table">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>ID</th>
+              <th>类型</th>
+              <th>版本</th>
+              <th>状态</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p) => (
+              <tr key={p.id}>
+                <td>{p.name || p.id}</td>
+                <td>
+                  <code>{p.id}</code>
+                </td>
+                <td>{p.kind || "—"}</td>
+                <td>{p.version || "—"}</td>
+                <td>
+                  <span className={p.enabled === false ? "plugins-off" : "plugins-on"}>
+                    {p.enabled === false ? "停用" : "启用"}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label={`${p.enabled === false ? "启用" : "停用"} ${p.id}`}
+                    onClick={() => toggle.mutate({ id: p.id, enable: p.enabled === false })}
+                  >
+                    {p.enabled === false ? "启用" : "停用"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}

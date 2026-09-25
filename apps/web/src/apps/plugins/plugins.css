@@ -1,0 +1,38 @@
+.plugins-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  height: 100%;
+  padding: var(--sp-3);
+  box-sizing: border-box;
+  color: var(--txt);
+  font-size: 13px;
+  overflow: auto;
+}
+.plugins-hint {
+  color: var(--txt-faint);
+}
+.plugins-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.plugins-table th,
+.plugins-table td {
+  text-align: left;
+  padding: var(--sp-2);
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.plugins-table th {
+  color: var(--txt-faint);
+  font-weight: 500;
+}
+.plugins-on {
+  color: var(--ok);
+}
+.plugins-off {
+  color: var(--txt-faint);
+}
+.plugins-err {
+  color: var(--danger);
+}
