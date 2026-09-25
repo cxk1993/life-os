@@ -11,7 +11,7 @@
  * 对照表 v1 验收：① 日周月三视图渲染 ✅ ② 色块可拖可拉伸（上下/左右）✅
  * ③ 拖动/拉伸后事件时间动态匹配（回调写回后端）✅ ④ 拖选空白新建 ✅
  */
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -91,10 +91,20 @@ export default function FullCalView({
   onRangeChange,
 }: Props) {
   const eventInputs = useMemo(() => toEventInputs(events), [events]);
+  const calendarRef = useRef<FullCalendar>(null);
+
+  // ★ initialView 只在挂载时生效；view prop 变化时用 API 切换视图（令4 主人报"年月日一样"根因）
+  useEffect(() => {
+    const api = calendarRef.current?.getApi();
+    if (api && api.view?.type !== toFullCalView(view)) {
+      api.changeView(toFullCalView(view));
+    }
+  }, [view]);
 
   return (
     <div className="cal-fullcal" data-testid="fullcal-view">
       <FullCalendar
+        ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={toFullCalView(view)}
         initialDate={anchor}
