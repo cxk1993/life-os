@@ -1288,3 +1288,95 @@
     animation: none;
   }
 }
+
+/* —— V1-EXT2 · 桌面壁纸四态（Zcode 09-25）——
+   .desktop[data-wp] 由 wallpaperApply.applyWallpaper 驱动；默认（无 data-wp）= 现状网格。 */
+.desktop[data-wp="off"] {
+  background-image: none !important;
+}
+.desktop[data-wp="color"] {
+  background-color: var(--wp-color, var(--bg));
+  background-image: none !important;
+}
+.desktop[data-wp="image"] {
+  background-image: var(--wp-image) !important;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.wp-settings-host {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wp-settings {
+  background: var(--surface, #161b22);
+  border: 1px solid var(--border, #30363d);
+  border-radius: var(--r-md, 10px);
+  padding: var(--sp-4, 16px);
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  color: var(--txt, #e6edf3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+.wp-settings__title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.wp-settings__modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2, 8px);
+}
+.wp-settings__mode {
+  appearance: none;
+  border: 1px solid var(--border, #30363d);
+  background: transparent;
+  color: var(--txt-dim, #8b949e);
+  border-radius: var(--r-md, 10px);
+  padding: var(--sp-2, 8px) var(--sp-3, 12px);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+.wp-settings__mode--active {
+  border-color: var(--accent, #58a6ff);
+  color: var(--accent, #58a6ff);
+  background: var(--accent-soft, rgba(88, 166, 255, 0.12));
+}
+.wp-settings__mode-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.wp-settings__mode-hint {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.wp-settings__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+  flex-wrap: wrap;
+}
+.wp-settings__hint {
+  font-size: 11px;
+  color: var(--txt-faint, #6e7681);
+}
+.wp-settings__reset,
+.wp-settings__close {
+  appearance: none;
+  border: 1px solid var(--border, #30363d);
+  background: transparent;
+  color: var(--txt, #e6edf3);
+  border-radius: var(--r-pill, 999px);
+  padding: 4px var(--sp-3, 12px);
+  cursor: pointer;
+  font-size: 12px;
+}
