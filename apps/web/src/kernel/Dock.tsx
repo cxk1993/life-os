@@ -13,11 +13,12 @@ import { useDesktopStore } from "./store";
 
 /** ★ 合并映射：子模块 id → 容器模块 id（③ 主人 ⑤⑫ 点名分组）。 */
 const DOCK_MERGE: Record<string, string> = {
-  // ⑫ 能力目录 / MCP / 推送 / 账户与鉴权 → 系统容器（V6 四页签已就绪）
+  // ⑫ 能力目录 / MCP / 推送 / 账户与鉴权 / **导出中心**（主人 09-25 追加）→ 系统容器
   catalog: "system",
   mcp: "system",
   push: "system",
   auth: "system",
+  export: "system",
   // ⑤ 复盘 / 笔记 / 文档 → 知识库容器（三合一）
   review: "knowledge",
   notes: "knowledge",

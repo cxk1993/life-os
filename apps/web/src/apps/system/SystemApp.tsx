@@ -27,12 +27,15 @@ const KNOWN_APPS: Record<string, React.LazyExoticComponent<React.ComponentType>>
   catalog: lazy(() => import("../catalog/CatalogApp")),
   mcp: lazy(() => import("../mcp/McpConsoleApp")),
   push: lazy(() => import("../push/PushApp")),
+  // ★ 主人 2026-09-25：「导出中心」并入系统窗多页（第 5 页）
+  export: lazy(() => import("../export/ExportApp")),
 };
 
 const DEFAULT_TABS: DeclaredTab[] = [
   { key: "catalog", label: "能力目录", entry: "catalog" },
   { key: "mcp", label: "MCP Server", entry: "mcp" },
   { key: "push", label: "推送", entry: "push" },
+  { key: "export", label: "导出中心", entry: "export" }, // ★ 主人新增
   { key: "auth", label: "账户与鉴权" }, // auth 无前端 app → 薄壳语义页
 ];
 
