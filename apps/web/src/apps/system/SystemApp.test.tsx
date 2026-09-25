@@ -27,11 +27,11 @@ describe("SystemApp（V6 系统窗四合一）", () => {
     expect(screen.getByTestId("mtab-tab-catalog").getAttribute("aria-selected")).toBe("true");
   });
 
-  it("auth 页为「后端模块 · 仅服务」薄壳语义（V5 口径，非「尚未接入」）", async () => {
+  it("auth 页为「已接入（后端服务）」薄壳语义（V5 口径，非「尚未接入」）", async () => {
     render(<SystemApp />);
     fireEvent.click(screen.getByTestId("mtab-tab-auth"));
     const page = await screen.findByTestId("system-backend-page-auth");
-    expect(page.textContent).toContain("后端模块 · 仅服务");
+    expect(page.textContent).toContain("已接入（后端服务）");
     expect(page.textContent).not.toContain("尚未接入");
   });
 
@@ -74,6 +74,6 @@ describe("SystemApp（V6 系统窗四合一）", () => {
     expect(screen.getByTestId("mtab-tab-auth")).toBeTruthy();
     // 无 entry 页 = 薄壳语义，不是「尚未接入」
     fireEvent.click(screen.getByTestId("mtab-tab-auth"));
-    expect(screen.getByTestId("system-backend-page-auth").textContent).toContain("后端模块 · 仅服务");
+    expect(screen.getByTestId("system-backend-page-auth").textContent).toContain("已接入（后端服务）");
   });
 });

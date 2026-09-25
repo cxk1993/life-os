@@ -33,9 +33,13 @@ function ModulePlaceholder({
   reason?: string;
   variant?: "missing" | "backend";
 }) {
-  const title = variant === "backend" ? "后端模块 · 仅服务" : "该模块尚未接入";
+  // ★ 令 5（总监 2026-09-25）：文案改「已接入（后端服务）」—— 主人 ⑬ 的原话是
+  //   「该模块尚未接入」误报；薄壳/后端模块应表达为「已接入」而非「未接入」。
+  const title = variant === "backend" ? "已接入（后端服务）" : "该模块尚未接入";
   const fallbackText =
-    variant === "backend" ? "该模块只提供 API 服务，无桌面窗口界面。" : "模块入口缺失或加载失败。";
+    variant === "backend"
+      ? "该模块已接入：提供后端 API 服务，无桌面窗口界面。"
+      : "模块入口缺失或加载失败。";
   return (
     <div className="win__placeholder" role="alert">
       <div className="win__placeholder-icon" aria-hidden="true">
@@ -132,7 +136,7 @@ export function WindowFrame({ instanceId }: Props) {
             <ModulePlaceholder
               moduleId={win?.moduleId ?? ""}
               variant={isBackendOnly ? "backend" : "missing"}
-              reason={isBackendOnly ? `仅提供 API：${apiBase}` : "清单缺少 entry 字段"}
+              reason={isBackendOnly ? `已接入 · 后端服务：${apiBase}` : "清单缺少 entry 字段"}
             />
           ),
         }),

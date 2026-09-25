@@ -45,8 +45,8 @@ function BackendOnlyPage({ label }: { label: string }) {
   return (
     <div className="win__placeholder" role="status" data-testid={`system-backend-page-${label}`}>
       <div className="win__placeholder-icon" aria-hidden="true">⚙</div>
-      <div className="win__placeholder-title">后端模块 · 仅服务</div>
-      <div className="win__placeholder-text">该模块只提供 API 服务，无独立窗口界面。</div>
+      <div className="win__placeholder-title">已接入（后端服务）</div>
+      <div className="win__placeholder-text">该模块已接入：提供后端 API 服务，无独立窗口界面。</div>
     </div>
   );
 }
