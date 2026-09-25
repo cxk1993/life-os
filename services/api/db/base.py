@@ -59,6 +59,29 @@ class UTCDateTime(TypeDecorator[datetime]):
 #   传类时 SQLAlchemy 会自行实例化，每列一个实例，两条都满足。
 TimestampTZ = UTCDateTime
 
+
+# ★ 索引创建全局幂等（令102/103）：测试中模型被反复注册（探针/lifespan reconcile/
+# 多 fixture create_all），CREATE INDEX 二次执行撞名（ix_* already exists）。
+# SQLite/PostgreSQL 均支持 CREATE INDEX IF NOT EXISTS——编译钩子统一兜底，对生产无害。
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.schema import CreateIndex as _CreateIndex
+
+
+@compiles(_CreateIndex)
+def _create_index_if_not_exists(element: Any, compiler: Any, **kw: Any) -> str:
+    stmt = compiler.visit_create_index(element, **kw)
+    if "IF NOT EXISTS" in stmt:
+        return stmt
+    return stmt.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS", 1)
+
+
+@compiles(_CreateIndex, "sqlite")
+def _create_index_if_not_exists_sqlite(element: Any, compiler: Any, **kw: Any) -> str:
+    stmt = compiler.visit_create_index(element, **kw)
+    if "IF NOT EXISTS" in stmt:
+        return stmt
+    return stmt.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS", 1)
+
 # SQLModel 自身就是声明基类（单一 metadata：SQLModel.metadata）。
 # 迁移脚本统一写 `from db.base import Base` 再用 Base.metadata，读起来更眼熟。
 Base = SQLModel
