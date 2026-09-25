@@ -156,15 +156,40 @@ export function DesktopSidebar({ side }: { side: "left" | "right" }) {
       </button>
       {!collapsed && (
         <div className="desktop-sidebar__body">
-          {side === "right" ? <DesktopTodaySummary /> : <DesktopSideNav />}
-          {items.length === 0 ? null : (
-            <div className="desktop-sidebar__slots">
-              {items.map((c, i) => (
-                <PluginBoundary key={`${c.pluginId}:${i}`} pluginId={c.pluginId}>
-                  <c.component />
-                </PluginBoundary>
-              ))}
-            </div>
+          {side === "left" ? (
+            <>
+              {/* ★ 主人反馈修复（2026-09-25）：「侧栏自定义容器」加不进/看不到 ——
+                  根因：左栏被内置导航（全模块列表，当前 23 项）**占满**，用户的
+                  slot 贡献被挤到最下方看不见。
+                  → **用户自定义项优先置顶**；**内置导航改 <details> 可折叠小节**
+                    （默认：有用户项时收起，没用户项时展开 —— 不丢可达性）。 */}
+              {items.length === 0 ? null : (
+                <div className="desktop-sidebar__slots" data-testid="desktop-sidebar-slots">
+                  {items.map((c, i) => (
+                    <PluginBoundary key={`${c.pluginId}:${i}`} pluginId={c.pluginId}>
+                      <c.component />
+                    </PluginBoundary>
+                  ))}
+                </div>
+              )}
+              <details className="desktop-side__nav-fold" open={items.length === 0}>
+                <summary className="desktop-side__fold-summary">模块导航</summary>
+                <DesktopSideNav />
+              </details>
+            </>
+          ) : (
+            <>
+              <DesktopTodaySummary />
+              {items.length === 0 ? null : (
+                <div className="desktop-sidebar__slots">
+                  {items.map((c, i) => (
+                    <PluginBoundary key={`${c.pluginId}:${i}`} pluginId={c.pluginId}>
+                      <c.component />
+                    </PluginBoundary>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

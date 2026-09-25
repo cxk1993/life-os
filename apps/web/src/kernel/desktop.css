@@ -729,8 +729,37 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+  /* ★ 主人反馈修复（2026-09-25）：「侧栏自定义容器」加不进/看不到 ——
+     布局新序：**用户自定义项置顶** → **内置导航改可折叠小节**（默认有用户项时收起）。*/
+  order: -1;
 }
+.desktop-side__nav-fold {
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.desktop-side__fold-summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--txt-dim);
+  user-select: none;
+  list-style: none;
+}
+.desktop-side__fold-summary::-webkit-details-marker {
+  display: none;
+}
+.desktop-side__fold-summary::before {
+  content: "▸ ";
+}
+.desktop-side__nav-fold[open] > .desktop-side__fold-summary::before {
+  content: "▾ ";
+}
+
 .desktop-side__nav-list {
+  /* ★ 主人反馈修复（2026-09-25）：导航列表**限高可滚** —— 不再撑满整栏、
+     把用户的自定义项挤出可视区。折叠小节内滚动，用户体验更稳。 */
+  max-height: 42vh;
+  overflow-y: auto;
   list-style: none;
   margin: 0;
   padding: 0;
