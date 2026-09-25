@@ -19,6 +19,11 @@ const DOCK_MERGE: Record<string, string> = {
   push: "system",
   auth: "system",
   export: "system",
+  // ★ 主人 09-25「多余的按钮不必留呐」+ MiMo 9959b94 把 query/plugins 并入系统窗 7 页。
+  //   注意：Dock 渲染遍历 store 全部模块，**不看 manifest slots**——MiMo 4c8aace 摘
+  //   desktop.dock 槽不产生隐藏效果；收口必须在 DOCK_MERGE 做（此处即真修法）。
+  query: "system",
+  plugins: "system",
   // ⑤ 复盘 / 笔记 / 文档 → 知识库容器（三合一）
   review: "knowledge",
   notes: "knowledge",
