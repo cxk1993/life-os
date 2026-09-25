@@ -78,6 +78,8 @@ describe("Dock · DOCK_MERGE 归口机制（令 9 §2 判据）", () => {
 
   it("④ 覆盖面：DOCK_MERGE 关键成员一处齐（新增归口请同步此表，防漏收）", () => {
     // 与 Dock.tsx 的 DOCK_MERGE 保持同源期望：主人点名的并入面
+    // ★ 2026-09-25 批 J（Qoder CN·令10）：+calendar/todo → schedule 容器
+    //   （主人令 todo×日程合并）——按本表「新增归口请同步」纪律补入。
     const expected = [
       "catalog",
       "mcp",
@@ -92,19 +94,23 @@ describe("Dock · DOCK_MERGE 归口机制（令 9 §2 判据）", () => {
       "diary",
       "persona",
       "health",
+      "calendar",
+      "todo",
     ];
     setModules([
       { id: "system", name: "系统" },
       { id: "knowledge", name: "知识库" },
       { id: "growth", name: "成长罗盘" },
+      { id: "schedule", name: "日程待办" },
       ...expected.map((id) => ({ id, name: id })),
     ]);
     render(<Dock />);
     const buttons = screen.getAllByRole("button");
-    // 只剩三个容器（其余全部被归口）
-    expect(buttons).toHaveLength(3);
+    // 只剩四个容器（其余全部被归口）
+    expect(buttons).toHaveLength(4);
     expect(screen.getByLabelText(/^系统/)).toBeTruthy();
     expect(screen.getByLabelText(/^知识库/)).toBeTruthy();
     expect(screen.getByLabelText(/^成长罗盘/)).toBeTruthy();
+    expect(screen.getByLabelText(/^日程待办/)).toBeTruthy();
   });
 });
