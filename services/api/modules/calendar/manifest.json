@@ -27,7 +27,8 @@
   "provides": [
     "calendar.event.read",
     "calendar.event.write",
-    "calendar.slot.free"
+    "calendar.slot.free",
+    "x.summary.today"
   ],
   "requires": [],
   "slots": [
