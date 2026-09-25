@@ -83,3 +83,18 @@
 .query-table td.query-table__empty {
   color: var(--txt-faint, #6e7681);
 }
+
+.query-export {
+  appearance: none;
+  border: 1px solid var(--border, #30363d);
+  background: transparent;
+  color: var(--txt-dim, #8b949e);
+  border-radius: var(--r-pill, 999px);
+  padding: 1px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.query-export:hover {
+  color: var(--txt, #e6edf3);
+  border-color: var(--accent, #58a6ff);
+}

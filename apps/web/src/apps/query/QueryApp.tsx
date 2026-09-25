@@ -96,12 +96,68 @@ export default function QueryApp() {
           <div className="empty__text">{result.query?.empty_text || "没有结果"}</div>
         ) : (
           <>
-            <div className="tiny" style={{ color: "var(--txt-faint)" }}>
-              {result.query?.id || qid} · {result.row_count} 条
-              {result.partial ? " · 部分源不可用" : ""}
+            <div className="tiny" style={{ color: "var(--txt-faint)", display: "flex", gap: 8, alignItems: "center" }}>
+              <span>
+                {result.query?.id || qid} · {result.row_count} 条
+                {result.partial ? " · 部分源不可用" : ""}
+              </span>
+              <button
+                type="button"
+                className="query-export"
+                onClick={() => {
+                  const cols: string[] = [];
+                  const seen = new Set<string>();
+                  for (const r of rows) {
+                    for (const k of Object.keys(r)) {
+                      if (!seen.has(k)) {
+                        seen.add(k);
+                        cols.push(k);
+                      }
+                    }
+                  }
+                  const esc = (v: unknown) => {
+                    const t = v == null ? "" : String(v);
+                    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+                  };
+                  const csv = [cols.map(esc).join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join("\n"))].join("\n");
+                  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `query-${result.query?.id || qid || "result"}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                }}
+              >
+                下载 CSV
+              </button>
+              <button
+                type="button"
+                className="query-export"
+                onClick={async () => {
+                  const cols: string[] = [];
+                  const seen = new Set<string>();
+                  for (const r of rows) {
+                    for (const k of Object.keys(r)) {
+                      if (!seen.has(k)) {
+                        seen.add(k);
+                        cols.push(k);
+                      }
+                    }
+                  }
+                  const tsv = [cols.join("\t"), ...rows.map((r) => cols.map((c) => String(r[c] ?? "")).join("\t"))].join("\n");
+                  try {
+                    await navigator.clipboard.writeText(tsv);
+                  } catch {
+                    /* 剪贴板不可用静默 */
+                  }
+                }}
+              >
+                复制
+              </button>
             </div>
             {(() => {
               // 结果表格化（主人 09-25「功能上不太成功」主病灶：原 key:value 平铺可读性差）。
+              // CSV 导出（MiMo 参数化后留白给本席的纯前端件）：列头并集 + RFC4180 引号转义。
               // 列头 = 各行键的并集（稳定序：首行序优先，新键追加），行 = rows。
               const cols: string[] = [];
               const seen = new Set<string>();
