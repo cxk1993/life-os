@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ToastHost } from "@/shared/components/Toast";
 import { initTheme } from "@/shared/styles/theme";
@@ -161,6 +161,58 @@ export function Desktop() {
     setSideCollapsed("right", target);
   };
 
+  // ★ 令 3（主人现场令，2026-09-25）：**罗盘按钮可随意拖动** ——
+  //   位置入 localStorage（`lifeos.compass.pos`），刷新保持；null = 默认右上角。
+  //   拖拽与点击区分：位移超 4px 视为拖动（不触发开关）。
+  const [compassPos, setCompassPos] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem("lifeos.compass.pos");
+      return raw ? (JSON.parse(raw) as { x: number; y: number }) : null;
+    } catch {
+      return null;
+    }
+  });
+  const compassDrag = useRef({ moved: false });
+  const onCompassPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const offX = e.clientX - rect.left;
+    const offY = e.clientY - rect.top;
+    compassDrag.current.moved = false;
+    const move = (ev: PointerEvent) => {
+      const dx = Math.abs(ev.clientX - (rect.left + offX));
+      const dy = Math.abs(ev.clientY - (rect.top + offY));
+      if (dx > 4 || dy > 4) compassDrag.current.moved = true;
+      const x = Math.max(0, Math.min(window.innerWidth - rect.width, ev.clientX - offX));
+      const y = Math.max(0, Math.min(window.innerHeight - rect.height, ev.clientY - offY));
+      setCompassPos({ x, y });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setCompassPos((p) => {
+        if (p) {
+          try {
+            localStorage.setItem("lifeos.compass.pos", JSON.stringify(p));
+          } catch {
+            /* 存储不可用忽略 */
+          }
+        }
+        return p;
+      });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  const onCompassClick = () => {
+    // 拖动过就不算点击（避免"拖完顺手弹开/收起"）
+    if (compassDrag.current.moved) {
+      compassDrag.current.moved = false;
+      return;
+    }
+    setCompassOpen((v) => !v);
+  };
+
   return (
     <AuthGate>
       {/* ★ T02 预留集成缝正式接线（2026-09-26 hermes）：挂载后拉 /api/v1/plugins
@@ -193,10 +245,12 @@ export function Desktop() {
         <button
           type="button"
           className="desktop__compass-btn"
+          style={compassPos ? { left: compassPos.x, top: compassPos.y, right: "auto" } : undefined}
           aria-expanded={compassOpen}
           aria-haspopup="menu"
-          title="收放罗盘（选择性收放上下左右栏）"
-          onClick={() => setCompassOpen((v) => !v)}
+          title="收放罗盘（可拖动位置；点击展开选择性收放四栏）"
+          onPointerDown={onCompassPointerDown}
+          onClick={onCompassClick}
         >
           ◉ 罗盘
         </button>
@@ -205,6 +259,11 @@ export function Desktop() {
             className="desktop__compass"
             role="menu"
             aria-label="收放罗盘"
+            style={
+              compassPos
+                ? { left: compassPos.x, top: compassPos.y + 46, right: "auto" }
+                : undefined
+            }
             onKeyDown={(e) => {
               if (e.key === "Escape") setCompassOpen(false);
             }}
