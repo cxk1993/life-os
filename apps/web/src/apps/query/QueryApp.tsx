@@ -13,6 +13,7 @@ function errText(e: unknown): string {
 /** TX-QUERY-01 · 跨模块预置查询（只读）。 */
 export default function QueryApp() {
   const [qid, setQid] = useState<string | null>(() => loadPrefs().lastPreset);
+  const [days, setDays] = useState<number>(0);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -22,14 +23,15 @@ export default function QueryApp() {
     queryFn: () => queryApi.presets(),
   });
 
-  const run = async (id: string) => {
+  const run = async (id: string, d?: number) => {
     setQid(id);
     savePrefs({ lastPreset: id });
+    const scope = d ?? days;
     setBusy(true);
     setErr(null);
     setResult(null);
     try {
-      setResult(await queryApi.run(id));
+      setResult(await queryApi.run(id, scope || undefined));
     } catch (e) {
       setErr(errText(e));
     } finally {
@@ -60,6 +62,26 @@ export default function QueryApp() {
             </button>
           ))
         )}
+      </div>
+      <div className="query-range">
+        <label className="tiny">
+          范围
+          <select
+            value={days}
+            onChange={(e) => {
+              const n = Number(e.target.value) || 0;
+              setDays(n);
+              if (qid) run(qid, n);
+            }}
+            aria-label="查询范围天数"
+          >
+            <option value={0}>默认</option>
+            <option value={1}>近 1 天</option>
+            <option value={3}>近 3 天</option>
+            <option value={7}>近 7 天</option>
+            <option value={30}>近 30 天</option>
+          </select>
+        </label>
       </div>
       <div className="query-out">
         {err ? (

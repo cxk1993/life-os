@@ -11,16 +11,21 @@ def _today() -> date:
     return date.today()
 
 
-def _q_open_overdue(db: Session) -> dict[str, Any]:
+def _q_open_overdue(db: Session, days: int | None = None) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     try:
         from modules.todo.models import TodoItem  # type: ignore
 
         end = datetime.combine(_today(), time.min)
+        if days is not None and days > 0:
+            # 参数化：只看「近 N 天内到期且仍逾期」的
+            start = end - timedelta(days=days)
+        else:
+            start = None
         for it in db.exec(select(TodoItem)).all():
             done = bool(getattr(it, "done", False) or getattr(it, "status", "") == "done")
             due = getattr(it, "due", None) or getattr(it, "due_at", None)
-            if not done and due and due < end:
+            if not done and due and due < end and (start is None or due >= start):
                 rows.append(
                     {"id": str(it.id), "title": getattr(it, "title", ""), "due": due.isoformat()}
                 )
@@ -30,13 +35,13 @@ def _q_open_overdue(db: Session) -> dict[str, Any]:
     return _pack("q_open_overdue", rows, empty_text="今天没有逾期，真棒")
 
 
-def _q_week_health_open(db: Session) -> dict[str, Any]:
+def _q_week_health_open(db: Session, days: int | None = None) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     tags = ("健康", "复诊", "用药")
     try:
         from modules.todo.models import TodoItem  # type: ignore
 
-        horizon = datetime.now() + timedelta(days=7)
+        horizon = datetime.now() + timedelta(days=days if days and days > 0 else 7)
         for it in db.exec(select(TodoItem)).all():
             done = bool(getattr(it, "done", False) or getattr(it, "status", "") == "done")
             due = getattr(it, "due", None) or getattr(it, "due_at", None)
@@ -161,8 +166,13 @@ PRESETS: dict[str, Any] = {
 }
 
 
-def run_preset(db: Session, qid: str) -> dict[str, Any]:
+def run_preset(db: Session, qid: str, days: int | None = None) -> dict[str, Any]:
+    """执行预置查询。days=参数化范围（近 N 天）；不传=各预置默认窗。"""
     fn = PRESETS.get(qid)
     if fn is None:
         raise KeyError(qid)
-    return fn(db)
+    # 带 days 的预置收参；其余忽略多余参数（向前兼容）
+    try:
+        return fn(db, days=days)  # type: ignore[call-arg]
+    except TypeError:
+        return fn(db)

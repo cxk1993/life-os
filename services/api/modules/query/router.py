@@ -39,7 +39,9 @@ def presets() -> dict[str, Any]:
 @router.get("/presets/{qid}")
 def run(
     qid: str,
+    days: int | None = None,
     db: Annotated[Any, Depends(get_db)] = None,
     _user: Annotated[Any, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
-    return run_preset(db, qid)
+    """days：参数化范围（近 N 天）；不传走各预置默认窗（向前兼容）。"""
+    return run_preset(db, qid, days=days)

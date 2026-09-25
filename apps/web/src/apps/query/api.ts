@@ -27,5 +27,8 @@ const BASE = "/api/v1/query";
 
 export const queryApi = {
   presets: () => api.get<PresetList>(`${BASE}/presets`),
-  run: (qid: string) => api.get<QueryResult>(`${BASE}/presets/${qid}`),
+  run: (qid: string, days?: number) =>
+    api.get<QueryResult>(
+      `${BASE}/presets/${qid}${days && days > 0 ? `?days=${days}` : ""}`,
+    ),
 };

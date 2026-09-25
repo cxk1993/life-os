@@ -42,7 +42,7 @@ describe("QueryApp", () => {
     });
     fireEvent.click(screen.getByText("open overdue"));
     await waitFor(() => {
-      expect(queryApi.run).toHaveBeenCalledWith("q_open_overdue");
+      expect(queryApi.run).toHaveBeenCalledWith("q_open_overdue", undefined);
     });
     await waitFor(() => {
       expect(screen.getByText(/交报告/)).toBeTruthy();
