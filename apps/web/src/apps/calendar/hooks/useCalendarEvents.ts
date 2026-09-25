@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useRef } from "react";
-import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData, type QueryKey } from "@tanstack/react-query";
 import { usePluginEvent } from "@/shared/api/events";
 import { calendarApi, type CalendarEvent, type EventPatch, type EventCreate } from "../api";
 import { replaceRoot, removeRoot } from "../lib/cache";
@@ -46,6 +46,7 @@ export function useCalendarEvents(range: Range) {
     queryKey,
     queryFn: () => calendarApi.listRange(range.from, range.to),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
   const onCreated = useCallback(

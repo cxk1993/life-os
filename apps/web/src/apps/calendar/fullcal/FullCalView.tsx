@@ -17,7 +17,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { CalendarEvent } from "../api";
-import type { EventInput, DatesSetArg, EventApi } from "@fullcalendar/core";
+import type { EventInput, EventApi } from "@fullcalendar/core";
 import "../calendar.css";
 
 export type CalView = "day" | "week" | "month";
@@ -30,7 +30,6 @@ interface Props {
   onResize: (id: string, start: string, end: string, spanDays: number) => void;
   onCreateAt: (startISO: string, endISO: string) => void;
   onSelect: (id: string) => void;
-  onRangeChange: (from: Date, to: Date) => void;
 }
 
 /** CalendarEvent → FullCalendar EventInput 映射（纯函数，可单测）。 */
@@ -88,10 +87,10 @@ export default function FullCalView({
   onResize,
   onCreateAt,
   onSelect,
-  onRangeChange,
 }: Props) {
   const eventInputs = useMemo(() => toEventInputs(events), [events]);
   const calendarRef = useRef<FullCalendar>(null);
+  const lastAnchorRef = useRef(0);
 
   // ★ initialView 只在挂载时生效；view prop 变化时用 API 切换视图（令4 主人报"年月日一样"根因）
   useEffect(() => {
@@ -100,6 +99,19 @@ export default function FullCalView({
       api.changeView(toFullCalView(view));
     }
   }, [view]);
+
+  // ★ anchor 变化（prev/next/今天按钮）时用 gotoDate 同步 FullCalendar 内部日期。
+  //   不再从 datesSet 反喂 setAnchor——FullCalendar 周日起始 vs CalendarApp 周一起始
+  //   会造成范围错位循环，导致事件查询范围与显示范围不一致、事件不渲染。
+  useEffect(() => {
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+    const t = anchor.getTime();
+    if (lastAnchorRef.current && Math.abs(t - lastAnchorRef.current) > 60_000) {
+      api.gotoDate(anchor);
+    }
+    lastAnchorRef.current = t;
+  }, [anchor]);
 
   return (
     <div className="cal-fullcal" data-testid="fullcal-view">
@@ -125,7 +137,8 @@ export default function FullCalView({
           const txt = `${info.event.title ?? ""}${renderBadge(cc)}`;
           return { html: `<span class="fc-event-title-text">${txt}</span>` };
         }}
-        datesSet={(arg: DatesSetArg) => onRangeChange(arg.start, arg.end)}
+        // datesSet 不再反喂 onRangeChange——避免 FullCalendar 周日起始 vs CalendarApp 周一起始的范围错位循环
+        datesSet={() => {}}
         eventDrop={(arg) => {
           const { start, end, spanDays } = argToSpan(arg);
           onMove(arg.event.id, start, end, spanDays);

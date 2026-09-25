@@ -88,7 +88,6 @@ describe("V8 FullCalendar 原型", () => {
         onResize={() => undefined}
         onCreateAt={() => undefined}
         onSelect={() => undefined}
-        onRangeChange={() => undefined}
       />,
     );
     expect(container.querySelector('[data-testid="fullcal-view"]')).toBeTruthy();
