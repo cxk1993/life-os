@@ -226,7 +226,11 @@ def test_entry_and_window_are_now_visible_to_the_model(tmp_path: Path) -> None:
 
 
 def test_real_modules_still_all_pass_with_new_gates() -> None:
-    """★ 硬判据：18 个真实模块必须在新闸门下**全部通过**（补字段+分档报告不误杀）。"""
+    """★ 硬判据：全部真实模块必须在新闸门下通过（补字段+分档报告不误杀）。
+
+    2026-09-24：==18 改为 >=18——新增插件（ai-chat 等）只增不减，
+    硬编码精确数会把「加插件」误报成闸门失败。
+    """
     api_root = Path(__file__).resolve().parents[1]
     mods = discover_modules(api_root / "modules")
-    assert len(mods) == 18, f"真实模块数变了：{len(mods)}"
+    assert len(mods) >= 18, f"真实模块数异常减少：{len(mods)}"
