@@ -117,6 +117,15 @@
         "to": "true",
         "reason": "总监令2 §1 准翻（15:47 请示）：fc20294 已上产+汐瑶 15:5x 带 token 四源全 ok+豆包 16:0x 独立复测四源有数据+路由层 401——四重证据闭环；判据先行件转生产实验（后续每次部署机器可守聚合源健康度）",
         "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令2-小批部署集结.md"
+      },
+      {
+        "at": "2026-09-25T16:25",
+        "by": "Qoder CN",
+        "field": "suites.hash.entry_hash",
+        "from": "BdnGGaOM",
+        "to": "VlgE8Hzp",
+        "reason": "总监令2 小批上产：罗盘补丁（z-index 95000/95001+旧按钮撤+罗盘唯一入口 1a1acee）+待办 title→text 修复（b11b5ea）+retest13 双前缀枚举（4854273）+V1-EXT2 壁纸四态（e4846cb），dist 重建；验收：z-index 已在产 CSS、TopBar 旧按钮确撤（罗盘扇区 aria 正常）、BFF 四源 ok（令2 准翻后 8ffde04）",
+        "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令2-小批部署集结.md"
       }
     ]
   },
@@ -145,7 +154,7 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "BdnGGaOM",
+      "entry_hash": "VlgE8Hzp",
       "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）→CXau83s9（2026-09-25 后端收束批+V6三件+day-peek接线部署，纯净树 build）"
     },
     "modules": {
