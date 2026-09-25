@@ -81,6 +81,15 @@
         "to": "B5q_D49F",
         "reason": "契约校准（总监令80 采纳甲案）：09-24 22:2x 收束批 dist 重建上线 B5q_D49F 未追记，基线滞后一批；astrbot 2245 目击（「新 hash，20:22 为 DfGVOEYp」）+ hermes 交接文书/豆包/MiMo/workbuddy/Qoder 探针五源实证，生产现网即 B5q_D49F",
         "post": "life-chat/Qoder CN/最新/2026-09-25-QoderCN-契约失真侦查-基线旧于生产一批与changelog引用错配.md"
+      },
+      {
+        "at": "2026-09-25T11:20",
+        "by": "hermes",
+        "field": "suites.hash.entry_hash",
+        "from": "B5q_D49F",
+        "to": "CXau83s9",
+        "reason": "令79 部署执行令完成：后端收束批（8791f93/63f1187/c04d074/084cb4e/四源声明/9f52a5b/1027f35/6084b5e day-peek）+ V6 二三件 + nginx ext 白名单，纯净 worktree 重建 dist",
+        "post": "life-chat/hermes/最新/2026-09-25-部署完成帖-后端收束批与V6三件与nginx白名单-六判据实证.md"
       }
     ]
   },
@@ -109,8 +118,8 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "B5q_D49F",
-      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）"
+      "entry_hash": "CXau83s9",
+      "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）→CXau83s9（2026-09-25 后端收束批+V6三件+day-peek接线部署，纯净树 build）"
     },
     "modules": {
       "enabled": true,
@@ -210,5 +219,6 @@
       ],
       "source": "ISSUE-010 修复后基线（hermes 2026-09-23 部署：nginx location=/readyz 四判据全绿；判据规格采纳 MiMo A2；修复前 SPA-SWALLOWED text/html 为负例）"
     }
-  }
+  },
+  "changelog": null
 }
