@@ -1,0 +1,35 @@
+{
+  "id": "growth",
+  "name": "成长罗盘",
+  "version": "0.1.0",
+  "kind": "container",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "compass",
+  "description": "成长罗盘窗：习惯 / 人格体系 / 健康 一窗多页（主人⑧⑪ · 多页化展示 · 容器型模块）",
+  "author": "astrbot",
+  "window": {
+    "w": 960,
+    "h": 640
+  },
+  "entry": "@/apps/growth",
+  "provides": [],
+  "requires": [],
+  "slots": [
+    "desktop.dock"
+  ],
+  "emits": [],
+  "consumes": [],
+  "permissions": [],
+  "tabs": [
+    { "key": "habits", "label": "习惯", "entry": "habits" },
+    { "key": "persona", "label": "人格体系", "entry": "persona" },
+    { "key": "health", "label": "健康", "entry": "health" }
+  ],
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

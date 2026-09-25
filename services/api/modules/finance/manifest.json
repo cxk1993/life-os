@@ -48,5 +48,15 @@
     "onEnable": null,
     "onDisable": null,
     "onUninstall": null
-  }
+  },
+  "tabs": [
+    {
+      "key": "beecount",
+      "label": "账本（BeeCount）"
+    },
+    {
+      "key": "local",
+      "label": "本地流水"
+    }
+  ]
 }
