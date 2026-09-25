@@ -179,6 +179,29 @@ export default function SidebarApp() {
           隐藏已禁用
         </label>
         <span className="tiny">{items.length} 条</span>
+        <button
+          type="button"
+          className="btn"
+          aria-label="导出条目 JSON"
+          onClick={() => {
+            api.get<{ items: Item[] }>("/api/v1/sidebar/export").then(
+              (data) => {
+                const blob = new Blob([JSON.stringify(data, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "sidebar-items.json";
+                a.click();
+                URL.revokeObjectURL(url);
+              },
+              (e) => setErr(errText(e)),
+            );
+          }}
+        >
+          导出
+        </button>
       </div>
 
       {err ? (

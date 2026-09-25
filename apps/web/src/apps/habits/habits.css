@@ -178,6 +178,20 @@
   display: flex;
   gap: var(--sp-2);
 }
+.habit-edit__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: var(--sp-2);
+}
+.habit-edit select {
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--txt);
+  font: inherit;
+}
 .habits-toolbar {
   display: flex;
   align-items: center;

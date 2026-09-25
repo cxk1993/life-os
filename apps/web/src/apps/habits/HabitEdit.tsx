@@ -33,6 +33,8 @@ export default function HabitEdit({ habit, onDone }: Props) {
   const [color, setColor] = useState(habit.color);
   const [reminder, setReminder] = useState(habit.reminder_time);
   const [rest, setRest] = useState<number[]>(habit.rest_weekdays);
+  const [ruleType, setRuleType] = useState(habit.rule?.type ?? "daily");
+  const [times, setTimes] = useState(habit.rule?.times ?? 3);
   const [err, setErr] = useState<string | null>(null);
 
   const saveMut = useMutation({
@@ -96,6 +98,39 @@ export default function HabitEdit({ habit, onDone }: Props) {
           ))}
         </div>
       </div>
+      <div className="habit-edit__row">
+        <span>频率</span>
+        <select
+          value={ruleType}
+          onChange={(e) => setRuleType(e.target.value as "daily" | "weekly" | "custom")}
+          aria-label="频率类型"
+        >
+          <option value="daily">每天</option>
+          <option value="weekly">每周 N 次</option>
+          <option value="custom">按休息日自定义</option>
+        </select>
+        {ruleType === "weekly" ? (
+          <span className="habit-edit__stepper">
+            <button
+              type="button"
+              className="btn"
+              aria-label="减少次数"
+              onClick={() => setTimes((t) => Math.max(1, t - 1))}
+            >
+              −
+            </button>
+            <span aria-live="polite">{times} 次/周</span>
+            <button
+              type="button"
+              className="btn"
+              aria-label="增加次数"
+              onClick={() => setTimes((t) => Math.min(7, t + 1))}
+            >
+              +
+            </button>
+          </span>
+        ) : null}
+      </div>
       <label className="habit-edit__row">
         <span>提醒</span>
         <input
@@ -117,6 +152,12 @@ export default function HabitEdit({ habit, onDone }: Props) {
               color,
               reminder_time: reminder,
               rest_weekdays: rest,
+              rule:
+                ruleType === "weekly"
+                  ? { type: "weekly", times }
+                  : ruleType === "custom"
+                    ? { type: "custom", days: rest }
+                    : { type: "daily" },
             })
           }
         >
