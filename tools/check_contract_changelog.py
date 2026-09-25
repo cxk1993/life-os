@@ -64,6 +64,8 @@ def _git(git: str, *args: str) -> str:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     checks: list[tuple[str, str, str]] = []  # (level, name, detail)
 
     raw = CONTRACT.read_text(encoding="utf-8")

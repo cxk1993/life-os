@@ -26,7 +26,7 @@
         "from": "Cc5gQq-5",
         "to": "BaAgvSxg",
         "reason": "U2 全链+U3 双侧栏+diary/review/todo today-summary+ai-chat/query/export 三新插件部署，dist 重建",
-        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
+        "post": "life-chat/hermes/最新/2026-09-24-部署完成-U2全链与U3与三新插件上线.md"
       },
       {
         "at": "2026-09-26T03:00",
@@ -35,7 +35,7 @@
         "from": 18,
         "to": 22,
         "reason": "新模块上线：ai-chat（E7）/query（TX-QUERY）/export（TX-EXPORT）/summary（U2 薄壳）",
-        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
+        "post": "life-chat/hermes/最新/2026-09-24-部署完成-U2全链与U3与三新插件上线.md"
       },
       {
         "at": "2026-09-26T03:20",
@@ -44,7 +44,7 @@
         "from": 17,
         "to": 22,
         "reason": "与 modules.count 同批联动（探针实跑发现漏改：o1 仍钉 17，生产 22）",
-        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
+        "post": "life-chat/hermes/最新/2026-09-24-部署完成-U2全链与U3与三新插件上线.md"
       },
       {
         "at": "2026-09-26T03:40",
@@ -53,7 +53,7 @@
         "from": "BaAgvSxg",
         "to": "BGPhpz0E",
         "reason": "U1 顶栏底栏收放热推 dist（本批构建晚于 U1 提交，二次构建）",
-        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
+        "post": "life-chat/hermes/最新/2026-09-24-部署完成-U2全链与U3与三新插件上线.md"
       },
       {
         "at": "2026-09-26T04:00",
@@ -62,7 +62,7 @@
         "from": "BGPhpz0E",
         "to": "DAC1ltnU",
         "reason": "U1-2 持久化修复热推 dist（851f841，生产 Playwright U1-1/U1-2 双 ✅）",
-        "post": "life-chat/hermes/最新/2026-09-26-U1实测-持久化真bug立单.md"
+        "post": "life-chat/hermes/最新/2026-09-24-U1实测-持久化真bug立单.md"
       },
       {
         "at": "2026-09-26T05:10",
@@ -71,7 +71,16 @@
         "from": "DAC1ltnU",
         "to": "DfGVOEYp",
         "reason": "E7 大部署终批：PluginProvider 接线 + ai-chat 工具桥/别名修复/fail-soft + 豆包批次 + 契约收编，二次构建热推",
-        "post": "life-chat/hermes/最新/2026-09-26-部署完成-U2全链与U3与三新插件上线.md"
+        "post": "life-chat/hermes/最新/2026-09-24-部署完成-U2全链与U3与三新插件上线.md"
+      },
+      {
+        "at": "2026-09-25T10:57",
+        "by": "Qoder CN",
+        "field": "suites.hash.entry_hash",
+        "from": "DfGVOEYp",
+        "to": "B5q_D49F",
+        "reason": "契约校准（总监令80 采纳甲案）：09-24 22:2x 收束批 dist 重建上线 B5q_D49F 未追记，基线滞后一批；astrbot 2245 目击（「新 hash，20:22 为 DfGVOEYp」）+ hermes 交接文书/豆包/MiMo/workbuddy/Qoder 探针五源实证，生产现网即 B5q_D49F",
+        "post": "life-chat/Qoder CN/最新/2026-09-25-QoderCN-契约失真侦查-基线旧于生产一批与changelog引用错配.md"
       }
     ]
   },
@@ -100,7 +109,7 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "DfGVOEYp",
+      "entry_hash": "B5q_D49F",
       "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）"
     },
     "modules": {
