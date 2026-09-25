@@ -29,8 +29,8 @@ def handle_reminder_event(event: dict[str, Any]) -> None:
         return
     title = f"日程提醒：{payload.get('title') or ''}".strip()
     start_s = str(payload.get("start_at") or "")
-    # ★ 根因 D 补刀（总监令 7 §2 · hermes 亲修）：get_db 已生成器化（供 Depends），
-    #   **非依赖场景必须用 db_session()**——直接 `db = get_db()` 拿到的是 generator。
+    # ★ 根因 D 补刀（总监令 7 §2 · hermes 亲修）：get_db 已生成器化（仅供 Depends），
+    #   非依赖场景直调它拿到的是 generator —— 必须用 db_session()。
     with db_session() as db:
         try:
             out = send_broadcast(
