@@ -17,13 +17,13 @@ from typing import Any
 
 from sqlmodel import select
 
-from core.deps import get_db, db_session
+from core.deps import db_session
 from core.errors import ConflictError, ForbiddenError, NotFoundError
 from core.plugins import discover as discover_mod
 from core.plugins.discover import DiscoveryResult, PluginInfo, mount_plugin
 from core.plugins.lifecycle import run_lifecycle_hook
 from core.plugins.migrations import rollback_migrations, run_migrations
-from core.plugins.permissions import is_valid_permission
+from core.plugins.permissions import is_valid_permission, normalize_permissions
 from core.plugins.settings import read_settings, write_settings
 from db.models.system import PluginSetting, PluginState
 
@@ -126,7 +126,7 @@ class PluginManager:
         last_error: str | None = None,
     ) -> None:
         manifest = info.manifest
-        granted = list(manifest.get("permissions", []))
+        granted = normalize_permissions(manifest.get("permissions"))
         with db_session() as db:
             st = db.get(PluginState, info.id)
             if st is None:
@@ -182,8 +182,8 @@ class PluginManager:
             raise ConflictError(
                 f"插件「{plugin_id}」是 {info.kind}，{_BUILTIN_INCLUSION_NOTE}"
             )
-        # 校验权限声明合法
-        for perm in info.manifest.get("permissions", []):
+        # 校验权限声明合法（★ 2026-09-25 TX-FRAME-01：先归一化，兼容对象格式）
+        for perm in normalize_permissions(info.manifest.get("permissions")):
             if not is_valid_permission(perm):
                 raise ForbiddenError(f"插件「{plugin_id}」声明了非法权限：{perm!r}")
         # 建表

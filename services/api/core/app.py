@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -334,5 +334,50 @@ def create_app(
                 "模块已注册待事件激活",
                 extra={"module": manifest.id, "base": manifest_base},
             )
+
+    # ── ★ 第三方插件：启动恢复（2026-09-25 · TX-FRAME-01 第④刀补）─────────
+    # 背景（实测踩到）：本函数此前**只遍历 modules/（内置）**，第三方插件
+    #   （plugins/<id>/）**不参与启动** —— 它们只能靠运行期 enable API 手动挂载。
+    #   后果：countdown（09-23 交付）与 pi-agent（09-25）**从未被挂载**，路由恒 404；
+    #   且每次重启都要人工 enable 一次。
+    #
+    # 修复口径（与 ADR-0002 不冲突）：
+    #   - plugin_state.enabled 是**权威状态**（enable/disable 都会落库）；
+    #   - 启动时对**已 enabled** 的第三方插件**恢复挂载**（等价自动 enable 一次）；
+    #   - 从未启用过（无记录 / enabled=False）的**不动** —— 保持"可禁用"语义；
+    #   - 单个插件失败**只记目击、不影响其它**（缓行纪律，与 activator 一致）。
+    try:
+        from core.deps import db_session as _db_session
+        from core.plugins.discover import discover_plugins as _discover_plugins
+        from core.plugins.manager import PluginManager as _PluginManager
+        from db.models.system import PluginState as _PluginState
+
+        _res = _discover_plugins()
+        _mgr = _PluginManager()
+        _registry = getattr(app.state, "registry", None) or registry
+        for _info in _res.plugins:
+            if _info.source != "third-party":
+                continue
+            try:
+                with _db_session() as _db:
+                    _st = _db.get(_PluginState, _info.id)
+                    _enabled = bool(_st.enabled) if _st is not None else False
+                if not _enabled:
+                    log.info(
+                        "第三方插件未启用，跳过（可用 /api/v1/plugins/%s/enable 启用）", _info.id
+                    )
+                    continue
+                _mgr.enable(_info.id, _registry)
+                # ★ 只有**真正挂载成功**的才进 app.state.modules ——
+                #   否则会与 /health/modules（只报已激活）不自洽（O1 自洽测试会红）。
+                app.state.modules[_info.id] = _info.manifest
+                log.info("第三方插件已恢复挂载", extra={"module": _info.id})
+            except Exception as _exc:  # noqa: BLE001 —— 单个失败不影响其它
+                log.warning(
+                    "第三方插件恢复失败（已记录，不阻断启动）",
+                    extra={"module": _info.id, "error": f"{type(_exc).__name__}: {_exc}"},
+                )
+    except Exception as _exc:  # noqa: BLE001 —— 整段兜底，绝不让它拖垮启动
+        log.warning("第三方插件恢复流程整体跳过：%s", _exc)
 
     return app

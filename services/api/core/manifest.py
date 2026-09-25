@@ -69,7 +69,12 @@ class Manifest(BaseModel):
     slots: list[str] = []
     emits: list[str] = []
     consumes: list[str] = []
-    permissions: list[str] = []
+    # ★ 2026-09-25（TX-FRAME-01 修与补）：schema 的 permissions 有**两种格式** ——
+    #   字符串数组（旧，细粒度）与对象（新，filesystem/network/subprocess 粗开关）。
+    #   此前模型只声明 list[str]，**对象格式会被 pydantic 直接判非法** → 与 schema 口径打架。
+    #   此处放宽为联合类型；**归一化在 core/plugins/permissions.normalize_permissions**
+    #   （唯一入口），本模型只负责"看得见、不报错"。
+    permissions: list[str] | dict[str, bool] = Field(default_factory=list)
     activates_on: list[str] = []
     migrations: str | None = None
     settingsSchema: str | None = None

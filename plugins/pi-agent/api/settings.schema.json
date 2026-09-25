@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pi 智能体设置",
+  "type": "object",
+  "properties": {
+    "model": {
+      "type": "string",
+      "default": "life-os",
+      "description": "模型路由（默认 life-os，含自动故障转移）"
+    },
+    "thinking_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "high"
+    },
+    "vision_fallback_model": {
+      "type": "string",
+      "default": "识图",
+      "description": "纯视觉兜底路由"
+    },
+    "pi_binary": {
+      "type": "string",
+      "default": "pi",
+      "description": "pi 可执行文件路径（PATH 或绝对路径）"
+    },
+    "max_parallel_sessions": {
+      "type": "integer",
+      "default": 4,
+      "minimum": 1,
+      "maximum": 16
+    }
+  },
+  "additionalProperties": false
+}

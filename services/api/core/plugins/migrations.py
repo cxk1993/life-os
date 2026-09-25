@@ -218,7 +218,7 @@ def make_startup_lifespan(
 
     @asynccontextmanager
     async def lifespan(_app: Any) -> AsyncIterator[None]:
-        from core.deps import db_session, get_db
+        from core.deps import db_session
 
         with db_session() as session:
             engine = session.get_bind()

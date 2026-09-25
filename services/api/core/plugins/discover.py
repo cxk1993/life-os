@@ -23,7 +23,6 @@ from typing import Any
 from core.errors import ManifestError
 from core.manifest import load_router
 from core.plugins.validate import validate_manifest
-from core.plugins.version import check_compatibility
 
 _API_ROOT = Path(__file__).resolve().parents[2]  # services/api/
 _DEFAULT_MODULES_DIR = _API_ROOT / "modules"
@@ -91,9 +90,12 @@ def _read_manifest(manifest_path: Path, source: str) -> tuple[dict[str, Any], Pl
     # ★ G1：minKernel 校验（内核版本不满足时降级，不拒绝）
     min_kernel = raw.get("minKernel")
     if min_kernel:
-        from core.plugins.version import KERNEL_API_VERSION, satisfies
+        # ★ 2026-09-25 修：minKernel 是"最低版本"语义（>=），不是 caret/精确。
+        #   此前误用 satisfies() → 所有 minKernel="0.1.0" 的插件在 1.0.0 内核上
+        #   一律 degraded → 跳过激活 → 路由不挂载（TX-FRAME-01 第④刀踩到）。
+        from core.plugins.version import KERNEL_API_VERSION, meets_min_kernel
         try:
-            if not satisfies(KERNEL_API_VERSION, f"={min_kernel}"):
+            if not meets_min_kernel(min_kernel):
                 raw["_compat_status"] = "degraded"
                 raw["_compat_reason"] = f"minKernel={min_kernel} 不满足，当前 {KERNEL_API_VERSION}"
         except Exception:
