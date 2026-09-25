@@ -90,7 +90,7 @@ export default function FullCalView({
 }: Props) {
   const eventInputs = useMemo(() => toEventInputs(events), [events]);
   const calendarRef = useRef<FullCalendar>(null);
-  const lastAnchorRef = useRef(0);
+  const mountedRef = useRef(false);
 
   // ★ initialView 只在挂载时生效；view prop 变化时用 API 切换视图（令4 主人报"年月日一样"根因）
   useEffect(() => {
@@ -106,11 +106,10 @@ export default function FullCalView({
   useEffect(() => {
     const api = calendarRef.current?.getApi();
     if (!api) return;
-    const t = anchor.getTime();
-    if (lastAnchorRef.current && Math.abs(t - lastAnchorRef.current) > 60_000) {
+    if (mountedRef.current) {
       api.gotoDate(anchor);
     }
-    lastAnchorRef.current = t;
+    mountedRef.current = true;
   }, [anchor]);
 
   return (
