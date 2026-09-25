@@ -1,6 +1,6 @@
 {
   "id": "todo",
-  "name": "todo",
+  "name": "待办",
   "version": "0.1.0",
   "kind": "builtin",
   "minKernel": "0.1.0",

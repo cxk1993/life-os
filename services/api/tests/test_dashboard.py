@@ -79,7 +79,7 @@ def _default_ok_routes() -> dict[str, Any]:
                 },
                 {
                     "id": "todo",
-                    "name": "todo",
+                    "name": "待办",
                     "slots": ["dashboard.card"],
                     "enabled": True,
                     "valid": True,
