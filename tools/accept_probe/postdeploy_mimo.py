@@ -92,11 +92,11 @@ def main() -> int:
     else:
         rec("habits 删", False, "no id")
 
-    # retest13 核心端点
+    # retest13 核心端点（notes 真路由=/libs，不是 /tree）
     for p in (
         "/api/v1/calendar/today-summary",
         "/api/v1/todo/today-summary",
-        "/api/v1/notes/tree",
+        "/api/v1/notes/libs",
     ):
         st, _ = req("GET", base + p, tok)
         rec(p, st in (200, 401), f"HTTP {st}")
