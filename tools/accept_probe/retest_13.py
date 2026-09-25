@@ -81,10 +81,20 @@ def main() -> int:
             ("today-sum-", "②子态"),
         ):
             rec(tag, f"js has {key}", key in js, "yes" if key in js else "no")
-        # ⑤KaTeX/⑧自定义：懒加载独立 chunk（2026-09-25 总监实证 index-CqfekRSd.js katex=True），主 js 不含=正常
-        chunk_hits = {"katex": False, "lifeos.plugin.habits.prefs": False}
-        _imp_re = re.compile('(?:assets/|\./)([A-Za-z0-9_-]+\.js)')
-        for c in _imp_re.findall(js):
+        # ⑤KaTeX/⑧自定义：懒加载独立 chunk（主 js 不含=正常）。
+        # ★ 双前缀修复（令1 P0-1）：Vite 引用形如 assets/foo.js | ./foo.js | foo.js，
+        #   一律归一 basename 再打 /assets/<basename>，杜绝 /assets/assets/ 与漏抓。
+        chunk_hits = {
+            "katex": False,
+            "lifeos.plugin.habits.prefs": False,
+            "lifeos.plugin.sidebar.prefs": False,
+        }
+        names: set[str] = set()
+        for raw in re.findall(r"([A-Za-z0-9_-]+\.js)", js):
+            if raw == entry:
+                continue
+            names.add(raw)
+        for c in sorted(names):
             try:
                 _, cj = fetch(base + f"/assets/{c}", "")
                 for k in chunk_hits:
@@ -92,8 +102,9 @@ def main() -> int:
                         chunk_hits[k] = True
             except Exception:
                 pass
+        pref_ok = chunk_hits["lifeos.plugin.habits.prefs"] or chunk_hits["lifeos.plugin.sidebar.prefs"]
         rec("⑤KaTeX", "chunk has katex", chunk_hits["katex"], "yes" if chunk_hits["katex"] else "no")
-        rec("⑧自定义", "chunk has prefs", chunk_hits["lifeos.plugin.habits.prefs"], "yes" if chunk_hits["lifeos.plugin.habits.prefs"] else "no")
+        rec("⑧自定义", "chunk has prefs", pref_ok, "yes" if pref_ok else "no")
 
     # grid via css 若可
     stc, css_html = fetch(base + "/", "")
