@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 
 import type { ModuleManifest } from "./types";
 
@@ -151,11 +151,10 @@ function clampGeo(g: WinGeo, manifest: ModuleManifest): WinGeo {
   const minH = manifest.window.minH ?? 240;
   const w = Math.max(minW, Math.round(g.w));
   const h = Math.max(minH, Math.round(g.h));
-  const maxX = Math.max(0, vw() - w);
-  const maxY = Math.max(TOPBAR, vh() - DOCK - h);
-  const x = Math.min(Math.max(0, Math.round(g.x)), maxX);
-  // ★ V1（主人令）：窗口可移到顶栏之上（上界放宽为 0；一键整理可找回，无需强制弹回）
-  const y = Math.min(Math.max(0, Math.round(g.y)), maxY);
+  // ★ 主人令：仅保留顶端回弹（y>=0 防跑出屏幕顶）；左右/底部不钳制，
+  //   允许窗口移出屏幕边缘（一键桌面整理可找回，无需强制弹回）。
+  const x = Math.round(g.x);
+  const y = Math.max(0, Math.round(g.y));
   return { x, y, w, h };
 }
 
