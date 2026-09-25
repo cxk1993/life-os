@@ -60,3 +60,53 @@
 .sidebar-err {
   color: var(--danger);
 }
+.sidebar-type {
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+}
+.sidebar-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.sidebar-toolbar select {
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+  font-size: 12px;
+}
+.sidebar-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidebar-row--off {
+  opacity: 0.55;
+}
+.sidebar-empty {
+  color: var(--txt-faint);
+  padding: var(--sp-4);
+  text-align: center;
+}
+.sidebar-add select,
+.sidebar-row input {
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--txt);
+  font: inherit;
+}
+.sidebar-row a {
+  color: var(--accent-2, var(--accent));
+}

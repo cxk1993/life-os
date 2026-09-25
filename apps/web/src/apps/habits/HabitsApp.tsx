@@ -55,9 +55,15 @@ export default function HabitsApp() {
 
   const list = habits ?? [];
   const doneCount = list.filter((h) => h.today_status === "done").length;
+  const sorted = [...list].sort((a, b) => {
+    if (prefs.sortBy === "streak") return b.streak - a.streak;
+    if (prefs.sortBy === "name") return a.name.localeCompare(b.name, "zh");
+    return 0;
+  });
+  const pct = list.length ? Math.round((doneCount / list.length) * 100) : 0;
 
   return (
-    <div className="habits-root">
+    <div className={"habits-root" + (prefs.compact ? " habits-root--compact" : "")}>
       <form className="habits-add" onSubmit={submit}>
         <input
           className="habits-add__input"
@@ -76,18 +82,52 @@ export default function HabitsApp() {
       </form>
 
       <div className="habits-toolbar">
-        <div className="tiny" style={{ color: "var(--txt-faint)" }}>
-          {list.length > 0 ? `今日 ${doneCount}/${list.length}` : ""}
+        <div className="tiny habits-progress-wrap">
+          {list.length > 0 ? (
+            <>
+              <span>
+                今日 {doneCount}/{list.length}（{pct}%）
+              </span>
+              <div
+                className="habits-progress"
+                role="progressbar"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div className="habits-progress__fill" style={{ width: `${pct}%` }} />
+              </div>
+            </>
+          ) : null}
         </div>
-        <label className="tiny" style={{ color: "var(--txt-faint)" }}>
+        <label className="tiny">
           <input
             type="checkbox"
             checked={prefs.showArchived}
             onChange={(e) => patchPrefs({ showArchived: e.target.checked })}
             aria-label="显示已归档"
           />{" "}
-          显示已归档
+          归档
         </label>
+        <label className="tiny">
+          <input
+            type="checkbox"
+            checked={prefs.compact}
+            onChange={(e) => patchPrefs({ compact: e.target.checked })}
+            aria-label="紧凑模式"
+          />{" "}
+          紧凑
+        </label>
+        <select
+          value={prefs.sortBy}
+          onChange={(e) => patchPrefs({ sortBy: e.target.value as HabitsPrefs["sortBy"] })}
+          aria-label="排序"
+          className="tiny"
+        >
+          <option value="default">原序</option>
+          <option value="streak">连击</option>
+          <option value="name">名称</option>
+        </select>
       </div>
       {err ? (
         <div className="tiny habits-err" role="alert">
@@ -109,7 +149,7 @@ export default function HabitsApp() {
             <div className="empty__hint">在上方输入一个想坚持的小事，点圆钮打卡</div>
           </div>
         ) : (
-          list.map((h) => <HabitRow key={h.id} habit={h} />)
+          sorted.map((h) => <HabitRow key={h.id} habit={h} />)
         )}
       </div>
     </div>

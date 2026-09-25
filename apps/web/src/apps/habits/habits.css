@@ -183,6 +183,32 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
+  flex-wrap: wrap;
+  color: var(--txt-faint);
+}
+.habits-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 120px;
+}
+.habits-progress {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.habits-progress__fill {
+  height: 100%;
+  background: var(--accent);
+}
+.habits-root--compact .habit-row {
+  padding: var(--sp-1) var(--sp-2);
+}
+.habits-root--compact .habit-edit {
+  padding: var(--sp-2);
 }
 .habit-row__del {
   opacity: 0.75;
