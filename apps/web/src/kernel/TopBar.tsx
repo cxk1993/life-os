@@ -20,9 +20,8 @@ export function TopBar({ onOpenSearch, onTidy, onLogout, onMinimizeAll }: Props)
   const toggle = useTheme((s) => s.toggle);
   // ★ T23 工作区切换器
   const workspaces = useDesktopStore((s) => s.workspaces);
-  // ★ U1（2026-09-24）：顶栏收放（收起按钮 → 悬浮把手恢复）
-  const toggleTopbar = useDesktopStore((s) => s.toggleTopbar);
-  const toggleBottombar = useDesktopStore((s) => s.toggleBottombar);
+  // ★ 令 96/97：收放统一走「罗盘」（Desktop 内的 .desktop__compass-btn）——
+  //   TopBar 不再持有收放按钮与 store 订阅（原 ⌃/⌄ 已撤）。
   const activeWorkspaceId = useDesktopStore((s) => s.activeWorkspaceId);
   const switchWorkspace = useDesktopStore((s) => s.switchWorkspace);
   const createWorkspace = useDesktopStore((s) => s.createWorkspace);
@@ -70,28 +69,8 @@ export function TopBar({ onOpenSearch, onTidy, onLogout, onMinimizeAll }: Props)
       {/* U2：右上角时间 → 点击展开今日摘要面板（跨插件聚合） */}
       <TimeWidget />
       <div className="topbar__actions">
-        {/* ★ U1：收起顶栏（判据 U1-5：aria-expanded 语义 + title；恢复走悬浮把手） */}
-        <button
-          type="button"
-          className="icon-btn"
-          aria-expanded={true}
-          aria-label="收起顶栏"
-          title="收起顶栏"
-          onClick={toggleTopbar}
-        >
-          ⌃
-        </button>
-        {/* ★ U1：收起底栏（Dock 收起入口此前缺失 —— 主人反馈「底端栏无法收起」） */}
-        <button
-          type="button"
-          className="icon-btn"
-          aria-expanded={true}
-          aria-label="收起底栏"
-          title="收起底栏"
-          onClick={toggleBottombar}
-        >
-          ⌄
-        </button>
+        {/* ★ 令 96/97 + 主人反馈（2026-09-25 16:0x）：原「收起顶栏 ⌃ / 收起底栏 ⌄」
+            两按钮**已由罗盘取代**（罗盘按钮=统一收放入口），此处撤除，避免双入口并存。 */}
         {/* ★ 主人④：一键最小化所有未固定窗口（固定窗/已最小化/最大化窗不动） */}
         {onMinimizeAll ? (
           <button

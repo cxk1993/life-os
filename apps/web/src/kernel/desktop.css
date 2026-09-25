@@ -68,11 +68,13 @@
 /* ═══════════ ★ 收放罗盘（令 96/97 · 主人三板拍板）═══════════
    主人需求：圆形罗盘，选择性收起上/下/左/右，中心一键全收；
    已收扇区语义 = 展开（双向 toggle）；全收后只留罗盘按钮（右上角，带文字）。 */
+/* 罗盘按钮 + 弹层 z-index：★ 必须高于顶栏（90000）与置顶窗层（91000）——
+   主人反馈「顶栏未收起时罗盘无法使用」的根因：原 41/42 被顶栏 90000 盖住点不到。 */
 .desktop__compass-btn {
   position: fixed;
   top: 10px;
   right: var(--sp-3);
-  z-index: 41;
+  z-index: 95000;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -98,7 +100,7 @@
   position: fixed;
   top: 46px;
   right: var(--sp-3);
-  z-index: 42;
+  z-index: 95001;
   width: 176px;
   height: 176px;
   border-radius: 50%;
