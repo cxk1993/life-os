@@ -135,6 +135,12 @@ def build(modules_dir: Path) -> dict:
             "isolated": isolated,
             "degraded": soft_missing_all,
             "summary_providers": summary_providers,
+            # ★ 门禁审计条（workbuddy 提议 · 总监令 71 采纳）：todaySummary 源清单 ↔
+            #   manifest 声明对账。四源任一未声明 → BFF 动态发现聚合源缺失（静默空窗，
+            #   正是 09-25 知默紧急报告的根因）。**缺谁一查便知**，杜绝"属性在 ≠ 生效"。
+            "summary_missing": sorted(
+                {"calendar", "todo", "diary", "review"} - set(summary_providers)
+            ),
             "dock_cards": dock_cards,
             "dock_overload": len(dock_cards) > 6,
         },
