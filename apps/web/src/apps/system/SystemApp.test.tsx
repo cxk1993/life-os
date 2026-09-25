@@ -13,6 +13,8 @@ describe("SystemApp（V6 系统窗四合一）", () => {
     // 默认场景：注册表无 system manifest → 组件走默认四页 fallback。
     useDesktopStore.setState({ modules: {} });
     void registerModule;
+    // persistKey 持久化跨用例泄漏防护（每用例从干净 localStorage 起步）
+    localStorage.clear();
   });
   it("渲染四个一级页签：能力目录/MCP/推送/账户与鉴权", () => {
     render(<SystemApp />);

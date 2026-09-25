@@ -72,5 +72,11 @@ export default function SystemApp() {
     };
   });
 
-  return <MultitabFrame ariaLabel="系统页签" pages={pages} />;
+  return (
+    <MultitabFrame
+      ariaLabel="系统页签"
+      persistKey="system"
+      pages={pages}
+    />
+  );
 }

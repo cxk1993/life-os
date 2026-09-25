@@ -1273,3 +1273,16 @@
 .mtab__panel {
   height: 100%;
 }
+/* 页面切换轻淡入（150ms，尊重减弱动效偏好） */
+.mtab__panel:not([hidden]) {
+  animation: mtab-fade-in 0.15s ease-out;
+}
+@keyframes mtab-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mtab__panel:not([hidden]) {
+    animation: none;
+  }
+}

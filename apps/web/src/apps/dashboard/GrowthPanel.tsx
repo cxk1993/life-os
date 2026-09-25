@@ -31,6 +31,7 @@ export default function GrowthPanel({ growth }: { growth: GrowthBlock }) {
       <div className="dash-card__title">成长罗盘</div>
       <MultitabFrame
         ariaLabel="成长罗盘页签"
+        persistKey="growth"
         pages={[
           { key: "habits", label: "习惯", content: <Suspense fallback={<PageFallback />}><HabitsApp /></Suspense> },
           { key: "persona", label: "人格体系", content: <Suspense fallback={<PageFallback />}><PersonaApp /></Suspense> },
