@@ -4,6 +4,7 @@
  * 拉起设置弹层（模式四选 + 取色 + 图片选择 + 恢复默认）。
  */
 import { createElement } from "react";
+import { MiscFolderSection } from "./miscFolder";
 import { createRoot, type Root } from "react-dom/client";
 
 export interface WallpaperConfig {
@@ -120,6 +121,12 @@ function SettingsPanel({ host }: { host: SettingsHost }) {
           }),
         )
       : null,
+    createElement(
+      "div",
+      { className: "wp-settings__section-title" },
+      "本地文件夹（杂物库 · 只读）",
+    ),
+    createElement(MiscFolderSection, { onSetWallpaperFromFile: host.onPick }),
     createElement(
       "div",
       { className: "wp-settings__row" },
