@@ -3,42 +3,74 @@
  *
  * 形态：真实模块（manifest entry=@/apps/system）→ Dock 自动出「系统」按钮，
  * 零 Dock.tsx 改动（模块注册表驱动，一切皆插件口径）。
- * 页视图源=现有模块 App 复用（React.lazy 保分包）；auth 无前端 app，
- * 用 WindowFrame V5 同款「后端模块 · 仅服务」薄壳语义（win__placeholder 类）。
+ *
+ * ★ tabs 配置面（令 78 指点·候容器型模块 schema）：
+ * - 本组件自读 store 注册表里自己模块的 manifest；schema 定稿后 manifest 若带
+ *   `tabs: [{ key, label, entry? }]`，按声明渲染（entry 页 lazy 复用该模块 App，
+ *   无 entry 页 = 薄壳「后端模块 · 仅服务」语义）；
+ * - manifest 无 tabs（现状）→ 用下方默认四页 fallback，行为与已部署版一致。
  */
 import { lazy, Suspense } from "react";
 import MultitabFrame from "@/kernel/MultitabFrame";
+import { useDesktopStore } from "@/kernel/store";
 
-const CatalogApp = lazy(() => import("../catalog/CatalogApp"));
-const McpApp = lazy(() => import("../mcp/McpConsoleApp"));
-const PushApp = lazy(() => import("../push/PushApp"));
+/** schema 定稿后 manifest.tabs 的形状（知默容器型模块草案；本组件只依赖此最小面）。 */
+interface DeclaredTab {
+  key: string;
+  label: string;
+  /** 模块 id——指向注册表内另一模块的 App；缺省 = 无 UI 后端模块（薄壳语义页）。 */
+  entry?: string;
+}
+
+/** 模块 id → 已知 App 组件的 lazy 映射（新页签接入在此登记一行）。 */
+const KNOWN_APPS: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
+  catalog: lazy(() => import("../catalog/CatalogApp")),
+  mcp: lazy(() => import("../mcp/McpConsoleApp")),
+  push: lazy(() => import("../push/PushApp")),
+};
+
+const DEFAULT_TABS: DeclaredTab[] = [
+  { key: "catalog", label: "能力目录", entry: "catalog" },
+  { key: "mcp", label: "MCP Server", entry: "mcp" },
+  { key: "push", label: "推送", entry: "push" },
+  { key: "auth", label: "账户与鉴权" }, // auth 无前端 app → 薄壳语义页
+];
 
 function PageFallback() {
   return <div className="win__placeholder-text" data-testid="system-page-loading">加载中…</div>;
 }
 
-/** auth 薄壳页：与 WindowFrame V5 ModulePlaceholder backend 变体同语义（类名同源 win__placeholder）。 */
-function AuthBackendPage() {
+/** 薄壳语义页：与 WindowFrame V5 ModulePlaceholder backend 变体同语义（类名同源 win__placeholder）。 */
+function BackendOnlyPage({ label }: { label: string }) {
   return (
-    <div className="win__placeholder" role="status" data-testid="system-auth-page">
+    <div className="win__placeholder" role="status" data-testid={`system-backend-page-${label}`}>
       <div className="win__placeholder-icon" aria-hidden="true">⚙</div>
       <div className="win__placeholder-title">后端模块 · 仅服务</div>
-      <div className="win__placeholder-text">账户与鉴权只提供 API 服务，无独立窗口界面。</div>
-      <div className="win__placeholder-meta">module: auth</div>
+      <div className="win__placeholder-text">该模块只提供 API 服务，无独立窗口界面。</div>
     </div>
   );
 }
 
 export default function SystemApp() {
-  return (
-    <MultitabFrame
-      ariaLabel="系统页签"
-      pages={[
-        { key: "catalog", label: "能力目录", content: <Suspense fallback={<PageFallback />}><CatalogApp /></Suspense> },
-        { key: "mcp", label: "MCP Server", content: <Suspense fallback={<PageFallback />}><McpApp /></Suspense> },
-        { key: "push", label: "推送", content: <Suspense fallback={<PageFallback />}><PushApp /></Suspense> },
-        { key: "auth", label: "账户与鉴权", content: <AuthBackendPage /> },
-      ]}
-    />
-  );
+  // 自读注册表：manifest.tabs（候 schema）→ 配置化；无 → 默认四页。
+  const manifest = useDesktopStore((s) => s.modules["system"]?.manifest);
+  const declared = (manifest as { tabs?: DeclaredTab[] } | undefined)?.tabs;
+  const tabs = declared?.length ? declared : DEFAULT_TABS;
+
+  const pages = tabs.map((tab) => {
+    const Known = tab.entry ? KNOWN_APPS[tab.entry] : undefined;
+    return {
+      key: tab.key,
+      label: tab.label,
+      content: Known ? (
+        <Suspense fallback={<PageFallback />}>
+          <Known />
+        </Suspense>
+      ) : (
+        <BackendOnlyPage label={tab.key} />
+      ),
+    };
+  });
+
+  return <MultitabFrame ariaLabel="系统页签" pages={pages} />;
 }
