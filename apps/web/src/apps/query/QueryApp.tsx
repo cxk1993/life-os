@@ -78,19 +78,47 @@ export default function QueryApp() {
               {result.query?.id || qid} · {result.row_count} 条
               {result.partial ? " · 部分源不可用" : ""}
             </div>
-            <ul className="query-rows">
-              {rows.map((r, i) => (
-                <li key={i} className="query-row">
-                  {Object.entries(r)
-                    .filter(([k]) => k !== "id")
-                    .map(([k, v]) => (
-                      <span key={k} className="query-cell">
-                        <em>{k}</em> {String(v ?? "")}
-                      </span>
+            {(() => {
+              // 结果表格化（主人 09-25「功能上不太成功」主病灶：原 key:value 平铺可读性差）。
+              // 列头 = 各行键的并集（稳定序：首行序优先，新键追加），行 = rows。
+              const cols: string[] = [];
+              const seen = new Set<string>();
+              for (const r of rows) {
+                for (const k of Object.keys(r)) {
+                  if (!seen.has(k)) {
+                    seen.add(k);
+                    cols.push(k);
+                  }
+                }
+              }
+              return (
+                <table className="query-table" data-testid="query-table">
+                  <thead>
+                    <tr>
+                      {cols.map((c) => (
+                        <th key={c} scope="col">
+                          {c}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={i}>
+                        {cols.map((c) => {
+                          const v = r[c];
+                          return (
+                            <td key={c} className={v == null || v === "" ? "query-table__empty" : undefined}>
+                              {v == null || v === "" ? "—" : String(v)}
+                            </td>
+                          );
+                        })}
+                      </tr>
                     ))}
-                </li>
-              ))}
-            </ul>
+                  </tbody>
+                </table>
+              );
+            })()}
           </>
         )}
       </div>

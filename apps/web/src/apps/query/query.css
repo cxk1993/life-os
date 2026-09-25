@@ -59,3 +59,27 @@
 .query-err {
   color: var(--danger);
 }
+
+/* 结果表格化（主人 09-25 · Zcode 会签 MiMo） */
+.query-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.query-table th,
+.query-table td {
+  border: 1px solid var(--border, #30363d);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.query-table th {
+  background: var(--accent-soft, rgba(88, 166, 255, 0.12));
+  color: var(--accent, #58a6ff);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+.query-table td.query-table__empty {
+  color: var(--txt-faint, #6e7681);
+}
