@@ -613,3 +613,27 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+
+/* —— V8 FullCalendar 原型视图 —— */
+.cal-fullcal {
+  height: 100%;
+  min-height: 480px;
+  overflow: auto;
+}
+.cal-fullcal .fc {
+  --fc-border-color: var(--line, #333);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: rgba(255, 255, 255, 0.03);
+  --fc-today-bg-color: rgba(76, 141, 255, 0.08);
+  --fc-event-bg-color: var(--accent, #4c8dff);
+  --fc-event-border-color: var(--accent, #4c8dff);
+  --fc-event-text-color: #fff;
+  font-size: 12px;
+}
+.cal-fullcal .fc-event--child {
+  opacity: 0.75;
+}
+.cal-fullcal .fc-timegrid-now-indicator-line {
+  border-color: #e05561;
+}

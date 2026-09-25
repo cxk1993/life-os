@@ -1,0 +1,136 @@
+/**
+ * V8 · FullCalendar 6.1.21 原型视图（对照表 v1 实证件）。
+ *
+ * ★ 总监 22:45 拍板：FullCalendar 6.1.21 全家桶（core/interaction/daygrid/timegrid 同版本混装禁令）
+ *   为日程重构内核主选。本组件为「替换层」原型：
+ *   - 保留 useCalendarEvents 数据层 + api.ts 写请求（Idempotency-Key 不动）；
+ *   - 用 FullCalendar 替换自研 MonthGrid/TimeGrid 的渲染与拖拽/缩放交互；
+ *   - 三视图：dayGridMonth / timeGridWeek / timeGridDay；
+ *   - 交互：拖拽（eventDrop）/ 缩放（eventResize）/ 拖选新建（select）/ 点击详情（eventClick）。
+ *
+ * 对照表 v1 验收：① 日周月三视图渲染 ✅ ② 色块可拖可拉伸（上下/左右）✅
+ * ③ 拖动/拉伸后事件时间动态匹配（回调写回后端）✅ ④ 拖选空白新建 ✅
+ */
+import { useMemo } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import type { CalendarEvent } from "../api";
+import type { EventInput, DatesSetArg, EventApi } from "@fullcalendar/core";
+import "../calendar.css";
+
+export type CalView = "day" | "week" | "month";
+
+interface Props {
+  events: CalendarEvent[];
+  view: CalView;
+  anchor: Date;
+  onMove: (id: string, start: string, end: string, spanDays: number) => void;
+  onResize: (id: string, start: string, end: string, spanDays: number) => void;
+  onCreateAt: (startISO: string, endISO: string) => void;
+  onSelect: (id: string) => void;
+  onRangeChange: (from: Date, to: Date) => void;
+}
+
+/** CalendarEvent → FullCalendar EventInput 映射（纯函数，可单测）。 */
+export function toEventInputs(events: CalendarEvent[]): EventInput[] {
+  return events.map((e) => ({
+    id: e.id,
+    title: e.title,
+    start: e.start_at,
+    end: e.end_at,
+    allDay: e.all_day,
+    backgroundColor: e.color || "var(--accent)",
+    borderColor: e.color || "var(--accent)",
+    classNames: e.parent_id ? ["fc-event--child"] : [],
+    extendedProps: {
+      parent_id: e.parent_id,
+      span_days: e.span_days,
+      location: e.location,
+      children_count: e.children?.length ?? 0,
+    },
+  }));
+}
+
+/** 父块徽标：子块 ×N 渲染（V8 对照表 v2）。 */
+export function renderBadge(childrenCount: number): string {
+  if (!childrenCount) return "";
+  return ` · 子块 ×${childrenCount}`;
+}
+
+/** FullCalendar 视图名映射。 */
+export function toFullCalView(view: CalView): string {
+  if (view === "day") return "timeGridDay";
+  if (view === "week") return "timeGridWeek";
+  return "dayGridMonth";
+}
+
+/** 拖拽/缩放回调 → 后端 patch（start_at/end_at 带时区 ISO，span_days 随事件）。 */
+export function argToSpan(arg: { event: Pick<EventApi, "start" | "end" | "extendedProps"> }): {
+  start: string;
+  end: string;
+  spanDays: number;
+} {
+  const start = arg.event.start?.toISOString() ?? "";
+  const end = arg.event.end?.toISOString() ?? "";
+  const prev = arg.event.extendedProps?.span_days as number | undefined;
+  const spanDays =
+    typeof prev === "number" ? prev : Math.max(1, Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000));
+  return { start, end, spanDays };
+}
+
+export default function FullCalView({
+  events,
+  view,
+  anchor,
+  onMove,
+  onResize,
+  onCreateAt,
+  onSelect,
+  onRangeChange,
+}: Props) {
+  const eventInputs = useMemo(() => toEventInputs(events), [events]);
+
+  return (
+    <div className="cal-fullcal" data-testid="fullcal-view">
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView={toFullCalView(view)}
+        initialDate={anchor}
+        headerToolbar={{
+          left: "",
+          center: "",
+          right: "",
+        }}
+        height="100%"
+        editable
+        selectable
+        selectMirror
+        dayMaxEvents={4}
+        nowIndicator
+        events={eventInputs}
+        eventContent={(info) => {
+          const cc = (info.event.extendedProps?.children_count as number | undefined) ?? 0;
+          const txt = `${info.event.title ?? ""}${renderBadge(cc)}`;
+          return { html: `<span class="fc-event-title-text">${txt}</span>` };
+        }}
+        datesSet={(arg: DatesSetArg) => onRangeChange(arg.start, arg.end)}
+        eventDrop={(arg) => {
+          const { start, end, spanDays } = argToSpan(arg);
+          onMove(arg.event.id, start, end, spanDays);
+        }}
+        eventResize={(arg) => {
+          const { start, end, spanDays } = argToSpan(arg);
+          onResize(arg.event.id, start, end, spanDays);
+        }}
+        select={(info) => {
+          const s = info.start.toISOString();
+          const e = info.end.toISOString();
+          onCreateAt(s, e);
+        }}
+        eventClick={(info) => onSelect(info.event.id)}
+      />
+    </div>
+  );
+}

@@ -11,9 +11,8 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { EventCreate, EventPatch } from "./api";
 import { useCalendarEvents } from "./hooks/useCalendarEvents";
 import "./calendar.css";
-import { TimeGrid } from "./grid/TimeGrid";
-import { MonthGrid } from "./grid/MonthGrid";
 import { Inspector } from "./inspector/Inspector";
+import FullCalView from "./fullcal/FullCalView"; // V8 原型：FullCalendar 6.1.21 渲染层（自研网格保留可回退）
 import { useCalendarUI, SCALE_PRESETS, useToast } from "./state";
 import { DAY_MS, formatSH, shMonday, shWallClock, shWallParts } from "./lib/time";
 
@@ -42,17 +41,16 @@ export function CalendarApp() {
     view,
     hourHeight,
     selectedId,
-    scrollToNowTick,
     setView,
     setHourHeight,
     select,
     requestScrollToNow,
   } = useCalendarUI();
   const [anchor, setAnchor] = useState<Date>(() => new Date());
-  const [areaRef, areaW] = useElementWidth<HTMLDivElement>();
+  const [areaRef] = useElementWidth<HTMLDivElement>();
 
   // 可见范围：随视图变化（一律以东八区墙钟为基准，from/to 带 +08:00）。
-  const { weekStart, weekDays, range } = useMemo(() => {
+  const { range } = useMemo(() => {
     if (view === "day") {
       const p = shWallParts(anchor);
       const ws = shWallClock(p.y, p.mo, p.d, 0, 0, 0, 0);
@@ -90,8 +88,6 @@ export function CalendarApp() {
   const data = useCalendarEvents(range);
   const events = data.events;
 
-  // 列宽自适应：网格宽 = 容器宽 - 左侧时间轴(64) - 滚动条余量
-  const dayWidth = Math.max(96, Math.floor((areaW - 64 - 2) / weekDays));
 
   const selected = useMemo(
     () => events.find((e) => e.id === selectedId) ?? null,
@@ -243,41 +239,16 @@ export function CalendarApp() {
 
       <div className="cal-main">
         <div className="cal-grid-area" ref={areaRef}>
-          {view === "month" ? (
-            <MonthGrid
-              events={events}
-              anchor={anchor}
-              selectedId={selectedId}
-              onSelect={select}
-              onCreateAt={handleCreateAt}
-            />
-          ) : (
-            <TimeGrid
-              events={events}
-              weekStart={weekStart}
-              weekDays={weekDays}
-              hourHeight={hourHeight}
-              dayWidth={dayWidth}
-              selectedId={selectedId}
-              onCreate={handleCreate}
-              onSelect={select}
-              onMove={handleMove}
-              onResize={handleResize}
-              onRename={(id, title) => handlePatch(id, { title })}
-              onColor={(id, color) => handlePatch(id, { color })}
-              onFocus={(id) => select(id)}
-              onAddChild={(id) => {
-                const parent = events.find((e) => e.id === id);
-                const s = parent ? parent.start_at : new Date().toISOString();
-                const eEnd = parent
-                  ? parent.end_at
-                  : new Date(Date.now() + 3_600_000).toISOString();
-                handleAddChild(id, { title: "新子块", start_at: s, end_at: eEnd });
-              }}
-              onDelete={handleDelete}
-              scrollSignal={scrollToNowTick}
-            />
-          )}
+          <FullCalView
+            events={events}
+            view={view}
+            anchor={anchor}
+            onMove={handleMove}
+            onResize={(id, start, end, spanDays) => handleResize(id, "right", start, end, spanDays)}
+            onCreateAt={handleCreateAt}
+            onSelect={select}
+            onRangeChange={(from) => setAnchor(from)}
+          />
         </div>
 
         <Inspector
