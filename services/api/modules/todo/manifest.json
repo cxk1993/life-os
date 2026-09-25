@@ -20,7 +20,8 @@
   },
   "provides": [
     "todo.item.read",
-    "todo.item.write"
+    "todo.item.write",
+    "x.summary.today"
   ],
   "requires": [],
   "slots": [
