@@ -3,13 +3,16 @@
  */
 import type { ComponentType } from "react";
 import DiaryApp from "./DiaryApp";
+import RightDockCard from "./slots/RightDockCard";
 import "./diary.css";
 
 const PluginModule = {
   manifestId: "diary",
   Component: DiaryApp as ComponentType,
-  slots: {},
+  slots: {
+    "desktop.dock-right": RightDockCard as ComponentType,
+  },
 };
 
 export default PluginModule;
-export { DiaryApp };
+export { DiaryApp, RightDockCard };

@@ -28,7 +28,8 @@
   ],
   "slots": [
     "desktop.dock",
-    "dashboard.card"
+    "dashboard.card",
+    "desktop.dock-right"
   ],
   "emits": [],
   "consumes": [],

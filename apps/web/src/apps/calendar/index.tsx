@@ -6,16 +6,18 @@
 import type { ComponentType } from "react";
 import { CalendarApp } from "./CalendarApp";
 import { DashboardCard } from "./slots/DashboardCard";
+import RightDockCard from "./slots/RightDockCard";
 
 const PluginModule = {
   manifestId: "calendar",
   Component: CalendarApp as ComponentType,
   slots: {
     "dashboard.card": DashboardCard as ComponentType,
+    "desktop.dock-right": RightDockCard as ComponentType,
   },
 };
 
 export default PluginModule;
 
 // 同时具名导出，便于测试 / 其他入口按需引用
-export { CalendarApp, DashboardCard };
+export { CalendarApp, DashboardCard, RightDockCard };

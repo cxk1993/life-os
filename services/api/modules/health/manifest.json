@@ -28,7 +28,9 @@
   ],
   "requires": [],
   "slots": [
-    "window.sidecar"
+    "window.sidecar",
+    "dashboard.card",
+    "desktop.dock-right"
   ],
   "emits": [
     "health.record.created",

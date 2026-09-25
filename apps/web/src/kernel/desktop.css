@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 桌面 / 窗口 / 坞 / 顶栏 布局样式（kernel）。
  * 全部走设计令牌 var(--xxx)；本文件不得出现任何 #xxxxxx（验收 grep 只应命中 tokens.css）。
  */
@@ -574,6 +574,49 @@
 .dock-card__cnt {
   font-size: 10px;
   color: var(--txt-dim);
+}
+/* U3 右栏小日历点阵（calendar / diary-review dock-right 卡） */
+.dock-mini-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 6px 8px;
+}
+.dock-mini-cal__cell {
+  display: grid;
+  place-items: center;
+  height: 18px;
+  font-size: 10px;
+  color: var(--txt-dim);
+  border-radius: 4px;
+}
+.dock-mini-cal__cell.is-empty {
+  visibility: hidden;
+}
+.dock-mini-cal__cell.is-today {
+  outline: 1px solid var(--accent);
+  color: var(--txt);
+}
+.dock-mini-cal__cell.has-mark::after {
+  content: "";
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateY(6px);
+}
+.dock-mini-cal__cell {
+  position: relative;
+}
+.dock-mini-cal__cell.has-mark2::before {
+  content: "";
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--info, var(--accent));
+  transform: translateY(6px) translateX(5px);
 }
 
 .topbar__actions {
