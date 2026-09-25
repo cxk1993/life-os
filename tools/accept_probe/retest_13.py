@@ -83,7 +83,7 @@ def main() -> int:
             rec(tag, f"js has {key}", key in js, "yes" if key in js else "no")
         # ⑤KaTeX/⑧自定义：懒加载独立 chunk（2026-09-25 总监实证 index-CqfekRSd.js katex=True），主 js 不含=正常
         chunk_hits = {"katex": False, "lifeos.plugin.habits.prefs": False}
-        _imp_re = re.compile('import\(["\']\./([A-Za-z0-9_-]+\.js)["\']\)')
+        _imp_re = re.compile('(?:assets/|\./)([A-Za-z0-9_-]+\.js)')
         for c in _imp_re.findall(js):
             try:
                 _, cj = fetch(base + f"/assets/{c}", "")
