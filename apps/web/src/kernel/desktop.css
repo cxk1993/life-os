@@ -793,6 +793,21 @@
   font: inherit;
   cursor: pointer;
 }
+/* ★ 主人 ⑤⑫（2026-09-25）：底端栏「合并入口」角标 —— 提示该容器并入了几个模块。 */
+.dock__merged-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+}
 .dock__item:hover .dock__icon {
   background: var(--surface-3);
 }
