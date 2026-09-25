@@ -32,6 +32,11 @@ const DOCK_MERGE: Record<string, string> = {
   // ⑪ 人格 / 健康 → 成长罗盘
   persona: "growth",
   health: "growth",
+  // ★ 主人 2026-09-25 令「todo（待办）也该与日程表合并」· 总监令 10 §2：
+  //   日程表 / 待办 → schedule 容器（两页合一）。Dock 显隐唯一杠杆=DOCK_MERGE
+  //   （坑谱 #15：manifest.slots 不产生隐藏效果，MiMo 4c8aace 前车之鉴）。
+  calendar: "schedule",
+  todo: "schedule",
 };
 
 export function Dock() {

@@ -1,0 +1,36 @@
+{
+  "id": "schedule",
+  "name": "日程待办",
+  "version": "0.1.0",
+  "kind": "container",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "程",
+  "description": "日程待办窗：日程表 / 待办 两页合一，一窗多页（主人 2026-09-25 令 todo×日程合并 · 容器型模块 · Qoder CN）",
+  "author": "Qoder CN",
+  "window": {
+    "w": 1080,
+    "h": 720,
+    "minW": 560,
+    "minH": 400
+  },
+  "entry": "@/apps/schedule",
+  "provides": [],
+  "requires": [],
+  "slots": [
+    "desktop.dock"
+  ],
+  "emits": [],
+  "consumes": [],
+  "permissions": [],
+  "tabs": [
+    { "key": "calendar", "label": "日程表", "entry": "calendar" },
+    { "key": "todo", "label": "待办", "entry": "todo" }
+  ],
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}
