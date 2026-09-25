@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 桌面 / 窗口 / 坞 / 顶栏 布局样式（kernel）。
  * 全部走设计令牌 var(--xxx)；本文件不得出现任何 #xxxxxx（验收 grep 只应命中 tokens.css）。
  */
@@ -1293,28 +1293,34 @@
 }
 .mtab__tabbar {
   display: flex;
-  gap: var(--sp-1);
-  padding: var(--sp-2) var(--sp-3);
+  gap: 2px;
+  padding: 0 var(--sp-2);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
+  align-items: flex-end;
 }
 .mtab__tab {
   appearance: none;
   border: 1px solid transparent;
+  border-bottom: none;
   background: transparent;
   color: var(--txt-dim);
   font-size: 12px;
-  padding: 2px var(--sp-2);
-  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  border-radius: 6px 6px 0 0;
   cursor: pointer;
   white-space: nowrap;
+  margin-bottom: -1px;
 }
 .mtab__tab:hover {
   color: var(--txt);
+  background: rgba(255,255,255,0.06);
 }
 .mtab__tab--active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--bg-elev, var(--bg));
+  color: var(--txt);
+  border-color: var(--border);
+  font-weight: 500;
 }
 .mtab__body {
   flex: 1;
