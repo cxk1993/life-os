@@ -1120,3 +1120,45 @@
     display: none;
   }
 }
+
+/* —— V6 · MultitabFrame 一窗多页容器（Zcode 09-25）——
+   页签条挂在 WindowFrame 标题栏之下；页签态用现有 token，不新增变量。 */
+.mtab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.mtab__tabbar {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.mtab__tab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--txt-dim);
+  font-size: 12px;
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mtab__tab:hover {
+  color: var(--txt);
+}
+.mtab__tab--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.mtab__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.mtab__panel {
+  height: 100%;
+}
