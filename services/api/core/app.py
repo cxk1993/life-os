@@ -325,12 +325,14 @@ def create_app(
             directory=module_dir,
         )
         app.state.modules[manifest.id] = manifest.as_dict()  # 先注册（全量，零漂移）
+        # 路径 a（令 78/95）：container 型无 api——日志行安全取值，防 NoneType.base
+        manifest_base = manifest.api.base if manifest.api is not None else None
         if activator.activate_on_startup(info):
-            log.info("模块已注册并激活", extra={"module": manifest.id, "base": manifest.api.base})
+            log.info("模块已注册并激活", extra={"module": manifest.id, "base": manifest_base})
         else:
             log.info(
                 "模块已注册待事件激活",
-                extra={"module": manifest.id, "base": manifest.api.base},
+                extra={"module": manifest.id, "base": manifest_base},
             )
 
     return app

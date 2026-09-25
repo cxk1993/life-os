@@ -197,3 +197,16 @@ def test_invalid_activates_on_fails_fast(make_probe: Callable[..., None]) -> Non
     make_probe(activates_on=["event:demo"])  # topic 必须至少两段
     with pytest.raises(ManifestError):
         create_app()
+
+
+# ─────────────── 7. container 型 → 激活成功且不尝试挂路由（路径 a · 令 78/95） ───────────────
+def test_container_module_activates_without_router(make_probe: Callable[..., None]) -> None:
+    """容器型模块（纯前端编排）没有 router.py，激活应短路成功而非 ManifestError。"""
+    make_probe(kind="container", api=None, tabs=[{"key": "a", "label": "甲页"}])
+    (MODULES_DIR / PROBE_ID / "router.py").unlink()  # container 无后端路由
+    client = TestClient(create_app())
+
+    body = client.get("/readyz").json()
+    assert PROBE_ID in body["activated"]  # 已激活（container 短路分支）
+    assert PROBE_ID not in body["modules"]  # 无路由可挂，不在挂载清单
+    assert body["activation_errors"] == {}  # 无激活失败目击

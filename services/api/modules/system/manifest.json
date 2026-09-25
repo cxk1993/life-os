@@ -1,0 +1,38 @@
+{
+  "id": "system",
+  "name": "系统",
+  "version": "0.1.0",
+  "kind": "container",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "gear",
+  "description": "系统窗：能力目录 / MCP Server / 推送 / 账户与鉴权 一窗多页编排（V6·主人⑫·容器型模块首例）",
+  "author": "zcode",
+  "window": {
+    "w": 920,
+    "h": 600
+  },
+  "entry": "@/apps/system",
+  "provides": [],
+  "requires": [],
+  "slots": [
+    "desktop.dock"
+  ],
+  "emits": [],
+  "consumes": [
+    "catalog.read"
+  ],
+  "permissions": [],
+  "tabs": [
+    { "key": "catalog", "label": "能力目录", "entry": "catalog" },
+    { "key": "mcp", "label": "MCP Server", "entry": "mcp" },
+    { "key": "push", "label": "推送", "entry": "push" },
+    { "key": "auth", "label": "账户与鉴权" }
+  ],
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}
