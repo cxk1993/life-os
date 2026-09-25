@@ -294,3 +294,67 @@ def test_ensure_diary_root_reconciles_dup_roots(svc):
     ]
     assert len(alive) == 1
     assert alive[0]["id"] == canonical_id
+
+# ───────────────────────── U2 四源端点：today-summary（总监令62 + 协调令63） ─────────────────────────
+
+@pytest.fixture
+def diary_client(monkeypatch):
+    """TestClient + FakeDocsAdapter 注入（today-summary 不走活体 HTTP）。
+
+    ★ 活体依赖修复（总监值班轮 22:45 指派「自提自绿」）：
+      diary 路由经 get_plugin_client 调 docs 模块 HTTP 端点，测试环境无服务
+      → ConnectError。本 fixture 把 router._svc 换成内存 FakeDocsAdapter，
+      路由层形状（title/items/link 组装）照测，写副作用判定亦走真实逻辑。
+    """
+    from modules.diary import router as diary_router
+
+    fake = FakeDocsAdapter()
+    monkeypatch.setattr(
+        diary_router,
+        "_svc",
+        lambda request, user, tz="Asia/Shanghai": DiaryService(fake, tz=tz),
+    )
+    init_engine()
+    app = create_app()
+    c = TestClient(app)
+    yield c
+    get_engine().dispose()
+
+
+def test_today_summary_http_200(diary_client, auth):
+    """HTTP 200：返回规范 v1 形状 {title, items, link}。"""
+    r = diary_client.get("/api/v1/diary/today-summary", headers=auth)
+    assert r.status_code == 200
+    data = r.json()
+    assert "title" in data
+    assert "items" in data
+    assert "link" in data
+    assert isinstance(data["items"], list)
+    assert data["link"] == "/diary"
+
+
+def test_today_summary_auth_401(client):
+    """鉴权 401：无 token 应被拒。"""
+    r = client.get("/api/v1/diary/today-summary")
+    assert r.status_code == 401
+
+
+def test_today_summary_empty_data(diary_client, auth):
+    """空数据：无日记时 items 为空数组，不抛错，且 GET 无写副作用。"""
+    r = diary_client.get("/api/v1/diary/today-summary", headers=auth)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["items"] == []
+    assert data["title"] == "今日日记 0 项"
+
+
+def test_today_summary_with_entry(diary_client, auth):
+    """有日记时：items 包含当日条目（日期即节点名）。"""
+    # 先创建一篇日记
+    diary_client.post("/api/v1/diary/entry", headers=auth)
+    r = diary_client.get("/api/v1/diary/today-summary", headers=auth)
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["state"] == "info"
+    assert data["title"] == "今日日记 1 项"

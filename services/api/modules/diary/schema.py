@@ -40,16 +40,25 @@ class DiaryTodayOut(BaseModel):
 
 
 class DiaryTodaySummaryOut(BaseModel):
-    """今日日记摘要（U2 小日历聚合 · 总监令62）。
+    """今日日记摘要（U2 小日历聚合 · 总监令62 + 协调令63）。
 
+    规范 v1 形状：{title, items:[{text,state}], link}
     BFF 透传 data（R-1 内核零业务），本模块只返回当日摘要数据。
     """
 
-    date: str
-    exists: bool
-    title: str | None = None
-    marks: int = 0
-    items: list[str] = []
+    title: str
+    items: list["DiaryItem"] = []
+    link: str
+
+
+class DiaryItem(BaseModel):
+    """摘要条目（规范 v1）。
+
+    state 枚举：info | due | done | alert
+    """
+
+    text: str
+    state: str = "info"
 
 
 class DiaryMonthOut(BaseModel):
