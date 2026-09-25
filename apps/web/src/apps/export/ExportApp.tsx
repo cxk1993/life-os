@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/shared/api/client";
 import { exportApi, type PreviewOut } from "./api";
+import { loadPrefs, savePrefs } from "./prefs";
 import "./export.css";
 
 function errText(e: unknown): string {
@@ -11,7 +12,7 @@ function errText(e: unknown): string {
 
 /** TX-EXPORT-01 · 搬家包中心（V1 只读预览，zip 落盘候派）。 */
 export default function ExportApp() {
-  const [profile, setProfile] = useState<string | null>(null);
+  const [profile, setProfile] = useState<string | null>(() => loadPrefs().lastProfile);
   const [preview, setPreview] = useState<PreviewOut | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23,6 +24,7 @@ export default function ExportApp() {
 
   const run = async (id: string) => {
     setProfile(id);
+    savePrefs({ lastProfile: id });
     setBusy(true);
     setErr(null);
     setPreview(null);

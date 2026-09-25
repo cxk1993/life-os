@@ -196,6 +196,21 @@ describe("HabitRow", () => {
     expect(style).not.toMatch(/#/);
   });
 
+  it("自定义面板：改目标与休息日并保存", async () => {
+    const { habitsApi } = await import("./api");
+    renderRow(habit);
+    fireEvent.click(screen.getByRole("button", { name: "自定义 早睡" }));
+    fireEvent.change(screen.getByLabelText("习惯目标"), { target: { value: "24:00 前" } });
+    fireEvent.click(screen.getByRole("button", { name: "休息 一" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => {
+      expect(habitsApi.update).toHaveBeenCalledWith(
+        "h1",
+        expect.objectContaining({ target: "24:00 前", rest_weekdays: expect.arrayContaining([0]) }),
+      );
+    });
+  });
+
   it("streak=0 时不显示连续天数", () => {
     renderRow({ ...habit, streak: 0 });
     expect(screen.queryByText(/连续/)).toBeNull();
