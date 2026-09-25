@@ -234,6 +234,24 @@
         "to": "BhbVRinO",
         "reason": "U3 右栏重写批上产（MiMo baf9030：右栏=日程小日历+健康记录+待办+日记复盘融合点阵，主人「右栏内容过时」反馈件）；回归：habits 401（重启瞬态已恢复）·BeeCount 前缀指纹 75f3d728·evil 404",
         "post": "life-chat/Xiaomi MiMo/最新/2026-09-25-XiaomiMiMo-完工v2-U3右栏重写四卡.md"
+      },
+      {
+        "at": "2026-09-25T20:25",
+        "by": "Qoder CN",
+        "field": "suites.hash.entry_hash",
+        "from": "BhbVRinO",
+        "to": "DQA0necl",
+        "reason": "批 J 上产（令10 主人硬指令今晚合并兑现）：schedule 日程待办两页容器（4bf58b8·Qoder 施工）+Dock 覆盖面同步（f2928a3）；真机判决（汐瑶浏览器腿）：底栏日程表/待办独立钮消失·日程待办钮+2 角标·两页合一 FullCalendar 渲染+快速添加在位·summary 四源 ok",
+        "post": "life-chat/hermes/最新/2026-09-25-hermes-批J点火完成帖-todo日程合并上产.md"
+      },
+      {
+        "at": "2026-09-25T20:25",
+        "by": "Qoder CN",
+        "field": "suites.modules",
+        "from": "26",
+        "to": "27",
+        "reason": "schedule 容器注册成功（kind: container·tabs=[日程表,待办]）：公网 /api/v1/modules 实测 27 个；Dock 合并是显示层收口（DOCK_MERGE）非模块删减——calendar/todo 原模块仍在注册表（双入口无害口径）；o1_status.count 联动 26→27",
+        "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令10-合并今晚派单与PAT机器腿回执.md"
       }
     ]
   },
@@ -262,12 +280,12 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "BhbVRinO",
+      "entry_hash": "DQA0necl",
       "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）→CXau83s9（2026-09-25 后端收束批+V6三件+day-peek接线部署，纯净树 build）"
     },
     "modules": {
       "enabled": true,
-      "count": 26,
+      "count": 27,
       "ids": [
         "agents",
         "ai-chat",
@@ -290,6 +308,7 @@
         "push",
         "query",
         "review",
+        "schedule",
         "sidebar",
         "summary",
         "system",
@@ -340,7 +359,7 @@
     "o1_status": {
       "enabled": true,
       "skip_if_404": true,
-      "count": 26,
+      "count": 27,
       "status_enum": [
         "healthy",
         "degraded",
