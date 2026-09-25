@@ -145,6 +145,53 @@ def test_s1_providers_non_empty_from_manifests() -> None:
     assert not missing, f"四源未全部声明 x.summary.today：缺 {sorted(missing)}"
 
 
+# ── fail-soft · 聚合层「四源缺一不塌」（令 99 派单 · astrbot）──────────────
+def test_failsoft_one_provider_down_others_still_return() -> None:
+    """★ fail-soft：四源中一家/多家挂掉，其余源**仍正常返回**——「缺一不塌」。
+
+    对照：R-1 系列测的是**单家**语义（404/5xx/网络错 → 各自三态）；
+          本用例测的是**聚合层**语义（一家坏 ≠ 全坏，聚合不整体失败）。
+    来源：总监令 99 §2「@astrbot：fail-soft 测试『四源缺一不塌』」。
+    """
+
+    async def run() -> list[dict[str, Any]]:
+        # 四家并发，各挂各的：calendar 5xx / review 网络错 / todo+diary 正常
+        handlers: dict[str, Any] = {
+            "calendar": lambda req: httpx.Response(500, text="boom"),
+            "todo": lambda req: httpx.Response(200, json={"title": "待办", "items": []}),
+            "diary": lambda req: httpx.Response(
+                200, json={"title": "日记", "items": [{"text": "x", "state": "info"}]}
+            ),
+            "review": lambda req: (_ for _ in ()).throw(httpx.ConnectError("down")),
+        }
+
+        async def one(pid: str, handler: Any) -> dict[str, Any]:
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(handler), base_url="http://t"
+            ) as client:
+                return await _fetch_one(
+                    client, pid, f"http://t/api/v1/{pid}/today-summary", {}, 3.0
+                )
+
+        return list(await asyncio.gather(*(one(pid, h) for pid, h in handlers.items())))
+
+    results = asyncio.run(run())
+    by_id = {r["id"]: r for r in results}
+
+    # ① 聚合不整体崩：四家条目都在
+    assert len(results) == 4, "聚合层整体失败（缺一即塌）"
+    # ② 坏的两家 → unavailable（各自标记，不抛异常）
+    assert by_id["calendar"]["status"] == "unavailable"
+    assert by_id["review"]["status"] == "unavailable"
+    # ③ 好的两家 → ok，且 data 原样透传（R-1 不受影响）
+    assert by_id["todo"]["status"] == "ok"
+    assert by_id["diary"]["status"] == "ok"
+    assert by_id["diary"]["data"] == {"title": "日记", "items": [{"text": "x", "state": "info"}]}
+    # ④ 失败源不含 data 键（三态语义干净）
+    assert "data" not in by_id["calendar"]
+    assert "data" not in by_id["review"]
+
+
 # ── S-2 · token 透传 + 单家超时 + 不落日志 ───────────────────────────────
 def test_s2_token_sent_to_provider_only(monkeypatch: pytest.MonkeyPatch) -> None:
     """JWT 只透传给插件端点，不进 URL（url 由固定注册表拼接）。"""
