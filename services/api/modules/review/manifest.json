@@ -27,7 +27,8 @@
   "provides": [
     "review.daily.read",
     "review.note.write",
-    "review.source.read"
+    "review.source.read",
+    "x.summary.today"
   ],
   "requires": [],
   "slots": [],
