@@ -84,8 +84,24 @@ export const todoApi = {
   // raw：一行 Obsidian 语法（含 @日期/!优先级/#标签 语法糖），服务端解析
   create: (raw: string) => api.post<TodoItem>(`${BASE}/items`, { raw }),
 
-  createStructured: (body: Partial<TodoItem> & { due_at?: string | null }) =>
-    api.post<TodoItem>(`${BASE}/items`, body),
+  // ★ 归一化（总监令2 防御补丁）：后端 TodoCreate 只认 raw|text，不认 title。
+  // 历史调用方若误传 title 或空 text → pydantic 忽略 extra → 422 "text 不能为空"。
+  // 请求出口做一次清洗：title→text、空 text 回退 raw、剥离只读字段（id/done/...）。
+  createStructured: (
+    body: Partial<TodoItem> & { due_at?: string | null; title?: string; raw?: string },
+  ) => {
+    const { title, text, due_at, priority, recur_rule, tags, raw } = body;
+    const normalized: Record<string, unknown> = {};
+    const finalText = (text ?? title ?? "").trim();
+    if (finalText) normalized.text = finalText;
+    else if (raw) normalized.raw = raw;
+    else normalized.raw = String(title ?? text ?? "");
+    if (due_at) normalized.due_at = due_at;
+    if (priority) normalized.priority = priority;
+    if (recur_rule) normalized.recur_rule = recur_rule;
+    if (tags?.length) normalized.tags = tags;
+    return api.post<TodoItem>(`${BASE}/items`, normalized);
+  },
 
   update: (id: string, body: Partial<TodoItem>) => api.patch<TodoItem>(`${BASE}/items/${id}`, body),
 
