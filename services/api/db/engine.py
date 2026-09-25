@@ -74,6 +74,14 @@ def make_engine(db_url: str | None = None) -> Engine:
         echo=False,
         # SQLite + FastAPI 线程池：同一连接可能被不同线程先后使用
         connect_args={"check_same_thread": False},
+        # ★ 根因 D 兜底（2026-09-25 令 6）：池参数防"连接泄漏后耗尽"——
+        #   pre_ping：取连接前探活，坏连接自动重建（不把 500 抛给用户）；
+        #   recycle：连接最长存活 1h，超龄回收（防长命连接腐化）；
+        #   size/overflow：显式给足余量（默认 5+10，139 处 Depends 并发下偏紧）。
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        pool_size=10,
+        max_overflow=20,
     )
     _apply_sqlite_pragmas(engine)
     return engine

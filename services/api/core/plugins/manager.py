@@ -17,7 +17,7 @@ from typing import Any
 
 from sqlmodel import select
 
-from core.deps import get_db
+from core.deps import get_db, db_session
 from core.errors import ConflictError, ForbiddenError, NotFoundError
 from core.plugins import discover as discover_mod
 from core.plugins.discover import DiscoveryResult, PluginInfo, mount_plugin
@@ -47,7 +47,7 @@ class PluginManager:
 
     def list_plugins(self) -> list[dict[str, Any]]:
         result = self.discover()
-        with get_db() as db:
+        with db_session() as db:
             states = {
                 s.id: s
                 for s in db.exec(select(PluginState)).all()
@@ -113,7 +113,7 @@ class PluginManager:
         return out
 
     def _enabled(self, plugin_id: str) -> bool:
-        with get_db() as db:
+        with db_session() as db:
             st = db.get(PluginState, plugin_id)
         return st.enabled if st else True
 
@@ -127,7 +127,7 @@ class PluginManager:
     ) -> None:
         manifest = info.manifest
         granted = list(manifest.get("permissions", []))
-        with get_db() as db:
+        with db_session() as db:
             st = db.get(PluginState, info.id)
             if st is None:
                 st = PluginState(id=info.id)
@@ -156,7 +156,8 @@ class PluginManager:
         self._upsert_state(info, enabled=True, last_error=None)
         try:
             mount_plugin(info, registry)
-            err = run_lifecycle_hook(info, "enable", db=get_db())
+            with db_session() as db:
+                err = run_lifecycle_hook(info, "enable", db=db)
         except Exception as exc:  # noqa: BLE001
             self._upsert_state(info, enabled=True, last_error=str(exc))
             raise
@@ -169,7 +170,8 @@ class PluginManager:
         if info.kind == "core":
             raise ForbiddenError(f"内核插件「{plugin_id}」不可禁用（kind=core）")
         self._unmount(info, registry)
-        err = run_lifecycle_hook(info, "disable", db=get_db())
+        with db_session() as db:
+            err = run_lifecycle_hook(info, "disable", db=db)
         self._upsert_state(info, enabled=False, last_error=err)
         return self.get_plugin(plugin_id)
 
@@ -189,7 +191,8 @@ class PluginManager:
 
         engine = get_engine()
         run_migrations(engine, info)
-        run_lifecycle_hook(info, "install", db=get_db())
+        with db_session() as db:
+            run_lifecycle_hook(info, "install", db=db)
         self._upsert_state(info, enabled=True, last_error=None)
         mount_plugin(info, registry)
         return self.get_plugin(plugin_id)
@@ -202,7 +205,8 @@ class PluginManager:
                 "（builtin/core 随系统发布，只能禁用）。"
             )
         # 1) 生命周期 on_uninstall
-        run_lifecycle_hook(info, "uninstall", db=get_db())
+        with db_session() as db:
+            run_lifecycle_hook(info, "uninstall", db=db)
         # 2) 摘掉路由（扩展点注册清理）
         self._unmount(info, registry)
         # 3) 回滚迁移（删表）
@@ -211,7 +215,7 @@ class PluginManager:
         engine = get_engine()
         rollback_migrations(engine, info)
         # 4) 清状态表（plugin_state + plugin_setting）
-        with get_db() as db:
+        with db_session() as db:
             st = db.get(PluginState, plugin_id)
             if st is not None:
                 db.delete(st)
@@ -228,12 +232,12 @@ class PluginManager:
     # ───────────────────────── 设置 ─────────────────────────
     def get_settings(self, plugin_id: str) -> dict[str, Any]:
         self._require(plugin_id)
-        with get_db() as db:
+        with db_session() as db:
             return read_settings(db, plugin_id)
 
     def set_settings(self, plugin_id: str, settings: dict[str, Any]) -> dict[str, Any]:
         info = self._require(plugin_id)
-        with get_db() as db:
+        with db_session() as db:
             return write_settings(db, info, plugin_id, settings)
 
     # ───────────────────────── 健康 ─────────────────────────

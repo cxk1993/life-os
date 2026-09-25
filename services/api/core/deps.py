@@ -10,6 +10,8 @@
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, Protocol, runtime_checkable
 
 from fastapi import Request
@@ -20,6 +22,7 @@ from core.security import get_current_user, require_scope
 
 __all__ = [
     "get_db",
+    "db_session",
     "get_current_user",
     "require_scope",
     "set_engine",
@@ -45,8 +48,15 @@ def set_engine(factory: Any) -> None:
     _engine_factory = factory
 
 
-def get_db() -> Session:
+def get_db() -> Iterator[Session]:
     """依赖注入：返回数据库会话。
+
+    ★ 根因 D 修复（2026-09-25 · 总监令 6 · workbuddy 执行）：
+      此前为**普通函数** `return _engine_factory()` —— FastAPI 对**非生成器依赖永不
+      close**，139 处 `Depends(get_db)` 全部裸漏连接（QueuePool exhausted → 500，
+      75 次存量泄漏实测）。
+      改为**生成器** `yield` + `finally close`：**一处改，全部调用点受益**，
+      且与 FastAPI 的 `Depends(get_db)` 完全兼容（原生支持生成器依赖）。
 
     开发期/测试期若 T04 尚未注入引擎，调用即报错（明确告知等待 T04），
     绝不会返回假连接掩盖故障。
@@ -55,7 +65,33 @@ def get_db() -> Session:
         raise ServiceUnavailableError(
             "数据库未就绪：等待 T04 注入引擎（core.deps.set_engine）"
         )
-    return _engine_factory()
+    session = _engine_factory()
+    try:
+        yield session
+    finally:
+        # ★ 必须 close：把连接还给池（生成器依赖的收尾钩子由 FastAPI 保证执行）
+        session.close()
+
+
+@contextmanager
+def db_session() -> Iterator[Session]:
+    """**非依赖注入场景**用（如插件 lifecycle hook、迁移脚本）。
+
+    ★ 为什么需要它（2026-09-25 根因 D 修复的配套）：
+      `get_db` 现在是**生成器函数**（供 `Depends(get_db)`，FastAPI 会自动 close）——
+      **生成器对象不是上下文管理器**，故原 `with db_session() as db` 写法必须改为
+      `with db_session() as db:`（本文件同批把 16 处调用点迁过来）。
+      两者共用同一把 `_engine_factory`，语义一致：**进入建 session，退出必 close**。
+    """
+    if _engine_factory is None:
+        raise ServiceUnavailableError(
+            "数据库未就绪：等待 T04 注入引擎（core.deps.set_engine）"
+        )
+    session = _engine_factory()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 # ───────────────────────── ISSUE-005 A 案：插件间内部调用 ─────────────────────────
