@@ -7,10 +7,11 @@
 from __future__ import annotations
 
 import asyncio
-import httpx
+import os
 from pathlib import Path
 from typing import Annotated, Any
 
+import httpx
 from fastapi import APIRouter, Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -262,7 +263,12 @@ def create_app(
 
         auth = request.headers.get("authorization")
         headers = {"Authorization": auth} if auth else {}
-        base = f"{request.url.scheme}://{request.url.netloc}"
+        # ★ 自环走**本机回环**，不绕外网域名（汐瑶 11:47 坐实的 BFF 缺陷根因）：
+        #   若用 request.url（生产 = https://life...:8443），聚合转发会出公网 DNS + nginx
+        #   再绕回 uvicorn —— 实测超时（3s）→ 四家全 unavailable，而四源直调明明 200。
+        #   内核调自己 = 127.0.0.1:18000 一跳直达。端口可由 LIFE_SUMMARY_INTERNAL_PORT 覆盖。
+        port = os.environ.get("LIFE_SUMMARY_INTERNAL_PORT", "18000")
+        base = f"http://127.0.0.1:{port}"
         async with httpx.AsyncClient() as client:
             providers = list(
                 await asyncio.gather(
