@@ -28,6 +28,8 @@
     { "key": "mcp", "label": "MCP Server", "entry": "mcp" },
     { "key": "push", "label": "推送", "entry": "push" },
     { "key": "export", "label": "导出中心", "entry": "export" },
+    { "key": "query", "label": "跨区块查询", "entry": "query" },
+    { "key": "plugins", "label": "插件管理", "entry": "plugins" },
     { "key": "auth", "label": "账户与鉴权" }
   ],
   "lifecycle": {

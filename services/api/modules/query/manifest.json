@@ -23,7 +23,7 @@
     "habits.habit.read",
     "finance.entry.read"
   ],
-  "slots": ["dashboard.card", "desktop.dock"],
+  "slots": ["dashboard.card"],
   "emits": [],
   "consumes": [],
   "permissions": ["db:own"],

@@ -26,7 +26,6 @@
     "web.entry.write"
   ],
   "slots": [
-    "desktop.dock",
     "dashboard.card"
   ],
   "emits": [],

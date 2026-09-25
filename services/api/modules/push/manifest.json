@@ -17,7 +17,7 @@
   },
   "provides": ["push.subscription.read"],
   "requires": [],
-  "slots": ["desktop.dock", "settings.page"],
+  "slots": ["settings.page"],
   "emits": ["push.sent"],
   "consumes": ["calendar.reminder.fired"],
   "permissions": ["db:own"],
