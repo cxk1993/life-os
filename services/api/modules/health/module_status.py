@@ -27,17 +27,25 @@ STATUSES: tuple[str, ...] = ("healthy", "degraded", "disabled", "unknown")
 
 
 def classify_module_status(
-    *, registered: bool, activated: bool, activation_error: str | None
+    *,
+    registered: bool,
+    activated: bool,
+    activation_error: str | None,
+    kind: str | None = None,
 ) -> str:
     """结构四态判定（纯函数，便于单测穷举）。
 
     优先级：未注册(unknown) > 激活报错(degraded) > 未激活(disabled) > 其余(healthy)。
+    路径 a（令 78/95/99）：container 型无 api、不挂路由，无"激活"语义——
+    注册即就绪（healthy）；disabled 收窄为"本可激活却未激活"。
     """
     if not registered:
         return "unknown"
     if activation_error is not None:
         return "degraded"
     if activated:
+        return "healthy"
+    if kind == "container":
         return "healthy"
     return "disabled"
 
@@ -57,7 +65,10 @@ def _module_entry(
         "name": data.get("name"),
         "kind": data.get("kind"),
         "status": classify_module_status(
-            registered=True, activated=activated, activation_error=error
+            registered=True,
+            activated=activated,
+            activation_error=error,
+            kind=data.get("kind"),
         ),
         "activated": activated,
         "api_health_declared": bool(api.get("health")),
@@ -96,8 +107,13 @@ def dock_module_status(app: Any, db: Session) -> dict[str, Any]:
         for p in (data.get("provides") or []):
             available.add(str(p))
     for mid, manifest in registered.items():
+        data = manifest if isinstance(manifest, dict) else {}
+        # 路径a（令78/95/103）：container 型不挂路由（不在 mounted），
+        # 无激活错误即视为已激活（纯前端容器，健康语义=注册成功无错）
+        _is_container = data.get("kind") == "container"
+        _activated = (mid in mounted) or (_is_container and errors.get(mid) is None)
         entry = _module_entry(
-            mid, manifest, activated=mid in mounted, error=errors.get(mid), available=available
+            mid, manifest, activated=_activated, error=errors.get(mid), available=available
         )
         items.append(entry)
         summary[entry["status"]] += 1
