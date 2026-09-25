@@ -327,3 +327,40 @@ def test_uninstall_builtin_rejected(client: TestClient) -> None:
     # auth 是 builtin
     r = client.post("/api/v1/plugins/auth/uninstall", headers=AUTH)
     assert r.status_code == 403, r.text
+
+
+# ───────────────────────── ISSUE-012 契约：清单必须携带 manifest ─────────────────────────
+def test_list_plugins_carries_manifest(client: TestClient) -> None:
+    """ISSUE-012：/api/v1/plugins 每项必须含 manifest（前端 p.manifest.entry 依赖它）。
+
+    回归背景：list_plugins() 组装时漏了 manifest 字段 → 前端 `p.manifest.entry` 必抛
+    TypeError → 插件扩展点贡献（E5 sidecar / D1 dashboard.card）结构化无法挂载。
+    修法：每项加 `"manifest": p.manifest`；本测试钉住该契约。
+    """
+    r = client.get("/api/v1/plugins", headers=AUTH)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    plugins = body if isinstance(body, list) else body.get("plugins", body.get("items", []))
+    assert len(plugins) > 0, "至少应发现一个插件"
+
+    for p in plugins:
+        assert "manifest" in p, f"插件 {p.get('id')} 缺 manifest 字段（ISSUE-012）"
+        m = p["manifest"]
+        # entry/window/slots 应可读（允许合法缺 entry：纯 API 插件无 UI 入口）
+        assert isinstance(m.get("slots", []), list), f"{p.get('id')} slots 非列表"
+        assert "window" in m or "entry" in m or not m.get("slots"), (
+            f"{p.get('id')} 声明了 slots 却无 entry/window（manifest 不完整）"
+        )
+
+
+def test_list_plugins_manifest_slots_include_sidecar(client: TestClient) -> None:
+    """ISSUE-012 配套：todo/health 的 manifest.slots 含 window.sidecar（E5/D1 生产前置）。"""
+    r = client.get("/api/v1/plugins", headers=AUTH)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    plugins = body if isinstance(body, list) else body.get("plugins", body.get("items", []))
+    by_id = {p.get("id"): p for p in plugins}
+    for pid in ("todo", "health"):
+        assert pid in by_id, f"{pid} 插件缺失"
+        slots = by_id[pid].get("manifest", {}).get("slots", [])
+        assert "window.sidecar" in slots, f"{pid} manifest.slots 缺 window.sidecar: {slots}"

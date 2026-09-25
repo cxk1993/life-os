@@ -75,6 +75,10 @@ class PluginManager:
                     "requires": p.manifest.get("requires", []),
                     "last_error": st.last_error if st else None,
                     "valid": True,
+                    # ★ ISSUE-012（2026-09-23 hermes）：清单必须携带完整 manifest，
+                    #   否则前端 `p.manifest.entry/window/slots` 必崩，插件扩展点贡献
+                    #   结构化无法挂载（E5 sidecar / D1 dashboard.card / DEG-01 软依赖角标）。
+                    "manifest": p.manifest,
                 }
             )
         # 也列出校验失败但目录存在的插件（让用户知道为什么没起来）

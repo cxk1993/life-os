@@ -194,9 +194,30 @@ def create_app(
         return {"modules": public, "count": len(public), "visibility": "public"}
 
     # ── 聚合 OpenAPI（验收要求出现在 /api/docs）──
+    # ★ 乙案（总监令 92/95 · 2026-09-25）：内核挂载模块时统一提供 openapi 端点
+    #   —— 23 模块 manifest 均声明 api.openapi 但零实现、零消费（模板惯例字段）；
+    #   内核兜底让声明成真，未来新模块自动受益。
     @app.get("/api/docs", tags=["_kernel"], include_in_schema=False)
     def aggregate_docs() -> Any:
         return app.openapi()
+
+    @app.get("/api/{module_id}/openapi.json", tags=["_kernel"], include_in_schema=False)
+    def module_openapi(module_id: str, request: Request) -> Any:
+        """模块级 openapi 端点（内核兜底）—— 按 manifest 声明路径返回该模块的 schema。"""
+        if module_id not in app.state.modules:
+            raise HTTPException(status_code=404, detail=f"模块 {module_id} 未注册")
+        mod = app.state.modules[module_id]
+        base = mod.get("api", {}).get("base")
+        if not base:
+            raise HTTPException(status_code=404, detail=f"模块 {module_id} 未声明 api.base")
+        # 从全局 schema 中提取该模块的路径前缀
+        full = app.openapi()
+        paths = {
+            p: v
+            for p, v in full.get("paths", {}).items()
+            if p.startswith(base)
+        }
+        return {**full, "paths": paths}
 
     # ── 事件总线 SSE 订阅 ──
     events_router = APIRouter()

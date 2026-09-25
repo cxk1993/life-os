@@ -39,6 +39,7 @@ class PluginInfo:
     source: str  # "builtin"(modules/) | "third-party"(plugins/)
     manifest: dict[str, Any]
     directory: Path
+    compat_status: str = "ok"  # "ok" | "degraded" | "failed"
 
 
 @dataclass(frozen=True)
@@ -77,23 +78,35 @@ def _read_manifest(manifest_path: Path, source: str) -> tuple[dict[str, Any], Pl
     try:
         validate_manifest(raw)
     except Exception as exc:  # validate_manifest 抛 ManifestError；也兜底其它
-        return raw, PluginError(
-            manifest_path.parent, source, f"契约校验失败：{exc}"
-        )
+        return raw, PluginError(manifest_path.parent, source, f"契约校验失败：{exc}")
 
     pid = raw["id"]
     dir_name = manifest_path.parent.name
     if pid != dir_name:
         return raw, PluginError(
-            manifest_path.parent,
-            source,
+            manifest_path.parent, source,
             f"manifest.id={pid!r} 必须等于目录名 {dir_name!r}",
         )
 
+    # ★ G1：minKernel 校验（内核版本不满足时降级，不拒绝）
+    min_kernel = raw.get("minKernel")
+    if min_kernel:
+        from core.plugins.version import KERNEL_API_VERSION, satisfies
+        try:
+            if not satisfies(KERNEL_API_VERSION, f"={min_kernel}"):
+                raw["_compat_status"] = "degraded"
+                raw["_compat_reason"] = f"minKernel={min_kernel} 不满足，当前 {KERNEL_API_VERSION}"
+        except Exception:
+            raw["_compat_status"] = "degraded"
+            raw["_compat_reason"] = f"minKernel={min_kernel} 校验失败"
+
+    # ★ G2：kernelApi 不兼容时降级而非 fail-fast（台账 #026 要求：个人系统一插件坏不应带崩全坞）
     try:
+        from core.plugins.version import check_compatibility
         check_compatibility(raw["kernelApi"])
     except Exception as exc:
-        return raw, PluginError(manifest_path.parent, source, f"内核接口不兼容：{exc}")
+        raw["_compat_status"] = "degraded"
+        raw["_compat_reason"] = f"kernelApi 不兼容：{exc}"
 
     return raw, None
 
@@ -118,6 +131,7 @@ def _scan(root: Path, source: str) -> tuple[list[PluginInfo], list[PluginError]]
                 source=source,
                 manifest=raw,
                 directory=sub,
+                compat_status=raw.get("_compat_status", "ok"),
             )
         )
     return plugins, errors

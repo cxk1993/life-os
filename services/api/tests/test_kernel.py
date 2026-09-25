@@ -137,6 +137,50 @@ def test_module_is_discovered_and_mounted(probe_module: Path) -> None:
     assert f"/api/v1/{PROBE_ID}/ping" in paths
 
 
+# ─────────── 2.5 ISSUE-011 案 C：/api/v1/modules 公开面折中 ───────────
+def test_modules_public_shape_whitelist() -> None:
+    """裸调 /api/v1/modules 只回白名单字段；带有效 token 才回全量（案 C）。"""
+    from core.security import create_access_token
+
+    client = TestClient(create_app())
+
+    # T1 裸调 → 200 public
+    body = client.get("/api/v1/modules").json()
+    assert body["visibility"] == "public"
+    assert body["count"] == len(body["modules"])
+
+    # T2 每个 module 的 key 集合 ⊆ 白名单
+    allowed = {"id", "name", "icon", "version"}
+    for m in body["modules"]:
+        assert set(m) <= allowed, f"裸调泄露了字段：{sorted(set(m) - allowed)}"
+
+    # T3 裸调 body 不含敏感字段键名（T2 已保证键集合 ⊆ 白名单，此条防未来字段膨胀；
+    #   故意不含 "api"——有模块的 icon 值恰为 "api"，键名检查会误伤值）
+    raw = json.dumps(body, ensure_ascii=False)
+    for forbidden in ('"provides"', '"permissions"', '"requires"', '"emits"'):
+        assert forbidden not in raw, f"裸调泄露了 {forbidden}"
+
+    # T4 有效 token → 200 full，含 provides
+    tk = create_access_token("admin")
+    full = client.get(
+        "/api/v1/modules", headers={"Authorization": f"Bearer {tk}"}
+    ).json()
+    assert full["visibility"] == "full"
+    assert full["count"] == len(full["modules"])
+    for m in full["modules"]:
+        assert "provides" in m, "full 面缺失 provides"
+
+    # T6 两态 count 一致
+    assert full["count"] == body["count"]
+
+
+def test_modules_fake_token_is_401() -> None:
+    """伪造/过期 token → 401（与 /api/v1/plugins 口径对齐，假 token 不给信息）。"""
+    client = TestClient(create_app())
+    r = client.get("/api/v1/modules", headers={"Authorization": "Bearer not-a-real-token"})
+    assert r.status_code == 401, f"假 token 应 401，实测 {r.status_code}"
+
+
 # ─────────────── 3. 坏 manifest → 启动失败并指明字段 ───────────────
 def test_broken_manifest_fails_loudly_with_module_and_field(tmp_path: Path) -> None:
     bad = tmp_path / "brokenmod"

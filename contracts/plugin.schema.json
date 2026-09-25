@@ -11,13 +11,19 @@
     "version",
     "kind",
     "kernelApi",
-    "api",
     "provides",
     "requires",
     "slots",
     "emits",
     "consumes",
     "permissions"
+  ],
+  "allOf": [
+    {
+      "description": "★ 路径 a（总监令 78）：仅 container 型可省 api；其余 kind 必须声明 api。",
+      "if": { "properties": { "kind": { "not": { "const": "container" } } } },
+      "then": { "required": ["api"] }
+    }
   ],
   "properties": {
     "id": {
@@ -37,8 +43,8 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["core", "builtin", "third-party"],
-      "description": "core 不可禁用不可卸载；builtin 可禁用不可卸载；third-party 可禁用可卸载。"
+      "enum": ["core", "builtin", "third-party", "container"],
+      "description": "core 不可禁用不可卸载；builtin 可禁用不可卸载；third-party 可禁用可卸载；container 为容器型模块（纯前端编排容器，如系统窗，可无 api 与 entry）。"
     },
     "minKernel": {
       "type": "string",
@@ -95,6 +101,23 @@
           "type": "object",
           "additionalProperties": { "type": "string", "pattern": "^/" },
           "description": "ISSUE-008 方案 A：resource → 真实路由段 的显式映射（如 {\"entry\": \"/entries\"}）。键为 provides 倒数第二段；声明则 MCP 转发优先用它，未声明 resource 走机械「resource+s」推导。"
+        }
+      }
+    },
+    "tabs": {
+      "type": "array",
+      "description": "★ 路径 a（总监令 78）：容器型模块（kind=container）的页签声明。一次定稿，形状与前端 SystemApp（70c0702）对接面一致：{key,label,entry?}。entry=模块 id（该页懒加载对应 App）；无 entry 的页 =「后端模块 · 仅服务」薄壳语义。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "label"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1, "description": "页签唯一键（容器内稳定标识）。" },
+          "label": { "type": "string", "minLength": 1, "description": "页签显示名。" },
+          "entry": {
+            "type": "string",
+            "description": "可选：该页关联的模块 id（懒加载对应 App）；省略则为「仅服务」薄壳页。"
+          }
         }
       }
     },

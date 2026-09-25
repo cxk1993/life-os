@@ -234,3 +234,90 @@ def test_real_modules_still_all_pass_with_new_gates() -> None:
     api_root = Path(__file__).resolve().parents[1]
     mods = discover_modules(api_root / "modules")
     assert len(mods) >= 18, f"真实模块数异常减少：{len(mods)}"
+
+# ── ★ 路径 a（总监令 78）：容器型模块（kind=container）分档 ──────────────
+def _write_raw(root: Path, mid: str, manifest: dict[str, object]) -> None:
+    """按给定 manifest 原文落盘（用于省略 api 等条件化场景）。"""
+    d = root / mid
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def test_container_module_without_api_passes(tmp_path: Path) -> None:
+    """★ 路径 a：container 型**可无 api**（纯前端编排容器，如系统窗）。"""
+    _write_raw(
+        tmp_path,
+        "system",
+        {"id": "system", "name": "系统", "version": "0.1.0", "kind": "container"},
+    )
+    mods = discover_modules(tmp_path)
+    assert len(mods) == 1
+    assert mods[0][0].api is None
+
+
+def test_non_container_without_api_rejected(tmp_path: Path) -> None:
+    """★ 路径 a：非 container 型**必须声明 api**（缺则拒，防静默漏配）。"""
+    _write_raw(
+        tmp_path,
+        "alpha",
+        {"id": "alpha", "name": "alpha", "version": "0.1.0", "kind": "builtin"},
+    )
+    with pytest.raises(ManifestError, match="必须声明 api"):
+        discover_modules(tmp_path)
+
+
+def test_container_with_valid_tabs_passes(tmp_path: Path) -> None:
+    """★ 路径 a：container 的 tabs 声明（{key,label,entry?}）合法通过。"""
+    _write_raw(
+        tmp_path,
+        "system",
+        {
+            "id": "system",
+            "name": "系统",
+            "version": "0.1.0",
+            "kind": "container",
+            "tabs": [
+                {"key": "catalog", "label": "能力目录"},
+                {"key": "mcp", "label": "MCP", "entry": "mcp"},
+            ],
+        },
+    )
+    mods = discover_modules(tmp_path)
+    assert len(mods) == 1
+    tabs = mods[0][0].tabs
+    assert [t["key"] for t in tabs] == ["catalog", "mcp"]
+    assert tabs[1]["entry"] == "mcp"
+
+
+def test_tabs_missing_key_or_label_rejected(tmp_path: Path) -> None:
+    """★ 路径 a：tabs 项缺 key/label → 拒（形状一次定稿，不允许残缺）。"""
+    _write_raw(
+        tmp_path,
+        "system",
+        {
+            "id": "system",
+            "name": "系统",
+            "version": "0.1.0",
+            "kind": "container",
+            "tabs": [{"label": "缺key页"}],
+        },
+    )
+    with pytest.raises(ManifestError, match="缺必填字段"):
+        discover_modules(tmp_path)
+
+
+def test_container_api_when_declared_still_checked(tmp_path: Path) -> None:
+    """★ 路径 a：container 若**声明** api，base 仍须等于 /api/v1/<id>（不放水）。"""
+    _write_raw(
+        tmp_path,
+        "system",
+        {
+            "id": "system",
+            "name": "系统",
+            "version": "0.1.0",
+            "kind": "container",
+            "api": {"base": "/api/v1/wrong"},
+        },
+    )
+    with pytest.raises(ManifestError, match="api.base 必须是"):
+        discover_modules(tmp_path)

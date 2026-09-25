@@ -75,7 +75,15 @@ class PluginActivator:
 
     # ─────────────────────── 启动路径 ───────────────────────
     def activate_on_startup(self, info: PluginInfo) -> bool:
-        """启动挂载判定：always → 立即激活返回 True；事件型 → 登记 pending 返回 False。"""
+        """启动挂载判定：always → 立即激活返回 True；事件型 → 登记 pending 返回 False。
+        ★ G2：degraded 插件跳过激活，不挂载路由，不打断其他插件。"""
+        # ★ G2：不兼容插件降级处理，不激活
+        if info.compat_status == "degraded":
+            log.warning(
+                "插件降级（不兼容，跳过激活）",
+                extra={"module": info.id, "reason": info.manifest.get("_compat_reason", "unknown")},
+            )
+            return False
         if is_startup_always(info.manifest):
             self.activate(info)
             return True
@@ -94,6 +102,13 @@ class PluginActivator:
             if info.id in self._activated or info.id in self._registry.mounted():
                 self._activated.add(info.id)
                 return
+            # 路径 a（总监令 78/95）：container 型模块 = 纯前端编排容器，无 router.py
+            # 也不该挂路由——登记激活态即返回，Dock/entry 由前端 manifest 驱动。
+            if info.manifest.get("kind") == "container":
+                self._activated.add(info.id)
+                self._last_error.pop(info.id, None)
+                log.info("容器型模块跳过路由挂载", extra={"module": info.id})
+                return
             try:
                 mount_plugin(info, self._registry)
             except Exception as exc:  # noqa: BLE001 —— 缓行纪律：记目击，不自动处置
@@ -109,13 +124,15 @@ class PluginActivator:
 
     # ─────────────────────── 事件路径 ───────────────────────
     def on_event(self, event: dict[str, Any]) -> None:
-        """事件总线回调：命中 pending topic 的插件逐个激活（幂等）。"""
+        """事件总线回调：命中 pending topic 的插件逐个激活（幂等）。
+        ★ G2：degraded 插件跳过激活。"""
         topic = str(event.get("topic", ""))
-        with self._lock:
-            waiters = self._pending.pop(topic, None)
+        waiters = self._pending.pop(topic, None)
         if not waiters:
             return
         for info in waiters:
+            if info.compat_status == "degraded":
+                continue
             try:
                 self.activate(info)
             except Exception:  # noqa: BLE001 —— activate 内已记目击；事件回调绝不上抛

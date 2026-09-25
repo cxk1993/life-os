@@ -19,7 +19,7 @@ from core.errors import ManifestError
 
 log = logging.getLogger("kernel.manifest")
 
-_KINDS = {"core", "builtin", "third-party"}
+_KINDS = {"core", "builtin", "third-party", "container"}
 _ID_RE = __import__("re").compile(r"^[a-z][a-z0-9-]*$")
 # TX-ACT-01：activates_on 条目只允许 startup:always 或 event:<topic>
 # （topic 点分小写、至少两段，如 event:note.created）——与 contracts/plugin.schema.json
@@ -51,7 +51,14 @@ class Manifest(BaseModel):
     icon: str | None = None
     description: str | None = None
     author: str | None = None
-    api: ManifestApi
+    # ★ 路径 a（总监令 78 · 2026-09-25）：容器型模块（kind="container"）允许**无 api**
+    #   —— 系统窗等纯前端编排容器没有后端路由，声明式注册即"一切皆插件"的正形态。
+    #   非 container 型仍强制声明 api（校验见 _validate）。向后兼容：存量模块零影响。
+    api: ManifestApi | None = None
+    # ★ 路径 a（总监令 78）：容器型模块的页签声明——一次定稿，形状与 Zcode
+    #   SystemApp（70c0702）对接面一致：{key, label, entry?}，entry=模块 id
+    #   （无 entry 页 = 「后端模块 · 仅服务」薄壳语义）。非 container 型可忽略。
+    tabs: list[dict[str, Any]] = []
     provides: list[str] = []
     requires: list[str] = []
     # ★ TX-DEG-01（#009 软依赖声明的静态半边）：缺了**不阻塞启动**的依赖。
@@ -118,11 +125,33 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
         raise ManifestError(
             f"模块「{m.id}」kind={m.kind!r} 必须是 {sorted(_KINDS)} 之一"
         )
-    expected_base = f"/api/v1/{m.id}"
-    if m.api.base != expected_base:
-        raise ManifestError(
-            f"模块「{m.id}」api.base 必须是 {expected_base!r}，实际为 {m.api.base!r}"
-        )
+    # ★ 路径 a（总监令 78）：container 型可无 api；非 container 型必须声明 api
+    if m.api is None:
+        if m.kind != "container":
+            raise ManifestError(
+                f"模块「{m.id}」kind={m.kind!r} 必须声明 api（仅 kind=\"container\" 可省）"
+            )
+    else:
+        expected_base = f"/api/v1/{m.id}"
+        if m.api.base != expected_base:
+            raise ManifestError(
+                f"模块「{m.id}」api.base 必须是 {expected_base!r}，实际为 {m.api.base!r}"
+            )
+    # ★ 路径 a（令 78）：tabs 形状校验（一次定稿）——每项必须含 key/label，entry 可选
+    for idx, tab in enumerate(m.tabs):
+        if not isinstance(tab, dict):
+            raise ManifestError(
+                f"模块「{m.id}」tabs[{idx}] 必须是对象 {{key,label,entry?}}"
+            )
+        missing = [k for k in ("key", "label") if not tab.get(k)]
+        if missing:
+            raise ManifestError(
+                f"模块「{m.id}」tabs[{idx}] 缺必填字段 {missing}（形状 {{key,label,entry?}}）"
+            )
+        if "entry" in tab and tab["entry"] is not None and not isinstance(tab["entry"], str):
+            raise ManifestError(
+                f"模块「{m.id}」tabs[{idx}].entry 必须是字符串（模块 id）或省略"
+            )
     for act in m.activates_on:
         if not _ACTIVATES_ON_RE.match(act):
             raise ManifestError(
