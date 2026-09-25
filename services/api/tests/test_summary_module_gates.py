@@ -89,33 +89,60 @@ def test_r1_network_failure_is_unavailable_not_crash() -> None:
     assert r == {"id": "todo", "status": "unavailable"}
 
 
-# ── S-1 · 转发目标固定，不由请求参数决定（防 SSRF）────────────────────────
-def test_s1_providers_are_fixed_registry() -> None:
-    """_SUMMARY_PROVIDERS 为固定四源常量，请求参数无法控制转发目标。"""
+# ── S-1 · 转发目标来自 manifest 声明，不由请求参数决定（防 SSRF）──────────
+# ★ 2026-09-25 语义化改写（astrbot · 事故响应）：
+#   workbuddy `c2b03bf` 把 BFF 聚合源从「硬编码四家」改为「manifest 动态发现」
+#   （符合 ADR-0003「一切皆插件」）。原判据断言「create_app 源码含四源字面量」，
+#   重构后必然失效；且符号 `_SUMMARY_PROVIDERS` 已删 → 第二例 split() IndexError。
+#   → 新判据**锚语义不锚字面量**：源集合 ⊆ 各模块 manifest 声明的 x.summary.today，
+#     且转发目标不得来自请求参数（SSRF 防线语义不变）。
+def test_s1_providers_come_from_manifest_declaration() -> None:
+    """S-1：聚合源由 manifest 的 `x.summary.today` 声明决定，不由请求参数决定。"""
     from core.app import create_app
 
     import inspect
 
     src = inspect.getsource(create_app)
-    # 固定四元组内联在 create_app 内（BFF 端点定义处）
-    day_seg = src.split('("/api/v1/', 1)[1]
-    assert "/api/v1/calendar/today-summary" in src
-    assert "/api/v1/todo/today-summary" in src
-    assert "/api/v1/diary/today-summary" in src
-    assert "/api/v1/review/today-summary" in src
+    # ① 语义：动态发现以 x.summary.today 为过滤条件（源集合 ⊆ manifest 声明）
+    assert "x.summary.today" in src, "BFF 聚合源未按 manifest 声明发现"
 
 
 def test_s1_forward_target_not_from_request_params() -> None:
-    """转发目标不得从请求 query/body 读取（SSRF 防线静态断言）。"""
+    """S-1：转发目标路径由内核注册表拼接，不得来自请求 query/body（SSRF 静态断言）。"""
     from core.app import create_app
 
     import inspect
 
     src = inspect.getsource(create_app)
-    # summary_today 不读取任何 query 参数作为目标
-    assert "request.query_params" not in src.split("_SUMMARY_PROVIDERS")[1].split(
-        "app.include_router"  # noqa: E501
-    )[0]
+    seg = src.split("async def summary_today")[1].split("app.include_router")[0]
+    # 转发目标来自注册表 _summary_providers，且端点不读请求参数作为目标
+    assert "_summary_providers" in seg
+    assert "request.query_params" not in seg
+    assert "request.json()" not in seg
+
+
+def test_s1_providers_non_empty_from_manifests() -> None:
+    """★ 防「聚合源为空」复发（2026-09-25 事故）：四源 manifest 必须声明 x.summary.today。
+
+    事故链：`c2b03bf` 改动态发现 → 四源未同步声明 → `_summary_providers` 为空
+    → `/summary/today` 返回 `providers: []` → ② 小日历四分区无数据。
+    本判据把「四源声明齐」变成机器可检，防止同类重构再留半截。
+    """
+    import json
+    from pathlib import Path
+
+    mods = Path(__file__).resolve().parents[1] / "modules"
+    declared: set[str] = set()
+    for mf in mods.glob("*/manifest.json"):
+        try:
+            d = json.loads(mf.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 - 坏 manifest 由别的判据管
+            continue
+        if "x.summary.today" in (d.get("provides") or []):
+            declared.add(d.get("id") or mf.parent.name)
+    required = {"calendar", "todo", "diary", "review"}
+    missing = required - declared
+    assert not missing, f"四源未全部声明 x.summary.today：缺 {sorted(missing)}"
 
 
 # ── S-2 · token 透传 + 单家超时 + 不落日志 ───────────────────────────────

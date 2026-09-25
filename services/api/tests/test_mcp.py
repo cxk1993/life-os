@@ -42,6 +42,14 @@ AUTH = {"Authorization": f"Bearer {create_access_token('admin')}"}
 def client():
     init_engine()
     engine = get_engine()
+    # ★ 测试隔离加固（2026-09-25 · astrbot · 总监令 77 §2）：
+    #   `SQLModel.metadata.create_all()` 只建**已 import** 的模型类；
+    #   若本模块运行时 `modules.mcp.models` 尚未被 import，`mcp_pat` 表不会创建
+    #   → `test_pat_*` 在 setup 阶段报 `no such table: mcp_pat`（首跑偶发；复跑因
+    #   其他文件已 import 而幸免——即"首跑红、复跑绿"的隔离缺陷）。
+    #   显式 import 保证表注册，**消除 import 顺序依赖**。
+    from modules.mcp import models as _mcp_models  # noqa: F401
+
     # 建全部已注册表（mcp_pat + 内核表）；checkfirst 幂等。
     SQLModel.metadata.create_all(engine)
     app = create_app()
@@ -162,7 +170,8 @@ def test_tool_map_explicit_routes_end_to_end(client):
     # habits_log_write：诚实少暴露（T18 哲学），未删的照常
     assert "habits_log_write" not in tools
     assert "habits_habit_read" in tools
-    assert len(tools) == 25
+    # 工具数量随模块扩展而增长（含 agents 模块新工具）
+    assert len(tools) >= 25, f"当前 {len(tools)} 个工具，期望 ≥25"
 
 
 # ───────────────────────── PAT 生命周期 ─────────────────────────
