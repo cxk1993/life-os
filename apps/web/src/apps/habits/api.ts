@@ -56,13 +56,14 @@ export interface Summary {
 const BASE = "/api/v1/habits";
 
 export const habitsApi = {
+  // 1ce4691：router 已去双写前缀——列表=GET /api/v1/habits（不是 /habits/habits）
   list: (includeArchived = false) =>
-    api.get<Habit[]>(`${BASE}/habits?include_archived=${includeArchived ? "true" : "false"}`),
-  create: (body: HabitCreate) => api.post<Habit>(`${BASE}/habits`, body),
-  update: (id: string, body: HabitUpdateBody) => api.patch<Habit>(`${BASE}/habits/${id}`, body),
-  remove: (id: string) => api.delete<void>(`${BASE}/habits/${id}`),
+    api.get<Habit[]>(`${BASE}?include_archived=${includeArchived ? "true" : "false"}`),
+  create: (body: HabitCreate) => api.post<Habit>(BASE, body),
+  update: (id: string, body: HabitUpdateBody) => api.patch<Habit>(`${BASE}/${id}`, body),
+  remove: (id: string) => api.delete<void>(`${BASE}/${id}`),
   checkin: (id: string, body: { value?: string; note?: string } = {}) =>
-    api.post<Habit>(`${BASE}/habits/${id}/checkin`, body),
-  uncheck: (id: string, day: string) => api.delete<Habit>(`${BASE}/habits/${id}/checkin/${day}`),
+    api.post<Habit>(`${BASE}/${id}/checkin`, body),
+  uncheck: (id: string, day: string) => api.delete<Habit>(`${BASE}/${id}/checkin/${day}`),
   summary: () => api.get<Summary>(`${BASE}/summary`),
 };
