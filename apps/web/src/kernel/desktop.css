@@ -85,7 +85,12 @@
   color: var(--txt);
   font-size: 13px;
   font-family: var(--font-sans);
-  cursor: pointer;
+  cursor: grab; /* ★ 令 3：可拖动（主人现场令） */
+  user-select: none;
+  touch-action: none;
+}
+.desktop__compass-btn:active {
+  cursor: grabbing;
 }
 .desktop__compass-btn:hover {
   background: var(--surface-3, rgba(255, 255, 255, 0.06));
@@ -1291,6 +1296,14 @@
 
 /* —— V1-EXT2 · 桌面壁纸四态（Zcode 09-25）——
    .desktop[data-wp] 由 wallpaperApply.applyWallpaper 驱动；默认（无 data-wp）= 现状网格。 */
+/* grid 态显式声明：无论此前置过什么态，mode=grid 必显网格（防「回不来」迷航） */
+.desktop[data-wp="grid"] {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
 .desktop[data-wp="off"] {
   background-image: none !important;
 }
