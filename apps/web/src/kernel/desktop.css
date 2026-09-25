@@ -1320,7 +1320,9 @@
 .wp-settings-host {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  /* ★ 高于罗盘弹层（95001）与置顶窗（91000），低于窗右键菜单遮罩（100000）——
+     开窗状态下右键个性化不被窗口盖住（八维回验实锤修正）。 */
+  z-index: 95002;
   display: flex;
   align-items: center;
   justify-content: center;

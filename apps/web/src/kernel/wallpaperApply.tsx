@@ -41,12 +41,18 @@ interface SettingsHost {
 
 let activeRoot: Root | null = null;
 let activeHost: HTMLElement | null = null;
+let dismissListener: ((e: MouseEvent) => void) | null = null;
 
 function closeSettings(): void {
   activeRoot?.unmount();
   activeRoot = null;
   activeHost?.remove();
   activeHost = null;
+  // 监听随面板生命周期走（防重复右键累积残留 once 监听）
+  if (dismissListener) {
+    document.removeEventListener("click", dismissListener);
+    dismissListener = null;
+  }
 }
 
 function SettingsPanel({ host }: { host: SettingsHost }) {
@@ -146,5 +152,6 @@ export function openWallpaperSettings(host: SettingsHost): void {
   document.body.appendChild(activeHost);
   activeRoot = createRoot(activeHost);
   activeRoot.render(createElement(SettingsPanel, { host }));
-  document.addEventListener("click", dismiss, { once: true });
+  dismissListener = dismiss;
+  document.addEventListener("click", dismiss);
 }
