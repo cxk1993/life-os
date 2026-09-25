@@ -106,43 +106,9 @@
   border: 1px solid var(--line);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
-/* 扇形（conic-gradient 分区 + 内嵌按钮定位，零新依赖） */
-.desktop__compass-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.desktop__compass-slice {
-  fill: transparent;
-  stroke: var(--line);
-  stroke-width: 1;
-  cursor: pointer;
-}
-.desktop__compass-slice:hover,
-.desktop__compass-slice:focus-visible {
-  fill: var(--surface-3, rgba(120, 170, 255, 0.18));
-}
-.desktop__compass-slice.is-collapsed {
-  fill: rgba(120, 170, 255, 0.14);
-}
-.desktop__compass-label {
-  font-size: 11px;
-  fill: var(--txt);
-  pointer-events: none;
-  text-anchor: middle;
-  dominant-baseline: middle;
-  font-family: var(--font-sans);
-}
-.desktop__compass-center {
-  cursor: pointer;
-}
-.desktop__compass-center circle {
-  fill: var(--surface-3, rgba(120, 170, 255, 0.22));
-  stroke: var(--line);
-}
-.desktop__compass-center:hover circle {
-  fill: var(--surface-3, rgba(120, 170, 255, 0.4));
-}
+/* ★ 自验收修正（2026-09-25 · 八维之「完整度/优化」）：SVG 版样式已废弃
+   （最终实现改用真 <button>）—— 原 svg/slice-fill/label/circle 死代码已删除，
+   避免与新按钮版同名规则互相覆盖。 */
 
 /* ★ 4 扇区用**真 <button>** 绝对定位（无障碍天然好于 SVG role） */
 .desktop__compass-slice {
@@ -179,10 +145,10 @@
 }
 .desktop__compass-slice:hover,
 .desktop__compass-slice:focus-visible {
-  background: rgba(120, 170, 255, 0.16);
+  background: var(--accent-soft);
 }
 .desktop__compass-slice.is-collapsed {
-  background: rgba(120, 170, 255, 0.22);
+  background: var(--accent-soft);
 }
 .desktop__compass-center {
   position: absolute;
@@ -193,7 +159,7 @@
   height: 62px;
   border-radius: 50%;
   border: 1px solid var(--line);
-  background: rgba(120, 170, 255, 0.16);
+  background: var(--accent-soft);
   color: var(--txt);
   font-size: 13px;
   font-family: var(--font-sans);
@@ -201,7 +167,7 @@
 }
 .desktop__compass-center:hover,
 .desktop__compass-center:focus-visible {
-  background: rgba(120, 170, 255, 0.34);
+  background: var(--accent);
 }
 
 /* —— 顶栏 —— */
