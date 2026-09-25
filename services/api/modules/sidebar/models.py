@@ -3,9 +3,12 @@
 ★ 表名 sidebar_item（id 前缀铁律）。
 ★ note/announcement 的正文走 node_ref（笔记树），不另起存储。
 ★ href 协议白名单：只许 http/https（安全红线）。
+★ 索引幂等（令 102）：Field(index=True) 自动索引二次注册撞名 →
+  改显式 Index(..., extend_existing=True)，Field 不再 index=True。
 """
 from __future__ import annotations
 
+from sqlalchemy import Index
 from sqlalchemy import Text as SAText
 from sqlmodel import Field
 
@@ -21,11 +24,14 @@ TYPES = (TYPE_LINK, TYPE_NOTE, TYPE_ANNOUNCEMENT, TYPE_FRIEND)
 
 class SidebarItem(PkMixin, TimestampMixin, table=True):
     __tablename__ = "sidebar_item"
-    # ★ 令 71 §2 / 令 99 代行修：启动迁移对账时本表可能被重复定义
-    #   （Table 'sidebar_item' already defined），加 extend_existing 幂等化。
-    __table_args__ = {"extend_existing": True}
+    # 令 71/99/102：Table 幂等；显式 Index 且 Field 不再 index=True，防二次注册撞名
+    __table_args__ = (
+        Index("ix_sidebar_item_type", "type"),
+        Index("ix_sidebar_item_group", "group"),
+        {"extend_existing": True},
+    )
 
-    type: str = Field(max_length=20, index=True)
+    type: str = Field(max_length=20)
     label: str = Field(max_length=40)
     icon: str = Field(default="", max_length=80)
     abbr: str = Field(default="", max_length=4)
@@ -34,7 +40,7 @@ class SidebarItem(PkMixin, TimestampMixin, table=True):
     body: str = Field(default="", sa_column=SAText())  # 仅 note/announcement 且 node_ref 空时
     node_ref: str = Field(default="", max_length=300)
     description: str = Field(default="", max_length=120)
-    group: str = Field(default="", max_length=40, index=True)
+    group: str = Field(default="", max_length=40)
     sort: int = Field(default=0)
     enabled: bool = Field(default=True)
     pinned: bool = Field(default=False)
