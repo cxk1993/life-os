@@ -68,6 +68,9 @@ def main() -> int:
     # ⑦ todo
     st, _ = fetch(base + "/api/v1/todo/items?limit=200", tok)
     rec("⑦", "todo/items limit=200", st in (200, 401), f"HTTP {st}")
+    # ⑧ habits 列表（1ce4691 后 = GET /api/v1/habits）
+    st, _ = fetch(base + "/api/v1/habits", tok)
+    rec("⑧", "habits list", st in (200, 401), f"HTTP {st}")
 
     # 前端 entry 特征（①④⑤⑬ 壳层/渲染）
     st, html = fetch(base + "/", "")
