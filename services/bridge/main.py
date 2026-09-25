@@ -17,17 +17,19 @@
 from __future__ import annotations
 
 import json
+import httpx
 import logging
 import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, Query, Request
+from fastapi import Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .config import BridgeConfig, load_config
 from .notify import send_windows_notification
 from .protocol import NONCE_TTL_S, NonceStore, check_timestamp, verify_sig
-from .reader import read_note
+from .reader import read_binary, read_note
 from .scanner import count_md, scan_lib
 
 log = logging.getLogger("bridge")
@@ -271,6 +273,78 @@ def create_bridge_app(
         except FileNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         return note
+
+    # ── ★ Work-Review 代理（astrbot 下场 · 主人令「修数据链路」）───────────
+    # 背景：Work-Review 跑在主人本机 127.0.0.1:49996，**服务器上的 127.0.0.1 不是它**
+    #       → 复盘「手动同步」必然失败（`WORK_REVIEW_BRIDGE` 是半成品开关，只改错误映射不改 URL）。
+    # 本代理：把服务器的请求经桥（frp 隧道）转发到主人本机 Work-Review。
+    # 安全：PSK 四重鉴权 + **只许转发到配置的 work_review 上游**（防 SSRF）。
+    @app.api_route(
+        "/bridge/work-review/{wr_path:path}",
+        methods=["GET", "POST"],
+    )
+    async def bridge_work_review(
+        request: Request,
+        wr_path: str,
+        _: None = Depends(_auth),
+    ) -> Response:
+        upstream = cfg.work_review_base_url
+        if not upstream:
+            raise BadRequest("桥未配置 work_review_base_url（主人侧 config.yaml）")
+        # 只许相对路径，禁止穿越 / 绝对 URL（防 SSRF）
+        if ".." in wr_path or wr_path.startswith("//"):
+            raise BadRequest("非法上游路径")
+        target = f"{upstream.rstrip('/')}/{wr_path.lstrip('/')}"
+        qs = request.url.query
+        if qs:
+            target = f"{target}?{qs}"
+        body = request.scope.get("_bridge_body") or b""
+        fwd_headers = {}
+        auth = request.headers.get("authorization")
+        if auth:
+            fwd_headers["Authorization"] = auth
+        ct = request.headers.get("content-type")
+        if ct:
+            fwd_headers["Content-Type"] = ct
+        try:
+            resp = httpx.request(
+                request.method, target, headers=fwd_headers, content=body or None, timeout=15.0
+            )
+        except httpx.HTTPError as exc:
+            raise BridgeError(f"Work-Review 不可达：{exc}") from exc
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type=resp.headers.get("content-type", "application/json"),
+        )
+
+    @app.get("/bridge/attachment")
+    def bridge_attachment(
+        lib: str = Query(...),
+        path: str = Query(..., alias="path"),
+        _: None = Depends(_auth),
+    ) -> Response:
+        """★ 读二进制附件（图片等）· astrbot 下场 · 主人⑤「ob 附件、图片插入要能正常展示」。
+
+        安全：与 /bridge/read 同款 —— safe_resolve 双守卫（路径穿越 + 越界）。
+        返回：原始字节 + 按扩展名推断的 Content-Type（未知 → application/octet-stream）。
+        """
+        lib_cfg = cfg.lib(lib)
+        if lib_cfg is None:
+            raise NotFound(f"未知库：{lib}")
+        if not lib_cfg.enabled:
+            raise NotFound(f"库已禁用：{lib}")
+        try:
+            data, mime = read_binary(lib_cfg, path)
+        except ValueError as exc:  # 路径穿越 / 越界
+            raise BadRequest(str(exc)) from exc
+        except FileNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        return Response(
+            content=data,
+            media_type=mime,
+            headers={"Cache-Control": "private, max-age=300"},
+        )
 
     @app.get("/bridge/changes")
     def bridge_changes(

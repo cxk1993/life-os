@@ -5,6 +5,10 @@
 #   同步改到服务器侧 .env 的 BRIDGE_PSK，两侧必须一致。
 psk: ""
 
+# ★ Work-Review 上游（跑在主人本机）—— 桥 /bridge/work-review/* 的转发目标
+#   astrbot 下场 · 主人令「修数据链路」：服务器上的 127.0.0.1 不是主人电脑，必须经桥转发
+work_review_base_url: "http://127.0.0.1:49996"
+
 # 四个笔记库（主人真实路径）
 libs:
   - id: main
@@ -29,6 +33,17 @@ libs:
     mode: ro
     enabled: true
     include: ["**/*.md"]
+    exclude: []
+
+  # ★ 附件库（astrbot 下场 · 主人⑤「ob 笔记的附件、图片插入的这个 md 文件展示功能也要加上」）
+  #   主人原话给的附件文件夹路径；include 放开为「所有文件」（图片/PDF/音视频等）。
+  #   mode: ro —— 附件只读，绝不回写。
+  - id: attach
+    name: obsidian 附件
+    path: "./vault/笔记软件/obsidian附件"
+    mode: ro
+    enabled: true
+    include: ["**/*"]
     exclude: []
 
   # 云昔专用文件夹：默认关，主人自行打开

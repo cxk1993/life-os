@@ -139,6 +139,19 @@ class NotesService:
         items.sort(key=lambda x: (-float(x.get("score") or 0), -int(x.get("mtime") or 0)))
         return {"items": items, "total": len(items)}
 
+    def get_attachment(self, lib_key: str, path: str) -> tuple[bytes, str]:
+        """★ 读二进制附件（astrbot 下场 · 主人⑤「ob 附件、图片插入要能正常展示」）。
+
+        默认库 key = "attach"（桥 config.yaml 的附件库，指向主人 obsidian 附件文件夹）。
+        """
+        lib = self.db.exec(select(NoteLib).where(NoteLib.key == lib_key)).first()
+        if lib is None:
+            raise NotFoundError(f"未知库：{lib_key}")
+        try:
+            return self.bridge.attachment(lib.key, path)
+        except BridgeError as exc:
+            raise ServiceUnavailableError(exc.detail) from exc
+
     def get_note(self, note_id: str) -> dict[str, Any]:
         """索引 + 经桥取全文。桥不可达时仍返回索引，content 空串并带 warning。"""
         row = self.db.get(NoteIndex, note_id)

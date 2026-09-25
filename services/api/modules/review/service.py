@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, col, select
 
-from core.errors import AppError, ServiceUnavailableError, ValidationError
+from core.errors import AppError, NotFoundError, ServiceUnavailableError, ValidationError
 from core.events import event_bus
 
 from .client import BridgeOfflineError, ReviewClient, ReviewUpstreamError
@@ -540,6 +540,17 @@ class ReviewService:
         self.db.commit()
         self.db.refresh(note)
         return _note_out(note)
+
+    def delete_note(self, note_id: str) -> None:
+        """删除一条主人批注（主人⑤「增减笔记」的"减"半边）。
+
+        ★ 只删 Life-OS 自己的 review_note 表记录，**不写回 review_daily，更不写回 Work-Review**。
+        """
+        note = self.db.get(ReviewNote, note_id)
+        if note is None:
+            raise NotFoundError(f"批注不存在：{note_id}")
+        self.db.delete(note)
+        self.db.commit()
 
     def list_notes(self, day: DateType | None = None) -> NotesListOut:
         if day is None:

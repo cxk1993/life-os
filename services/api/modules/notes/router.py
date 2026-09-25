@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, Response
 from fastapi import Path as FPath
 from sqlmodel import Session
 
@@ -99,6 +99,22 @@ def get_note(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
     return NotesService(db).get_note(note_id)
+
+@router.get("/attachment")
+def get_attachment(
+    lib: str = Query("attach", description="库 key（默认 attach = obsidian 附件库）"),
+    path: str = Query(..., description="附件相对路径，如 xxx.png"),
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> Response:
+    """★ 读二进制附件（图片等）· astrbot 下场 · 主人⑤「ob 附件、图片插入要能正常展示」。
+
+    前端 MdView 把 `![](xxx.png)` 的 src 重写为本端点（同源），由本端点经桥取回原始字节。
+    安全：桥侧 safe_resolve 双守卫（路径穿越 + 越界）；本端点只做鉴权 + 透传。
+    """
+    data, mime = NotesService(db).get_attachment(lib, path)
+    return Response(content=data, media_type=mime, headers={"Cache-Control": "private, max-age=300"})
+
 
 @router.post("/libs/{lib_id}/notes", response_model=NoteDetail, status_code=status.HTTP_201_CREATED)
 def create_note(

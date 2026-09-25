@@ -241,6 +241,13 @@ export default function NotesApp() {
                 <MdView
                   className="notes-detail__content"
                   content={detail.data.content || "（全文暂不可用——本机桥未连接）"}
+                  // ★ 附件映射（astrbot 下场 · 主人⑤「ob 附件、图片插入要能正常展示」）：
+                  //   相对路径图片 → 走同源附件端点（lib=attach = obsidian 附件库），
+                  //   由后端经桥取回原始字节；绝对 URL / 已带 /api 的不重写。
+                  rewriteImageSrc={(src) => {
+                    if (/^(https?:)?\/\//.test(src) || src.startsWith("/api/")) return src;
+                    return `/api/v1/notes/attachment?lib=attach&path=${encodeURIComponent(src)}`;
+                  }}
                 />
               ) : (
                 <textarea

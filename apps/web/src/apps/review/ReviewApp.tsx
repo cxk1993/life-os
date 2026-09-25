@@ -126,6 +126,14 @@ export default function ReviewApp() {
       invalidate();
     },
   });
+  // ★ 删除批注（astrbot 下场 · 主人⑤「不能在复盘窗口内增减笔记」的"减"半边）
+  const deleteNoteMut = useMutation({
+    mutationFn: (id: string) => reviewApi.deleteNote(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["review"] });
+    },
+  });
+
 
   const src = sourceQ.data ?? dayQ.data?.source ?? null;
   const offline = isBridgeOffline(src);
@@ -259,7 +267,17 @@ export default function ReviewApp() {
                   ) : (
                     (day.notes ?? []).map((n) => (
                       <div key={n.id} className="review-note-item">
-                        {n.content_md}
+                        <span className="review-note-item__text">{n.content_md}</span>
+                        {/* ★ 删除批注（astrbot 下场 · 主人⑤「增减笔记」） */}
+                        <button
+                          type="button"
+                          className="btn review-note-item__del"
+                          aria-label={`删除批注 ${n.id}`}
+                          disabled={deleteNoteMut.isPending}
+                          onClick={() => deleteNoteMut.mutate(n.id)}
+                        >
+                          删除
+                        </button>
                       </div>
                     ))
                   )}

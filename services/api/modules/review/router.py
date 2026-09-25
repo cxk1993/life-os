@@ -10,7 +10,7 @@ import json
 from datetime import date as DateType
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
 from core.deps import get_current_user, get_db
@@ -157,6 +157,16 @@ def list_notes(
     _user: UserDep = Depends(get_current_user),
 ) -> NotesListOut:
     return ReviewService(db).list_notes(date)
+
+
+@router.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_note(
+    note_id: str,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> None:
+    """删除一条主人批注（主人⑤「增减笔记」的"减"半边 · astrbot 下场）。"""
+    ReviewService(db).delete_note(note_id)
 
 
 @router.post("/ingest", response_model=IngestOut)

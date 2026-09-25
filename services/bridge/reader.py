@@ -63,6 +63,44 @@ def read_note(lib: Lib, posix_rel: str) -> dict:
     }
 
 
+def read_binary(lib: Lib, posix_rel: str) -> tuple[bytes, str]:
+    """★ 读一个**二进制附件**（图片等），返回 (bytes, mime)。
+
+    用途（astrbot 下场 · 主人⑤「ob 笔记的附件、图片插入的这个 md 文件展示功能也要加上」）：
+      Life-OS 的 md 渲染层遇到 `![[xxx.png]]` / `![](attachments/xxx.png)` 时，
+      经本端点取回原始字节，由后端透传、前端渲染。
+
+    安全：与 read_note 同款 —— 先过 `safe_resolve`（路径穿越 + 越界双守卫）。
+    """
+    target = safe_resolve(lib, posix_rel)
+    data = target.read_bytes()
+    return data, _guess_mime(target.suffix)
+
+
+_MIME_BY_EXT = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".bmp": "image/bmp",
+    ".ico": "image/x-icon",
+    ".pdf": "application/pdf",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".txt": "text/plain; charset=utf-8",
+    ".md": "text/markdown; charset=utf-8",
+}
+
+
+def _guess_mime(suffix: str) -> str:
+    """按扩展名猜 MIME（未知一律 application/octet-stream，防误判为可执行）。"""
+    return _MIME_BY_EXT.get(suffix.lower(), "application/octet-stream")
+
+
 def title_of(content: str) -> str:
     """取第一个非空行作为标题（Obsidian 习惯：首行 # 标题）。"""
     for line in content.splitlines():

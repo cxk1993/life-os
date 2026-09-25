@@ -16,15 +16,33 @@ import "katex/dist/katex.min.css";
 interface Props {
   content: string;
   className?: string;
+  /** ★ 图片 src 重写（astrbot 下场 · 主人⑤「ob 附件、图片插入要能正常展示」）。
+   *  传了它，`![](xxx.png)` 的 src 会被改写（如指向 /api/v1/notes/attachment?lib=attach&path=xxx.png）；
+   *  不传 = 原样透传（保持旧行为，向后兼容）。 */
+  rewriteImageSrc?: (src: string) => string;
 }
 
-export default function MdView({ content, className }: Props) {
+export default function MdView({ content, className, rewriteImageSrc }: Props) {
   return (
     <div className={`md-view${className ? ` ${className}` : ""}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         skipHtml
+        components={
+          rewriteImageSrc
+            ? {
+                img: ({ src, alt, ...rest }) => (
+                  <img
+                    src={src ? rewriteImageSrc(src) : src}
+                    alt={alt ?? ""}
+                    loading="lazy"
+                    {...rest}
+                  />
+                ),
+              }
+            : undefined
+        }
       >
         {content}
       </ReactMarkdown>

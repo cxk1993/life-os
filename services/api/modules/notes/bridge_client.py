@@ -132,6 +132,30 @@ class BridgeClient:
     def read(self, lib: str, path: str) -> dict[str, Any]:
         return self._request("GET", "/bridge/read", params={"lib": lib, "path": path})
 
+    def attachment(self, lib: str, path: str) -> tuple[bytes, str]:
+        """★ 读二进制附件（图片等）· astrbot 下场 · 主人⑤「ob 附件、图片插入要能正常展示」。
+
+        返回 (bytes, content_type)。签名与 /bridge/read 同款（GET + query 参与签名）。
+        与 _request 的区别：**不做 .json()**，要原始字节。
+        """
+        if not self.base_url:
+            raise BridgeError("未配置 BRIDGE_URL", status=503)
+        from urllib.parse import urlencode
+
+        qs = urlencode({"lib": lib, "path": path})
+        sign_path = f"/bridge/attachment?{qs}"
+        headers = self._headers("GET", sign_path)
+        try:
+            resp = httpx.get(self.base_url + sign_path, headers=headers, timeout=self.timeout)
+        except httpx.HTTPError as exc:
+            raise BridgeError(f"桥不可达：{exc}") from exc
+        if resp.status_code >= 400:
+            raise BridgeError(
+                f"桥返回 {resp.status_code}：{resp.text[:200]}",
+                status=502 if resp.status_code >= 500 else resp.status_code,
+            )
+        return resp.content, resp.headers.get("content-type", "application/octet-stream")
+
     def notify(
         self,
         title: str,

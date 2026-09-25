@@ -32,6 +32,9 @@ class Lib:
 class BridgeConfig:
     psk: str
     libs: list[Lib]
+    # ★ astrbot 下场 · 主人令「修数据链路」：
+    #   Work-Review 上游地址（跑在主人本机）—— 桥的 /bridge/work-review/* 代理转发目标。
+    work_review_base_url: str = ""
 
     def lib(self, lib_id: str) -> Lib | None:
         for lib in self.libs:
@@ -60,4 +63,5 @@ def load_config(path: str | Path) -> BridgeConfig:
                 exclude=item.get("exclude", []),
             )
         )
-    return BridgeConfig(psk=psk, libs=libs)
+    wr_base = str(raw.get("work_review_base_url") or "").strip()
+    return BridgeConfig(psk=psk, libs=libs, work_review_base_url=wr_base)

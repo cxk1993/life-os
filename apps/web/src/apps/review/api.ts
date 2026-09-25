@@ -165,4 +165,6 @@ export const reviewApi = {
     ),
   addNote: (date: string, content_md: string) =>
     api.post<ReviewNote>(`${BASE}/notes`, { date, content_md }),
+  // ★ 2026-09-25（astrbot 下场 · 主人⑤「不能在复盘窗口内增减笔记」的"减"半边）
+  deleteNote: (id: string) => api.delete<void>(`${BASE}/notes/${encodeURIComponent(id)}`),
 };

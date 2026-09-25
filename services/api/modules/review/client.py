@@ -285,6 +285,60 @@ class ReviewClient:
             f"Work-Review 返回 {status_code}：{text[:200]}", status=502
         )
 
+    def _request_via_bridge(
+        self,
+        method: str,
+        path: str,
+        *,
+        json_body: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> Any:
+        """经本机桥转发到 Work-Review（astrbot 下场 · 主人令「修数据链路」）。
+
+        ★ 桥侧 `/bridge/work-review/*` 会把请求转发到主人本机的 Work-Review；
+          签名算法与 bridge.protocol 逐字节一致（HMAC-SHA256）。
+        """
+        import hashlib
+        import hmac as _hmac
+        import json as _json
+        import time as _time
+        import uuid as _uuid
+        from urllib.parse import urlencode
+
+        from core.config import read_setting
+
+        bridge_url = (read_setting("BRIDGE_URL", "") or "").rstrip("/")
+        psk = read_setting("BRIDGE_PSK", "") or ""
+        if not bridge_url or not psk:
+            raise BridgeOfflineError("桥离线：未配置 BRIDGE_URL / BRIDGE_PSK，无法经桥访问 Work-Review")
+
+        qs = urlencode({k: v for k, v in (params or {}).items() if v is not None})
+        sign_path = f"/bridge/work-review{path}" + (f"?{qs}" if qs else "")
+        body = _json.dumps(json_body, ensure_ascii=False).encode("utf-8") if json_body else b""
+        ts = int(_time.time())
+        nonce = _uuid.uuid4().hex
+        msg = f"{method.upper()}|{sign_path}|{ts}|{nonce}|{body.decode('utf-8', 'replace')}"
+        sign = _hmac.new(psk.encode("utf-8"), msg.encode("utf-8"), hashlib.sha256).hexdigest()
+        headers = {
+            "X-Bridge-PSK": psk,
+            "X-Bridge-Ts": str(ts),
+            "X-Bridge-Nonce": nonce,
+            "X-Bridge-Sign": sign,
+            "Authorization": f"Bearer {self.token}",
+        }
+        if body:
+            headers["Content-Type"] = "application/json; charset=utf-8"
+        try:
+            return httpx.request(
+                method,
+                bridge_url + sign_path,
+                headers=headers,
+                content=body or None,
+                timeout=self.timeout,
+            )
+        except httpx.HTTPError as exc:
+            raise BridgeOfflineError(f"桥离线：{exc}") from exc
+
     def _request(
         self,
         method: str,
@@ -296,18 +350,23 @@ class ReviewClient:
         if self.mode == "mock":
             raise ReviewUpstreamError("mock 模式不应发起真实 HTTP", status=500)
         self.require_token_for_api()
-        url = f"{self.base_url}{path}"
-        try:
-            resp = httpx.request(
-                method,
-                url,
-                headers=self._headers(),
-                json=json_body,
-                params=params,
-                timeout=self.timeout,
-            )
-        except httpx.HTTPError as exc:
-            raise self._map_error(exc) from exc
+        if self.bridge:
+            # ★ 走桥（astrbot 下场 · 主人令「修数据链路」）：
+            #   Work-Review 在主人本机，服务器经桥（frp）转发 —— 这是"点了没数据"的正解。
+            resp = self._request_via_bridge(method, path, json_body=json_body, params=params)
+        else:
+            url = f"{self.base_url}{path}"
+            try:
+                resp = httpx.request(
+                    method,
+                    url,
+                    headers=self._headers(),
+                    json=json_body,
+                    params=params,
+                    timeout=self.timeout,
+                )
+            except httpx.HTTPError as exc:
+                raise self._map_error(exc) from exc
         if resp.status_code >= 400:
             raise self._map_status(resp.status_code, resp.text)
         if not resp.content:
