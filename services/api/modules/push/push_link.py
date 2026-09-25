@@ -8,10 +8,9 @@
 from __future__ import annotations
 
 import logging
-from contextlib import suppress
 from typing import Any
 
-from core.deps import get_db
+from core.deps import db_session
 from core.events import event_bus
 
 from .sender import send_broadcast
@@ -30,21 +29,20 @@ def handle_reminder_event(event: dict[str, Any]) -> None:
         return
     title = f"日程提醒：{payload.get('title') or ''}".strip()
     start_s = str(payload.get("start_at") or "")
-    db = get_db()
-    try:
-        out = send_broadcast(
-            db, title=title, body=f"开始：{start_s}" if start_s else "",
-            url="/", tag=f"reminder-{payload.get('event_id') or ''}", topic=EVENT_REMINDER,
-        )
-        log.info(
-            "reminder → web push",
-            extra={"sent": out.get("sent"), "pruned": out.get("pruned")},
-        )
-    except Exception as exc:  # noqa: BLE001 — 联动失败不打断事件广播
-        log.warning("reminder push 联动失败: %s", exc)
-    finally:
-        with suppress(Exception):
-            db.close()
+    # ★ 根因 D 补刀（总监令 7 §2 · hermes 亲修）：get_db 已生成器化（供 Depends），
+    #   **非依赖场景必须用 db_session()**——直接 `db = get_db()` 拿到的是 generator。
+    with db_session() as db:
+        try:
+            out = send_broadcast(
+                db, title=title, body=f"开始：{start_s}" if start_s else "",
+                url="/", tag=f"reminder-{payload.get('event_id') or ''}", topic=EVENT_REMINDER,
+            )
+            log.info(
+                "reminder → web push",
+                extra={"sent": out.get("sent"), "pruned": out.get("pruned")},
+            )
+        except Exception as exc:  # noqa: BLE001 — 联动失败不打断事件广播
+            log.warning("reminder push 联动失败: %s", exc)
 
 
 def install_push_link() -> bool:

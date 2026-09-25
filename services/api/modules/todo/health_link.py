@@ -7,14 +7,13 @@
 from __future__ import annotations
 
 import logging
-from contextlib import suppress
 from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, col, select
 
-from core.deps import get_db
+from core.deps import db_session  # ★ 令7 §2：非 Depends 场景必须 db_session（get_db 已生成器化）
 from core.events import event_bus
 
 from .models import TodoItem, tags_to_json
@@ -89,14 +88,12 @@ def handle_care_event(event: dict[str, Any]) -> None:
     payload = event.get("payload")
     if not isinstance(payload, dict):
         return
-    db = get_db()
-    try:
-        create_followup_todo(db, payload)
-    except Exception as exc:  # noqa: BLE001 — 消费失败不打断 publish
-        log.warning("todo 处理 health.care.requested 失败: %s", exc)
-    finally:
-        with suppress(Exception):
-            db.close()
+    # ★ 根因 D 补刀（令 7 §2）：get_db 生成器化后，非依赖场景必须 db_session()。
+    with db_session() as db:
+        try:
+            create_followup_todo(db, payload)
+        except Exception as exc:  # noqa: BLE001 — 消费失败不打断 publish
+            log.warning("todo 处理 health.care.requested 失败: %s", exc)
 
 
 def install_health_link() -> bool:

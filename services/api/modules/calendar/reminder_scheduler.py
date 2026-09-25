@@ -336,23 +336,20 @@ def start_scheduler() -> bool:
         return False
     if _lock_state.get("scheduler") is not None:
         return False
-    from contextlib import suppress
 
     from apscheduler.schedulers.background import (
         BackgroundScheduler,  # type: ignore[import-untyped]
     )
 
     def _job() -> None:
-        from core.deps import get_db
+        # ★ 令7 §2 补刀：get_db 已生成器化，非 Depends 场景必须 db_session()。
+        from core.deps import db_session
 
-        db = get_db()
         try:
-            run_reminder_tick(db)
+            with db_session() as db:
+                run_reminder_tick(db)
         except Exception as exc:  # noqa: BLE001
             log.warning("calendar reminder tick failed: %s", exc)
-        finally:
-            with suppress(Exception):
-                db.close()
 
     sched = BackgroundScheduler(timezone="Asia/Shanghai")
     sched.add_job(
