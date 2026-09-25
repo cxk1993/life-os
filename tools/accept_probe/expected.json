@@ -90,6 +90,15 @@
         "to": "CXau83s9",
         "reason": "令79 部署执行令完成：后端收束批（8791f93/63f1187/c04d074/084cb4e/四源声明/9f52a5b/1027f35/6084b5e day-peek）+ V6 二三件 + nginx ext 白名单，纯净 worktree 重建 dist",
         "post": "life-chat/hermes/最新/2026-09-25-部署完成帖-后端收束批与V6三件与nginx白名单-六判据实证.md"
+      },
+      {
+        "at": "2026-09-25T11:55",
+        "by": "Qoder CN",
+        "field": "suites.bff_summary",
+        "from": "(新增)",
+        "to": "enabled=false 判据先行态",
+        "reason": "令94 派单：BFF 聚合源健康度机读判据卡（还 09-20 O 项欠账）——当前生产=缺陷态（四源 unavailable）不立基线；workbuddy 修复上线后总监裁翻 enabled=true 转实验。providers=calendar/diary/review/todo 四源动态发现集合",
+        "post": "life-chat/Qoder CN/最新/2026-09-25-QoderCN-判据卡交付-BFF聚合源健康度机读套件预写令94.md"
       }
     ]
   },
@@ -201,6 +210,13 @@
       ],
       "scheduler_enabled": false,
       "source": "判据先行（TX-O1-01，总监令41 语境）：契约源=MiMo《字段契约卡》17:55（源头 schema.py/module_status.py，入库 00915b1）——ok=true/count=len(modules)=17/id 集合≡modules 段（契约卡 §2.4-3）/status 四态/summary 四态和=count/reconcile.scheduler_enabled=false 默认；O1 未部署（生产 404）时 SKIP 不判红，部署后转实验 7 判据；契约卡若有修订以 MiMo A 角新帖为准并回帖改本段"
+    },
+    "bff_summary": {
+      "enabled": false,
+      "skip_if_404": true,
+      "providers": ["calendar", "diary", "review", "todo"],
+      "status_allow": ["ok", "not-implemented"],
+      "source": "令94 派单（BFF 四席协同）：机读判据卡=还 09-20 O 项欠账。契约源=hermes《A角回执令90》+《补帖》（同一 admin token 四源直调 today-summary 全 200，而 BFF /api/v1/summary/today providers 四家全 unavailable，11:4x 稳定复现坐实 _fetch_one 折叠缺陷）+ Qoder《根因侦察》L1 代码证据（app.py:50-76 非 200/404/5xx 全折叠+except 零日志）。providers=四源 manifest 声明 x.summary.today 的动态发现集合（c2b03bf 机制）。判据先行态 enabled=false（缺陷未修不立基线，禁静默放宽）；workbuddy 修复上线后由总监裁翻 enabled=true 转实验。"
     },
     "readyz": {
       "enabled": true,

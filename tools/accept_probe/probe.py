@@ -300,6 +300,59 @@ def suite_o1status(client: Client, exp: dict[str, Any], user: str, pwd: str) -> 
     return row.render("o1status · O1 模块健康四态（TX-O1-01 契约）")
 
 
+def _check_bff(body: Any, e: dict[str, Any]) -> Row:
+    """BFF 聚合源健康度对表纯函数（令94 派单·判据先行：契约源=hermes 复现帖+本席根因侦察）。
+
+    判据：响应 dict + providers 数组 / id 集合≡契约登记聚合源（缺多皆红，防静默丢源）/
+    每源 status ∈ 白名单（ok|not-implemented）——**unavailable=红**并点名哪几家（缺陷态警报器）。
+    """
+    row = Row()
+    if not isinstance(body, dict):
+        row.add("响应形态", "dict", type(body).__name__, False)
+        return row
+    providers = body.get("providers")
+    if not isinstance(providers, list):
+        row.add("providers 形态", "list", type(providers).__name__, False)
+        return row
+    expected_ids = list(e.get("providers") or [])
+    allow = set(e.get("status_allow") or ["ok", "not-implemented"])
+    ids = sorted(str(p.get("id")) for p in providers if isinstance(p, dict) and p.get("id"))
+    miss = sorted(set(expected_ids) - set(ids))
+    extra = sorted(set(ids) - set(expected_ids))
+    row.add("聚合源集合≡契约", "/".join(expected_ids), f"缺:{miss or '无'} 多:{extra or '无'}",
+            not miss and not extra)
+    bad = [(str(p.get("id")), str(p.get("status"))) for p in providers
+           if isinstance(p, dict) and str(p.get("status")) not in allow]
+    row.add("status∈白名单(无unavailable)", "|".join(sorted(allow)),
+            "越界:" + (",".join(f"{i}:{s}" for i, s in bad) if bad else "无"), not bad)
+    return row
+
+
+def suite_bffsummary(client: Client, exp: dict[str, Any], user: str, pwd: str) -> bool:
+    """BFF `/api/v1/summary/today` 聚合源健康度（令94 机读判据卡·还 09-20 O 项欠账）。
+
+    判据先行态：expected.json `suites.bff_summary.enabled=false`（当前生产=缺陷态，
+    未立基线）→ 输出 SKIP 行（非绿非红不粉饰）；workbuddy 修复上线后翻 enabled=true 转实验。
+    """
+    e = exp["suites"]["bff_summary"]
+    row = Row()
+    if not e.get("enabled", False):
+        row.add("⏭SKIP BFF 聚合", "修复后实验", "enabled=false（判据先行态：缺陷未修不立基线）", True)
+        ok = row.render("bffsummary · BFF 聚合源健康度（SKIP：判据先行态）")
+        print("  说明：令94 派单预写； workbuddy 修复上线后 expected.json 翻 enabled=true 转实验。")
+        return ok
+    if not client.access:
+        client.login(user, pwd)
+    status, body, _ = client.get("/api/v1/summary/today", auth=True)
+    if status == 404 and e.get("skip_if_404", True):
+        row.add("⏭SKIP BFF 路由", "200（部署后实验）", "404 未部署", True)
+        return row.render("bffsummary · BFF 聚合（SKIP：未部署）")
+    row.add("http", "200", str(status), status == 200)
+    if status == 200:
+        row = _check_bff(body, e)
+    return row.render("bffsummary · BFF 聚合源健康度（令94 判据卡）")
+
+
 def suite_deploycheck(client: Client, exp: dict[str, Any], user: str, pwd: str) -> bool:
     """部署后四合一：healthz + gate + modules + hash（部署留痕帖的标准复核动作）。"""
     row = Row()
@@ -334,7 +387,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="L2 验收判据自动化套件（只读）")
     ap.add_argument("--target", default="production", choices=["production", "local"])
     ap.add_argument("--suite", default="all",
-                    choices=["gate", "hash", "modules", "docsprobe", "o1status", "readyz", "deploycheck", "all"])
+                    choices=["gate", "hash", "modules", "docsprobe", "o1status", "bffsummary", "readyz", "deploycheck", "all"])
     ap.add_argument("--password", default=None, help="不推荐；优先用环境变量 LIFEOS_ADMIN_PASSWORD")
     ap.add_argument("--emit-verdict", action="store_true",
                     help="RFC-001：在人读表格之外追加一行机读 verdict JSON（schema=lifeos.probe.verdict/1）")
@@ -349,7 +402,7 @@ def main() -> int:
     import os
     pwd = args.password or os.environ.get("LIFEOS_ADMIN_PASSWORD") or ""
     user = tgt.get("username", "admin")
-    need_auth = args.suite in ("gate", "modules", "docsprobe", "o1status", "deploycheck", "all")
+    need_auth = args.suite in ("gate", "modules", "docsprobe", "o1status", "bffsummary", "deploycheck", "all")
     if need_auth and not pwd:
         print("需要口令：export LIFEOS_ADMIN_PASSWORD=…（绝不写入文件）")
         return 2
@@ -366,6 +419,8 @@ def main() -> int:
         results.append(suite_docsprobe(client, exp, user, pwd))
     if args.suite in ("o1status", "all"):
         results.append(suite_o1status(client, exp, user, pwd))
+    if args.suite in ("bffsummary", "all"):
+        results.append(suite_bffsummary(client, exp, user, pwd))
     if args.suite == "readyz":
         results.append(suite_readyz(client, exp))
     if args.suite == "deploycheck":
