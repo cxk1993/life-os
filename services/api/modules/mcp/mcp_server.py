@@ -27,6 +27,7 @@ from core.errors import ForbiddenError
 
 from . import audit
 from .auth import PatContext, ensure_scope
+from .external import call_external, external_tools, find_external
 from .forward import forward
 from .registry_adapter import build_tool_map, find_tool, is_write_tool
 
@@ -93,6 +94,15 @@ def _handle_tools_list(msg_id: Any) -> dict[str, Any]:
         }
         for t in build_tool_map()
     ]
+    # 外部 MCP 源（BeeCount 等）：未配置则空，不挡本地工具。
+    for t in external_tools():
+        tools.append(
+            {
+                "name": t.name,
+                "description": t.description,
+                "inputSchema": _tool_schema(),
+            }
+        )
     return _rpc_result({"tools": tools}, msg_id)
 
 
@@ -100,6 +110,32 @@ def _handle_tools_call(msg: dict[str, Any], msg_id: Any, pat: PatContext) -> dic
     params = msg.get("params") or {}
     name = str(params.get("name", ""))
     arguments = params.get("arguments") or {}
+    ext = find_external(name)
+    if ext is not None:
+        try:
+            ensure_scope(pat, ext.scope)
+        except ForbiddenError:
+            audit.audit_denied(
+                token_prefix=pat.token_prefix, tool_name=name, reason=f"缺 scope {ext.scope}"
+            )
+            raise
+        payload_ext = arguments.get("payload") if isinstance(arguments, dict) else None
+        if not isinstance(payload_ext, dict):
+            payload_ext = {}
+        ok, body = call_external(ext, payload_ext)
+        if ext.is_write:
+            audit.audit_call(
+                token_prefix=pat.token_prefix,
+                tool_name=ext.name,
+                method="MCP",
+                path=ext.upstream,
+                payload=payload_ext,
+            )
+        text = json.dumps(body, ensure_ascii=False, default=str)
+        return _rpc_result(
+            {"content": [{"type": "text", "text": text}], "isError": not ok},
+            msg_id,
+        )
     tool = find_tool(name)
     if tool is None:
         # 未知工具也记一条拒绝（是谁在试探工具边界，可追溯）。

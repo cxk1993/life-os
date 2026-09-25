@@ -7,9 +7,14 @@
  * 本文件必须保持「零 mock」：谁往这里加 vi.mock 谁 = 拆掉 P0 防线。
  */
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { MarkdownView } from "./MarkdownView";
+
+// FLAKY-01（总监快讯二立案）：本文件走真实 unified 渲染管线（零 mock 防线不许动），
+// 全仓并行负载下 jsdom CPU 挤压会让 5s 级 waitFor 偶发超时（单跑 3/3 绿）。
+// 只放宽本文件时限，不改全局 pool、不加 mock——超时上限给足 4 倍余量。
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 describe("MarkdownView 真渲染冒烟（不 mock）", () => {
   it("渲染模式输出真实 <h1>（插件以真实函数进入 unified，不触发 updater 误执行）", async () => {
@@ -20,7 +25,7 @@ describe("MarkdownView 真渲染冒烟（不 mock）", () => {
         const h1 = screen.getByRole("heading", { level: 1 });
         expect(h1.textContent).toBe("一行标题");
       },
-      { timeout: 5000 },
+      { timeout: 20_000 },
     );
   });
 
@@ -33,7 +38,7 @@ describe("MarkdownView 真渲染冒烟（不 mock）", () => {
         expect(document.querySelector("table")).not.toBeNull();
         expect(document.querySelector("del")).not.toBeNull();
       },
-      { timeout: 5000 },
+      { timeout: 20_000 },
     );
   });
 
