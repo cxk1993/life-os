@@ -53,7 +53,8 @@
   filter: brightness(1.1);
 }
 
-/* 顶栏收起时的 TimeWidget 悬浮胶囊（判据 U1-4：时钟仍可达，U2 面板仍能点开） */
+/* 顶栏收起时的 TimeWidget 悬浮胶囊（判据 U1-4：时钟仍可达，U2 面板仍能点开）
+   ★ 令 97：全收态幸存物之一（与罗盘按钮并列右上角，非「栏」故保留） */
 .desktop__clock-pill {
   position: fixed;
   top: 10px;
@@ -62,6 +63,145 @@
   color: var(--txt);
   font-family: var(--font-sans);
   overflow: hidden;
+}
+
+/* ═══════════ ★ 收放罗盘（令 96/97 · 主人三板拍板）═══════════
+   主人需求：圆形罗盘，选择性收起上/下/左/右，中心一键全收；
+   已收扇区语义 = 展开（双向 toggle）；全收后只留罗盘按钮（右上角，带文字）。 */
+.desktop__compass-btn {
+  position: fixed;
+  top: 10px;
+  right: var(--sp-3);
+  z-index: 41;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--txt);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+.desktop__compass-btn:hover {
+  background: var(--surface-3, rgba(255, 255, 255, 0.06));
+}
+.desktop__compass-btn:focus-visible {
+  outline: 2px solid var(--accent, #4c9aff);
+  outline-offset: 2px;
+}
+
+/* 罗盘弹层：以按钮为锚，右上角展开 */
+.desktop__compass {
+  position: fixed;
+  top: 46px;
+  right: var(--sp-3);
+  z-index: 42;
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+/* 扇形（conic-gradient 分区 + 内嵌按钮定位，零新依赖） */
+.desktop__compass-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.desktop__compass-slice {
+  fill: transparent;
+  stroke: var(--line);
+  stroke-width: 1;
+  cursor: pointer;
+}
+.desktop__compass-slice:hover,
+.desktop__compass-slice:focus-visible {
+  fill: var(--surface-3, rgba(120, 170, 255, 0.18));
+}
+.desktop__compass-slice.is-collapsed {
+  fill: rgba(120, 170, 255, 0.14);
+}
+.desktop__compass-label {
+  font-size: 11px;
+  fill: var(--txt);
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: var(--font-sans);
+}
+.desktop__compass-center {
+  cursor: pointer;
+}
+.desktop__compass-center circle {
+  fill: var(--surface-3, rgba(120, 170, 255, 0.22));
+  stroke: var(--line);
+}
+.desktop__compass-center:hover circle {
+  fill: var(--surface-3, rgba(120, 170, 255, 0.4));
+}
+
+/* ★ 4 扇区用**真 <button>** 绝对定位（无障碍天然好于 SVG role） */
+.desktop__compass-slice {
+  position: absolute;
+  width: 64px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--txt);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+.desktop__compass-slice--n {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.desktop__compass-slice--s {
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.desktop__compass-slice--w {
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.desktop__compass-slice--e {
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.desktop__compass-slice:hover,
+.desktop__compass-slice:focus-visible {
+  background: rgba(120, 170, 255, 0.16);
+}
+.desktop__compass-slice.is-collapsed {
+  background: rgba(120, 170, 255, 0.22);
+}
+.desktop__compass-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(120, 170, 255, 0.16);
+  color: var(--txt);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+.desktop__compass-center:hover,
+.desktop__compass-center:focus-visible {
+  background: rgba(120, 170, 255, 0.34);
 }
 
 /* —— 顶栏 —— */
@@ -521,9 +661,14 @@
   border-right: none;
   border-left: 1px solid var(--line);
 }
+/* ★ 令 97：折叠态 40px 轨作废 → 0 残留（真正完全收起，把手职能由罗盘按钮继承） */
 .desktop-sidebar.is-collapsed {
-  width: 40px;
-  overflow: visible;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  display: none; /* 出布局流：0 残留 */
 }
 .desktop-sidebar__toggle {
   position: absolute;

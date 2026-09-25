@@ -12,7 +12,7 @@
     "w": 720,
     "h": 520
   },
-  "entry": "@apps/sidebar",
+  "entry": "@/apps/sidebar",
   "api": {
     "base": "/api/v1/sidebar",
     "openapi": "/api/v1/sidebar/openapi.json",

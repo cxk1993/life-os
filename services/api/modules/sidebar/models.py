@@ -21,6 +21,9 @@ TYPES = (TYPE_LINK, TYPE_NOTE, TYPE_ANNOUNCEMENT, TYPE_FRIEND)
 
 class SidebarItem(PkMixin, TimestampMixin, table=True):
     __tablename__ = "sidebar_item"
+    # ★ 令 71 §2 / 令 99 代行修：启动迁移对账时本表可能被重复定义
+    #   （Table 'sidebar_item' already defined），加 extend_existing 幂等化。
+    __table_args__ = {"extend_existing": True}
 
     type: str = Field(max_length=20, index=True)
     label: str = Field(max_length=40)

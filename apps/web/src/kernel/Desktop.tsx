@@ -62,6 +62,15 @@ function cycleWindow(): void {
  * 桌面容器：顶栏 + 窗口层 + 坞 + 全局搜索 + Toast。
  * 启动时拉取 modules.json 注册模块，并 hydrate 已持久化的窗口几何。
  */
+/** ★ 罗盘用：读侧栏折叠初值（键与 DesktopSidebar 的 COLLAPSE_KEY 同族）。 */
+function readSideCollapsed(side: "left" | "right"): boolean {
+  try {
+    return localStorage.getItem(`lifeos.dock-${side}.collapsed`) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function Desktop() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -124,6 +133,34 @@ export function Desktop() {
   // ★ 主人④（2026-09-24）：一键最小化所有未固定窗口
   const minimizeAllUnpinned = useDesktopStore((s) => s.minimizeAllUnpinned);
 
+  // ═══ ★ 收放罗盘（令 96/97 · 主人三板拍板）═══
+  // 顶/底栏状态走 store（U1 既有）；左右栏状态在 DesktopSidebar 内部 localStorage
+  // （键 `lifeos.dock-{left,right}.collapsed`）→ 罗盘经 CustomEvent 通知其同步。
+  const [compassOpen, setCompassOpen] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(() => readSideCollapsed("left"));
+  const [rightCollapsed, setRightCollapsed] = useState(() => readSideCollapsed("right"));
+  const setSideCollapsed = (side: "left" | "right", collapsed: boolean) => {
+    try {
+      localStorage.setItem(`lifeos.dock-${side}.collapsed`, collapsed ? "1" : "0");
+    } catch {
+      /* 存储不可用忽略 */
+    }
+    window.dispatchEvent(
+      new CustomEvent("lifeos:sidebar-collapse", { detail: { side, collapsed } }),
+    );
+    if (side === "left") setLeftCollapsed(collapsed);
+    else setRightCollapsed(collapsed);
+  };
+  const allCollapsed =
+    topbarCollapsed && bottombarCollapsed && leftCollapsed && rightCollapsed;
+  const toggleAllCollapsed = () => {
+    const target = !allCollapsed; // true=全收 false=全展
+    if (topbarCollapsed !== target) toggleTopbar();
+    if (bottombarCollapsed !== target) toggleBottombar();
+    setSideCollapsed("left", target);
+    setSideCollapsed("right", target);
+  };
+
   return (
     <AuthGate>
       {/* ★ T02 预留集成缝正式接线（2026-09-26 hermes）：挂载后拉 /api/v1/plugins
@@ -138,31 +175,88 @@ export function Desktop() {
             (bottombarCollapsed ? " desktop--bottom-collapsed" : "")
           }
         >
-          {topbarCollapsed ? (
-            // ★ U1-4：顶栏收起后时钟仍可达（悬浮胶囊，点击仍开 U2 今日摘要面板）
-            <div className="desktop__clock-pill">
-              <TimeWidget />
-            </div>
-          ) : (
-            <TopBar
+        {topbarCollapsed ? (
+          // ★ U1-4 + 令 97：顶栏收起后时钟仍可达（悬浮胶囊，全收态幸存物之一）
+          <div className="desktop__clock-pill">
+            <TimeWidget />
+          </div>
+        ) : (
+          <TopBar
             onOpenSearch={openSearch}
             onTidy={tidy}
             onLogout={() => void logout()}
             onMinimizeAll={minimizeAllUnpinned}
           />
-          )}
-          {topbarCollapsed && (
+        )}
+        {/* ★ 收放罗盘（令 96/97 · 主人三板）：右上角常驻「罗盘」按钮；
+            全收态它是唯一入口，其余三栏把手已撤（主人令：只留罗盘）。 */}
+        <button
+          type="button"
+          className="desktop__compass-btn"
+          aria-expanded={compassOpen}
+          aria-haspopup="menu"
+          title="收放罗盘（选择性收放上下左右栏）"
+          onClick={() => setCompassOpen((v) => !v)}
+        >
+          ◉ 罗盘
+        </button>
+        {compassOpen && (
+          <div
+            className="desktop__compass"
+            role="menu"
+            aria-label="收放罗盘"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setCompassOpen(false);
+            }}
+          >
             <button
               type="button"
-              className="desktop__chrome-handle"
-              style={{ top: 10 }}
-              aria-expanded={false}
+              role="menuitem"
+              className={`desktop__compass-slice desktop__compass-slice--n${topbarCollapsed ? " is-collapsed" : ""}`}
+              aria-label={topbarCollapsed ? "展开顶栏" : "收起顶栏"}
               onClick={toggleTopbar}
             >
-              ▾ 顶栏
+              顶栏
             </button>
-          )}
-          <div className="desktop__mid">
+            <button
+              type="button"
+              role="menuitem"
+              className={`desktop__compass-slice desktop__compass-slice--e${rightCollapsed ? " is-collapsed" : ""}`}
+              aria-label={rightCollapsed ? "展开右栏" : "收起右栏"}
+              onClick={() => setSideCollapsed("right", !rightCollapsed)}
+            >
+              右栏
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={`desktop__compass-slice desktop__compass-slice--s${bottombarCollapsed ? " is-collapsed" : ""}`}
+              aria-label={bottombarCollapsed ? "展开底栏" : "收起底栏"}
+              onClick={toggleBottombar}
+            >
+              底栏
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={`desktop__compass-slice desktop__compass-slice--w${leftCollapsed ? " is-collapsed" : ""}`}
+              aria-label={leftCollapsed ? "展开左栏" : "收起左栏"}
+              onClick={() => setSideCollapsed("left", !leftCollapsed)}
+            >
+              左栏
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="desktop__compass-center"
+              aria-label={allCollapsed ? "全部展开" : "全部收起"}
+              onClick={toggleAllCollapsed}
+            >
+              {allCollapsed ? "全展" : "全收"}
+            </button>
+          </div>
+        )}
+        <div className="desktop__mid">
             {/* U3：桌面级双侧栏（左=导航/结构，右=摘要/情境；折叠持久化） */}
             <DesktopSidebar side="left" />
             <div className="windows">
@@ -170,18 +264,7 @@ export function Desktop() {
             </div>
             <DesktopSidebar side="right" />
           </div>
-          {!bottombarCollapsed && <Dock />}
-          {bottombarCollapsed && (
-            <button
-              type="button"
-              className="desktop__chrome-handle"
-              style={{ bottom: 10 }}
-              aria-expanded={false}
-              onClick={toggleBottombar}
-            >
-              ▴ 底栏
-            </button>
-          )}
+        {!bottombarCollapsed && <Dock />}
           <ToastHost />
 
           {searchOpen ? (

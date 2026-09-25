@@ -34,6 +34,15 @@ function usePersistedCollapse(side: "left" | "right"): [boolean, () => void] {
       return false;
     }
   });
+  // ★ 令 96/97：罗盘（Desktop）经 CustomEvent 统一操控侧栏 —— 本组件同步响应。
+  useEffect(() => {
+    const onCompass = (e: Event) => {
+      const d = (e as CustomEvent<{ side: "left" | "right"; collapsed: boolean }>).detail;
+      if (d && d.side === side) setCollapsed(d.collapsed);
+    };
+    window.addEventListener("lifeos:sidebar-collapse", onCompass);
+    return () => window.removeEventListener("lifeos:sidebar-collapse", onCompass);
+  }, [side]);
   const toggle = () => {
     setCollapsed((v) => {
       const next = !v;
