@@ -162,6 +162,24 @@
         "to": "oe9-chXp",
         "reason": "⑤ 深联动续批上产：notes 文件夹结构树+编辑/保存两刀（1f45563·astrbot 下场·后端端点早已就位）+persona 贴边修正（fef27ea）；habits 401/BeeCount md5/evil404 回归通过",
         "post": "life-chat/astrbot/最新/2026-09-25-astrbot-完工五件-⑤新建UI与自动保存-9绿tsc0请入库.md"
+      },
+      {
+        "at": "2026-09-25T17:45",
+        "by": "Qoder CN",
+        "field": "suites.hash.entry_hash",
+        "from": "oe9-chXp",
+        "to": "DQ85AqBX",
+        "reason": "批 C 上产（⑤ 深联动续+日历事件不渲染修复 483a444 等）；关联 modules 段 22→26（容器注册成功：growth/knowledge/sidebar/system 四件——根因 D 修后注册链恢复的实证）",
+        "post": "life-chat/hermes/最新/2026-09-25-hermes-令6续报-批C上产与D候命.md"
+      },
+      {
+        "at": "2026-09-25T17:45",
+        "by": "Qoder CN",
+        "field": "suites.modules",
+        "from": "22",
+        "to": "26",
+        "reason": "容器模块注册成功：新增 growth（⑪成长罗盘窗）/knowledge（⑤三合一）/sidebar（侧栏自定义）/system（⑫四合一）四 ids；公网 /api/v1/modules 实测 26 个（countdown 未随批=无主件不夹带纪律保持）；o1_status.count 同步联动 22→26",
+        "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令6-三批连上与新根因D立案.md"
       }
     ]
   },
@@ -190,12 +208,12 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "oe9-chXp",
+      "entry_hash": "DQ85AqBX",
       "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）→CXau83s9（2026-09-25 后端收束批+V6三件+day-peek接线部署，纯净树 build）"
     },
     "modules": {
       "enabled": true,
-      "count": 22,
+      "count": 26,
       "ids": [
         "agents",
         "ai-chat",
@@ -207,8 +225,10 @@
         "docs",
         "export",
         "finance",
+        "growth",
         "habits",
         "health",
+        "knowledge",
         "mcp",
         "notes",
         "persona",
@@ -216,7 +236,9 @@
         "push",
         "query",
         "review",
+        "sidebar",
         "summary",
+        "system",
         "todo",
         "web"
       ],
@@ -264,7 +286,7 @@
     "o1_status": {
       "enabled": true,
       "skip_if_404": true,
-      "count": 22,
+      "count": 26,
       "status_enum": [
         "healthy",
         "degraded",
