@@ -18,7 +18,37 @@ from .sender import send_broadcast
 log = logging.getLogger("push.link")
 
 EVENT_REMINDER = "calendar.reminder.fired"
+# ★ 主人 2026-09-25「做」：待办到期 → web push（与日程提醒同构）
+EVENT_TODO_DUE = "todo.item.due"
 _installed = False
+
+
+def handle_todo_due_event(event: dict[str, Any]) -> None:
+    """待办到期 → web push（由 todo/due_scheduler 发布 `todo.item.due`）。"""
+    if not isinstance(event, dict) or event.get("topic") != EVENT_TODO_DUE:
+        return
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        return
+    title = f"待办提醒：{payload.get('title') or ''}".strip()
+    due_s = str(payload.get("due_at") or "")
+    prio = str(payload.get("priority") or "")
+    body = f"截止：{due_s}" if due_s else ""
+    if prio == "high":
+        body = ("【高优先】" + body).strip()
+    with db_session() as db:
+        try:
+            out = send_broadcast(
+                db,
+                title=title,
+                body=body,
+                url="/",
+                tag=f"todo-{payload.get('item_id') or ''}",
+                topic=EVENT_TODO_DUE,
+            )
+            log.info("todo due → web push", extra={"sent": out.get("sent")})
+        except Exception as exc:  # noqa: BLE001 — 联动失败不打断事件广播
+            log.warning("todo due push 联动失败: %s", exc)
 
 
 def handle_reminder_event(event: dict[str, Any]) -> None:
@@ -51,8 +81,9 @@ def install_push_link() -> bool:
     if _installed:
         return False
     event_bus.add_listener(handle_reminder_event)
+    event_bus.add_listener(handle_todo_due_event)  # ★ 主人 09-25：待办到期通道
     _installed = True
-    log.info("push 事件联动已装载（%s → web push）", EVENT_REMINDER)
+    log.info("push 事件联动已装载（%s / %s → web push）", EVENT_REMINDER, EVENT_TODO_DUE)
     return True
 
 

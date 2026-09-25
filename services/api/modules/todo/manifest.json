@@ -32,7 +32,8 @@
   "emits": [
     "todo.item.created",
     "todo.item.updated",
-    "todo.item.completed"
+    "todo.item.completed",
+    "todo.item.due"
   ],
   "consumes": [],
   "permissions": [

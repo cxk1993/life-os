@@ -188,3 +188,36 @@ def today_summary(
     内核 BFF /api/v1/summary/today 的转发目标（派工令 62）。
     """
     return TodoService(db).today_summary()
+
+
+# ═══════ ★ TX-TODO-REMIND-01（主人 2026-09-25「做」）：待办到期提醒 ═══════
+# 链路：due_scheduler 扫到期 → publish("todo.item.due") → push.link → web push
+@router.post("/due/tick")
+def post_due_tick(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict:
+    """手动触发一轮待办到期扫描（验收/排障用；不依赖定时是否开启）。"""
+    from .due_scheduler import run_due_tick
+
+    return {"ok": True, "count": run_due_tick(db)}
+
+
+@router.get("/due/scheduler")
+def get_due_scheduler_status(
+    _user: UserDep = Depends(get_current_user),
+) -> dict:
+    """待办到期提醒调度状态（enabled/running/poll/window）。"""
+    from .due_scheduler import scheduler_status
+
+    return scheduler_status()
+
+
+try:
+    from .due_scheduler import start_scheduler as _start_due
+
+    _start_due()
+except Exception as _due_exc:  # noqa: BLE001
+    import logging
+
+    logging.getLogger("todo.due").warning("待办到期提醒调度启动失败: %s", _due_exc)
