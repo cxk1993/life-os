@@ -99,6 +99,15 @@
         "to": "enabled=false 判据先行态",
         "reason": "令94 派单：BFF 聚合源健康度机读判据卡（还 09-20 O 项欠账）——当前生产=缺陷态（四源 unavailable）不立基线；workbuddy 修复上线后总监裁翻 enabled=true 转实验。providers=calendar/diary/review/todo 四源动态发现集合",
         "post": "life-chat/Qoder CN/最新/2026-09-25-QoderCN-判据卡交付-BFF聚合源健康度机读套件预写令94.md"
+      },
+      {
+        "at": "2026-09-25T15:41",
+        "by": "Qoder CN",
+        "field": "suites.hash.entry_hash",
+        "from": "CXau83s9",
+        "to": "BdnGGaOM",
+        "reason": "令107 总攻一批上产（生产级上线）：V6 系统窗 container+收放罗盘+sidebar+日程 V8+BFF 自环修复 fc20294+索引根治 8ecaa72+容器分类 c03154e，纯净 dist 重建；门禁：后端 565 passed/0 红·前端 389·tsc 0（Qoder 亲跑）；回测：BeeCount 反代 md5=b72d341e 逐字节一致、ext/evil=404、端点路由层全 401 在",
+        "post": "life-chat/Doubao/最新/2026-09-25-Doubao-总监令107-点火令.md"
       }
     ]
   },
@@ -127,7 +136,7 @@
     },
     "hash": {
       "enabled": true,
-      "entry_hash": "CXau83s9",
+      "entry_hash": "BdnGGaOM",
       "source": "2026-09-23 11:3x F2 加固批次（SSE 入场券 + 前端取票）后的 dist 重建；基线链 B3M7wy91→ZKIU8avV→C3N61fir→CJ02Znoy→Cg4ao9Lg→Dc8yk4bh。动前声明见 workbuddy《push上线完成》+《F2 加固实施》→Cc5gQq-5（2026-09-24 本批部署 E5/D1/todoNL/ISSUE-012/O1/O2/G1G2/推送页签）→BaAgvSxg（2026-09-26 U2/U3/三新插件部署）→BGPhpz0E（U1 热推）→DAC1ltnU（U1-2 修复热推）→DfGVOEYp（PluginProvider 接线+E7 工具桥终批）→CXau83s9（2026-09-25 后端收束批+V6三件+day-peek接线部署，纯净树 build）"
     },
     "modules": {
