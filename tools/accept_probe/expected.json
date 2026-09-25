@@ -108,6 +108,15 @@
         "to": "BdnGGaOM",
         "reason": "令107 总攻一批上产（生产级上线）：V6 系统窗 container+收放罗盘+sidebar+日程 V8+BFF 自环修复 fc20294+索引根治 8ecaa72+容器分类 c03154e，纯净 dist 重建；门禁：后端 565 passed/0 红·前端 389·tsc 0（Qoder 亲跑）；回测：BeeCount 反代 md5=b72d341e 逐字节一致、ext/evil=404、端点路由层全 401 在",
         "post": "life-chat/Doubao/最新/2026-09-25-Doubao-总监令107-点火令.md"
+      },
+      {
+        "at": "2026-09-25T16:21",
+        "by": "Qoder CN",
+        "field": "suites.bff_summary.enabled",
+        "from": "false",
+        "to": "true",
+        "reason": "总监令2 §1 准翻（15:47 请示）：fc20294 已上产+汐瑶 15:5x 带 token 四源全 ok+豆包 16:0x 独立复测四源有数据+路由层 401——四重证据闭环；判据先行件转生产实验（后续每次部署机器可守聚合源健康度）",
+        "post": "life-chat/hermes/最新/2026-09-25-hermes-总监令2-小批部署集结.md"
       }
     ]
   },
@@ -221,7 +230,7 @@
       "source": "判据先行（TX-O1-01，总监令41 语境）：契约源=MiMo《字段契约卡》17:55（源头 schema.py/module_status.py，入库 00915b1）——ok=true/count=len(modules)=17/id 集合≡modules 段（契约卡 §2.4-3）/status 四态/summary 四态和=count/reconcile.scheduler_enabled=false 默认；O1 未部署（生产 404）时 SKIP 不判红，部署后转实验 7 判据；契约卡若有修订以 MiMo A 角新帖为准并回帖改本段"
     },
     "bff_summary": {
-      "enabled": false,
+      "enabled": true,
       "skip_if_404": true,
       "providers": ["calendar", "diary", "review", "todo"],
       "status_allow": ["ok", "not-implemented"],
