@@ -24,7 +24,7 @@ TYPES = (TYPE_LINK, TYPE_NOTE, TYPE_ANNOUNCEMENT, TYPE_FRIEND)
 
 class SidebarItem(PkMixin, TimestampMixin, table=True):
     __tablename__ = "sidebar_item"
-    # 令 71/99/102：Table 幂等；显式 Index 且 Field 不再 index=True，防二次注册撞名
+    # 令 71/99/102：Table 幂等；Field 不用 index=True（自动索引二次注册会 4F36E）
     __table_args__ = (
         Index("ix_sidebar_item_type", "type"),
         Index("ix_sidebar_item_group", "group"),
