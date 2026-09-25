@@ -235,6 +235,7 @@ export function Desktop() {
         ) : (
           <TopBar
             onOpenSearch={openSearch}
+            onOpenQuery={() => pluginHost.open("query")}
             onTidy={tidy}
             onLogout={() => void logout()}
             onMinimizeAll={minimizeAllUnpinned}

@@ -1503,3 +1503,25 @@
   max-height: 200px;
   border-radius: var(--r-md, 10px);
 }
+
+/* —— 顶栏「跨插件查询」快捷入口（主人 09-25 · Zcode 会签 workbuddy 壳层）—— */
+.topbar__query {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--txt-dim);
+  border-radius: var(--r-pill);
+  padding: 2px var(--sp-3);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.topbar__query:hover {
+  color: var(--txt);
+  border-color: var(--accent);
+}
+@media (max-width: 768px) {
+  .topbar__query {
+    display: none; /* 与 topbar__search 同隐，窄屏走 Dock 入口 */
+  }
+}

@@ -9,13 +9,15 @@ interface Props {
   onLogout?: () => void;
   /** ★ 主人④（2026-09-24）：一键最小化所有未固定窗口（固定窗除外）。 */
   onMinimizeAll?: () => void;
+  /** ★ 主人（2026-09-25）：顶栏「跨插件查询」快捷入口；未传则不渲染（向后兼容）。 */
+  onOpenQuery?: () => void;
 }
 
 /**
  * 顶栏：品牌 / 全局搜索入口 / 走秒时钟（U2 今日摘要面板）/ 整理桌面 / 主题切换。
  * 锁定的「登录相关」不在内核职责内（鉴权由 T03 提供），这里只留一个无副作用的占位按钮位。
  */
-export function TopBar({ onOpenSearch, onTidy, onLogout, onMinimizeAll }: Props) {
+export function TopBar({ onOpenSearch, onOpenQuery, onTidy, onLogout, onMinimizeAll }: Props) {
   const theme = useTheme((s) => s.theme);
   const toggle = useTheme((s) => s.toggle);
   // ★ T23 工作区切换器
@@ -38,6 +40,18 @@ export function TopBar({ onOpenSearch, onTidy, onLogout, onMinimizeAll }: Props)
         搜索…
         <kbd>Ctrl K</kbd>
       </button>
+
+      {/* ★ 主人（2026-09-25）：搜索框旁「跨插件查询」快捷入口——尺寸随搜索框，窄屏同隐。 */}
+      {onOpenQuery ? (
+        <button
+          type="button"
+          className="topbar__query"
+          onClick={onOpenQuery}
+          aria-label="打开跨插件查询"
+        >
+          跨插件查询
+        </button>
+      ) : null}
 
       {/* ★ T23：工作区页签 + 新建。名字一律「工作区 N」，内核零业务。 */}
       <div className="topbar__ws" role="tablist" aria-label="工作区">
