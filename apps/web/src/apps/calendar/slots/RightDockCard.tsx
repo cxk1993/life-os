@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/shared/api/client";
 import { useDesktopStore } from "../../../kernel/store";
 import { calendarApi } from "../api";
+import { formatSH } from "../lib/time";
 
 function localDay(d = new Date()): string {
   const y = d.getFullYear();
@@ -15,8 +16,12 @@ function localDay(d = new Date()): string {
 export default function RightDockCard() {
   const openWindow = useDesktopStore((s) => s.openWindow);
   const today = localDay();
-  const monthStart = localDay(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  const monthEnd = localDay(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
+  // 日期口径修正（Qoder 侦察 09-26）：calendar/events 要求 tz-aware（铁律「naive 直接报错」），
+  // U3 重写时误传 date-only → 422「暂时不可用」。改用日历同款 formatSH（+08:00）。
+  // to 取「次月 1 日 00:00」而非「本月末 00:00」——后端 start_at < end 为开区间，
+  // 否则月末最后一天事件会缺（一案修两病）。
+  const monthStart = formatSH(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const monthEnd = formatSH(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1));
 
   const { data, isError, isLoading } = useQuery({
     queryKey: ["calendar", "right-card", monthStart],
