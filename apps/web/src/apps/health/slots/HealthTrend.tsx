@@ -96,17 +96,33 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
   );
 }
 
+/** ★ 日期口径（Qoder 侦察 09-26 · 同族第二枚）：健康端点 to_utc 要求 tz-aware，
+ *  date-only 一律 422（HealthTrend 曾因此「趋势暂时不可用」）。
+ *  A 族铁律已在四份文件里复制过——本处留最小本地件，不跨 app import、不造第 5 份 to_utc。
+ *  复用 calendar/lib/time.ts:40 同形算法（+08:00 ISO 串）。 */
+function formatSH(utc: Date): string {
+  const sh = new Date(utc.getTime() + 8 * 3600_000);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  const p3 = (n: number) => String(n).padStart(3, "0");
+  return (
+    `${sh.getUTCFullYear()}-${p2(sh.getUTCMonth() + 1)}-${p2(sh.getUTCDate())}` +
+    `T${p2(sh.getUTCHours())}:${p2(sh.getUTCMinutes())}:${p2(sh.getUTCSeconds())}.${p3(sh.getUTCMilliseconds())}+08:00`
+  );
+}
+
 export default function HealthTrend() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["health", "trend"],
     queryFn: async () => {
       const from = new Date();
       from.setDate(from.getDate() - (TREND_WEEKS - 1) * 7);
+      from.setHours(0, 0, 0, 0); // 起始日 00:00（含当天）
       const to = new Date();
+      to.setHours(23, 59, 59, 999); // ★ 后端 date_to 为 `<=` 闭区间，取当天末刻，今天的事件不丢
       const recs = await healthApi.list({
         kind: "symptom",
-        from: from.toISOString().slice(0, 10),
-        to: to.toISOString().slice(0, 10),
+        from: formatSH(from),
+        to: formatSH(to),
       });
       return {
         points: aggregateTrend(recs, TREND_WEEKS),

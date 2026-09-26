@@ -134,6 +134,22 @@ describe("D1 · HealthTrend 组件渲染", () => {
     expect(await screen.findByText(/记几条症状记录/)).toBeTruthy();
   });
 
+  it("★ 日期口径回归：from/to 必须 tz-aware（含 +08:00），不得传 date-only（否则后端 422）", async () => {
+    // 后端 health/service.py:to_utc 对 naive 时间抛 ValidationError → HTTP 422
+    // （同族第二枚，Qoder 侦察 09-26）。判据断「实发参数」而非 mock 返回值。
+    vi.mocked(healthApi.list).mockReset();
+    vi.mocked(healthApi.list).mockResolvedValue([]);
+    render(<HealthTrend />, { wrapper: makeWrapper() });
+    await vi.waitFor(() => {
+      expect(healthApi.list).toHaveBeenCalled();
+    });
+    const params = vi.mocked(healthApi.list).mock.calls[0][0] as { from: string; to: string };
+    expect(params.from).toMatch(/\+08:00$/);
+    expect(params.to).toMatch(/\+08:00$/);
+    expect(params.from).not.toMatch(/^\d{4}-\d{2}-\d{2}$/); // 防回退成 date-only
+    expect(params.to.slice(0, 10) >= params.from.slice(0, 10)).toBe(true); // 时序正确
+  });
+
   it("有数据时渲染趋势图（频率计数可见）", async () => {
     vi.mocked(healthApi.list).mockResolvedValue([rec(0, "头痛", 3), rec(1, "头痛", 2)]);
     render(<HealthTrend />, { wrapper: makeWrapper() });
