@@ -173,3 +173,17 @@ class WebEntryUpdate(BaseModel):
 class TouchOut(BaseModel):
     id: str
     opened_at: datetime
+
+class FrameUrlOut(BaseModel):
+    """iframe 内嵌用的真实 URL（含 auth_ref 解析后的凭据）。
+
+    ★ 条目表永不明文凭据：auth_ref 形如 "pat:env:PI_TOKEN"，运行时从 os.environ 取。
+    ★ 解析失败（env 变量缺失）→ 422 + 错误详情，不吞异常。
+    ★ 无 auth_ref 或 "none" → 直接返回原 url。
+    """
+    id: str
+    slug: str
+    title: str
+    url: str  # 解析后的真实 URL（含凭据 query 参数）
+    auth_ref: str | None = None  # 原始引用（用于前端展示）
+    parsed: bool = True  # 是否成功解析凭据

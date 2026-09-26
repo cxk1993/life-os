@@ -26,7 +26,10 @@ def scan_lib(lib: Lib, *, limit: int = MAX_ENTRIES, with_excerpt: bool = True) -
     if not root.is_dir():
         return []
 
-    include = lib.include or ["**/*.md"]
+    # ★ include 补 `*.md`（astrbot 下场 · 主人「似乎笔记的同步里面遗漏了很多笔记」）：
+    #   fnmatch 里 `**/*.md` **不匹配根目录文件**（要求至少一层目录），
+    #   → 主仓库根目录的《人生管理系统.md》等被静默漏掉。补 `*.md` 覆盖根层。
+    include = lib.include or ["*.md", "**/*.md"]
     exclude = lib.exclude or []
     entries: list[dict] = []
 
@@ -50,9 +53,13 @@ def scan_lib(lib: Lib, *, limit: int = MAX_ENTRIES, with_excerpt: bool = True) -
         except OSError:
             continue
 
+        # ★ 标题回退（astrbot 下场 · 主人「有些笔记的标题没有被同步成功」）：
+        #   Work-Review 会生成 0~1 字节的空日报 → title_of("") = "" → 前端显示空标题。
+        #   回退链：首个非空行 → 文件名（去扩展名）。
+        _title = title_of(text) or Path(rel).stem
         entry = {
             "rel_path": rel,
-            "title": title_of(text),
+            "title": _title,
             "mtime": int(stat.st_mtime),
             "size": stat.st_size,
             "hash": hashlib.sha256(raw).hexdigest(),

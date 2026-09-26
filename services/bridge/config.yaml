@@ -16,7 +16,7 @@ libs:
     path: "./vault/笔记软件/obsidian/主仓库"
     mode: ro            # 默认只读
     enabled: true
-    include: ["**/*.md"]
+    include: ["*.md", "**/*.md"]
     exclude: []
 
   - id: review
@@ -24,7 +24,7 @@ libs:
     path: "./vault/笔记软件/obsidian/主仓库/work review日报"
     mode: ro
     enabled: true
-    include: ["**/*.md"]
+    include: ["*.md", "**/*.md"]
     exclude: []
 
   - id: undo
@@ -32,7 +32,7 @@ libs:
     path: "./vault/笔记软件/obsidian/主仓库/复盘"
     mode: ro
     enabled: true
-    include: ["**/*.md"]
+    include: ["*.md", "**/*.md"]
     exclude: []
 
   # ★ 附件库（astrbot 下场 · 主人⑤「ob 笔记的附件、图片插入的这个 md 文件展示功能也要加上」）
@@ -52,5 +52,5 @@ libs:
     path: "./vault/笔记软件/obsidian/主仓库/云昔专用文件夹"
     mode: ro
     enabled: false
-    include: ["**/*.md"]
+    include: ["*.md", "**/*.md"]
     exclude: []

@@ -196,7 +196,11 @@ class NotesService:
             row = existing.get(rel)
             if row is None:
                 row = NoteIndex(lib_id=lib.id, rel_path=rel)
-            row.title = str(e.get("title") or "")[:200]
+            # ★ 兜底回退（astrbot 下场）：空标题 → 文件名（防桥侧旧版本/空文件）
+            _t = str(e.get("title") or "").strip()
+            if not _t:
+                _t = str(e.get("rel_path") or "").rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            row.title = _t[:200]
             row.mtime = int(e.get("mtime") or 0)
             row.size = int(e.get("size") or 0)
             row.content_hash = str(e.get("hash") or "")[:64]

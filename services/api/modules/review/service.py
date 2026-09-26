@@ -505,6 +505,46 @@ class ReviewService:
         return out
 
     # ───────────────────────── 写（只写 Life-OS） ─────────────────────────
+    def ingest_all(self) -> dict[str, Any]:
+        """★ 全量同步历史日报（astrbot 下场 · 主人令「同步理应同步历史所有日报」）。
+
+        步骤：① 向 Work-Review 要日期清单 → ② 逐个 fetch_and_store（**幂等**）。
+        ★ 单个日期失败**不中断**整批（如实计数，不虚报成功）。
+        """
+        client = ReviewClient()
+        try:
+            dates = client.list_report_dates()
+        except Exception as exc:
+            raise _map_client_error(exc) from exc
+        ok = skipped = failed = 0
+        errors: list[str] = []
+        for d in dates:
+            try:
+                day = DateType.fromisoformat(d)
+            except ValueError:
+                skipped += 1
+                continue
+            try:
+                fetch_and_store(self.db, day, client)
+                ok += 1
+            except Exception as exc:  # 单日失败不中断
+                failed += 1
+                if len(errors) < 5:
+                    errors.append(f"{d}: {type(exc).__name__}")
+        if ok:
+            event_bus.publish(
+                "review.all.ingested",
+                {"total": len(dates), "ok": ok, "failed": failed},
+                source="review",
+            )
+        return {
+            "total": len(dates),
+            "ok": ok,
+            "skipped": skipped,
+            "failed": failed,
+            "errors": errors,
+        }
+
     def ingest(self, day: DateType | None = None) -> IngestOut:
         target = day or local_today()
         client = ReviewClient()

@@ -13,11 +13,11 @@ import json
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Request, Depends, Query, status
 from fastapi import Path as FPath
 from sqlmodel import Session
 
-from core.deps import get_current_user, get_db
+from core.deps import get_current_user, get_db, get_plugin_client
 from core.security import User
 
 from .schema import (
@@ -156,11 +156,24 @@ def delete_task(
 def dispatch_task(
     task_id: Annotated[str, FPath()],
     body: DispatchIn,
+    request: Request,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """离线派发：只记账 + 推进状态机，不调外网。"""
-    return AgentsService(db).dispatch(task_id, body)
+    """派发任务块。
+
+    ★ 2026-09-25 TX-FRAME-01 第⑥刀：
+      - `mode="pi"` → **真执行**：经 `pi.chat.write` 能力调内嵌 Pi（任务块独立会话），
+        结果写回 `task.result` 并推进状态机；
+      - 其余模式（webhook/poll/mcp）**保持原语义**（只记账 + 推进状态机，不调外网）。
+
+    ★ 跨插件调用只走 API（ADR-0002 禁止 import）；能力声明在 manifest.requires，
+      `get_plugin_client` 机器校验 ⊆ requires（越权 403）。
+    """
+    pi_client = None
+    if body.mode == "pi":
+        pi_client = get_plugin_client(request, ["pi.chat.write"])
+    return AgentsService(db).dispatch(task_id, body, pi_client=pi_client)
 
 
 @router.post("/tasks/{task_id}/report", response_model=TaskOut)

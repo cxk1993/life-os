@@ -1,0 +1,31 @@
+# ★ TX-FRAME-01 第⑧刀 · pi 沙箱镜像（Plain Docker 隔离）
+#
+# 依据：pi 官方 `docs/containerization.md` 的「Plain Docker」模式 —— 整个 Pi 进程进容器。
+# 为什么不用 gondolin：它需要 QEMU + 嵌套虚拟化（WSL 里难跑），而 Docker 本机与云服务器都有。
+#
+# ★ 与宿主的关系：
+#   - 工作目录经 `-v <runtime>:/workspace` 挂进来（只暴露这一个目录）；
+#   - Life-OS 的 MCP 桥用 `--network host` 访问（容器内 127.0.0.1 = 宿主）；
+#   - 凭证（LIFEOS_MCP_PAT）走环境变量注入，**不落镜像**；
+#   - 版本 pin 死（总监红线①）。
+#
+# 构建：docker build -t lifeos-pi-sandbox:0.87.1 -f Dockerfile.pi .
+FROM node:24-bookworm-slim
+
+# 工具链：pi 的 bash 工具需要这些；ripgrep 供搜索
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       bash ca-certificates git ripgrep curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# ★ 版本 pin 死（0.87.1，与宿主一致）
+RUN npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1 \
+  && npm install -g --ignore-scripts pi-mcp-adapter@2.37.0
+
+# 非 root 用户（最小权限：容器内也不给 root）
+RUN useradd -m -u 10001 pi
+USER pi
+WORKDIR /workspace
+
+# ★ RPC 模式：stdin/stdout 即协议通道（`docker run -i` 保它）
+ENTRYPOINT ["pi"]

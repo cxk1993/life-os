@@ -209,6 +209,32 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
 KERNEL_RESERVED_CAPABILITY_PREFIXES: tuple[str, ...] = ("core.", "kernel.", "_kernel.")
 
 
+def _scan_third_party_provides() -> dict[str, str]:
+    """★ 2026-09-25（TX-FRAME-01 第⑥刀）：把 `plugins/` 里第三方插件的 provides 也纳入
+    能力映射，否则内置插件**无法声明对第三方能力的依赖**（闸门会误判"没人 provides"）。
+
+    ★ 边界说明：第三方插件是**可卸载**的，所以内置插件对它的依赖**只应写软依赖**
+      （optionalDependencies）—— 见下方软依赖放宽处理。此函数只负责"看得见"。
+    """
+    provider: dict[str, str] = {}
+    try:
+        import json as _json
+
+        plug_dir = Path(__file__).resolve().parents[2] / "plugins"
+        if not plug_dir.is_dir():
+            return provider
+        for mf in sorted(plug_dir.glob("*/manifest.json")):
+            try:
+                raw = _json.loads(mf.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                continue
+            for cap in raw.get("provides") or []:
+                provider.setdefault(str(cap), str(raw.get("id") or mf.parent.name))
+    except Exception:  # noqa: BLE001 —— 尽力而为，绝不让它拖垮启动
+        pass
+    return provider
+
+
 def _gate_dependency_declarations(found: dict[str, tuple[Manifest, Path]]) -> None:
     """依赖声明闸门：全部模块发现后统一校验，失败抛 ManifestError（启动即失败）。"""
     # 能力名 → 提供者模块 id
@@ -216,6 +242,9 @@ def _gate_dependency_declarations(found: dict[str, tuple[Manifest, Path]]) -> No
     for mid, (m, _p) in found.items():
         for cap in m.provides:
             provider.setdefault(cap, mid)
+    # ★ 第三方插件的 provides 也纳入（否则内置无法依赖第三方能力）
+    for cap, mid in _scan_third_party_provides().items():
+        provider.setdefault(cap, mid)
 
     # 模块 → 其硬依赖所指向的模块（经「能力 → 提供者」映射；软依赖不入图）
     hard_edges: dict[str, set[str]] = {mid: set() for mid in found}
@@ -240,7 +269,15 @@ def _gate_dependency_declarations(found: dict[str, tuple[Manifest, Path]]) -> No
                     "（内核是宿主、不对外 provides —— 反向依赖禁止）"
                 )
             # ① 依赖的能力必须真的有人 provides
+            #   ★ 2026-09-25（TX-FRAME-01 第⑥刀）：**软依赖放宽** ——
+            #     optionalDependencies 的语义本就是「缺了降级不死」（见 Manifest 注释），
+            #     故找不到提供者时**只告警**；硬依赖仍 fail-fast。
             if cap not in provider:
+                if field == "optionalDependencies":
+                    log.warning(
+                        "模块 %s 的软依赖 %r 当前没有提供者（允许：缺了降级不死）", mid, cap
+                    )
+                    continue
                 raise ManifestError(
                     f"模块「{mid}」{field} 声明的能力 {cap!r} 没有任何模块 provides"
                 )

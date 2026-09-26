@@ -20,7 +20,9 @@ from db.base import PkMixin, TimestampMixin, TimestampTZ
 # done 之后不可再改（只能新建）；failed 可重试回 queued。
 TASK_STATUS = ("draft", "queued", "running", "done", "failed", "cancelled")
 # 分发模式
-DISPATCH_MODE = ("webhook", "poll", "mcp")
+# ★ 2026-09-25 TX-FRAME-01 第⑥刀：新增 "pi" —— 由内嵌 Pi agent 真执行（不再只记账）。
+#   语义：dispatch(mode="pi") → 调 /api/v1/pi-agent/chat（任务块独立会话）→ 结果写回 task.result。
+DISPATCH_MODE = ("webhook", "poll", "mcp", "pi")
 
 
 class AgentTask(PkMixin, TimestampMixin, table=True):

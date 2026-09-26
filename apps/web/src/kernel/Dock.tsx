@@ -37,6 +37,16 @@ const DOCK_MERGE: Record<string, string> = {
   //   （坑谱 #15：manifest.slots 不产生隐藏效果，MiMo 4c8aace 前车之鉴）。
   calendar: "schedule",
   todo: "schedule",
+  // ★ 主人 2026-09-26 令「替换了吧，宁缺毋滥」：
+  //   ai-chat（AI 对话）已由 pi-agent 接管 —— **必须在 DOCK_MERGE 收口**，
+  //   因为 Dock 渲染遍历 store 全部模块、**从不读 manifest.slots**
+  //   （坑谱 #15：摘 desktop.dock 槽永远无效）。fail-safe：pi-agent 未启用时自动保留原按钮。
+  "ai-chat": "pi-agent",
+  // ★ 主人 2026-09-26 追加令「AI 编排也收，并进 pi-agent 当一个 tab」：
+  //   agents（AI 编排）归口到 pi-agent —— 底端栏 AI 类入口**收敛为一个**，
+  //   点开 pi-agent 即见「对话 / 编排」两页签（容器 MultitabFrame 承载）。
+  //   fail-safe：pi-agent 未启用时自动保留 agents 原按钮。
+  agents: "pi-agent",
 };
 
 export function Dock() {

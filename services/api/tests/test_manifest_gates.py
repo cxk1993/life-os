@@ -71,9 +71,27 @@ def test_rule1_hard_dep_unknown_capability_rejected(tmp_path: Path) -> None:
         discover_modules(tmp_path)
 
 
-def test_rule1_soft_dep_unknown_capability_rejected(tmp_path: Path) -> None:
+def test_rule1_soft_dep_unknown_capability_allowed(tmp_path: Path) -> None:
+    """★ 2026-09-25（TX-FRAME-01 第⑥刀）**语义修正**：软依赖找不到提供者 → **只告警，不报错**。
+
+    原测试（`..._rejected`）要求软依赖也必须有人 provides，这与 `Manifest` 自身注释
+    「软依赖（本字段）缺 = 坞位挂 degraded 角标，**功能降级但不死**」**互相矛盾** ——
+    若软依赖缺了要 fail-fast，那它与硬依赖就没有区别了。
+
+    真实场景（本刀遇到的）：内置插件 `agents` 想调用**可卸载的第三方插件** `pi-agent`
+    的能力（`pi.chat.write`）。这类依赖**只能**用软依赖表达 ——
+    硬依赖会让内置插件在第三方未装时直接起不来（违反 ADR-0002「禁用后系统必须完好」）。
+
+    ★ 折中：找不到提供者时**告警**（不静默 —— 拼错能力名仍能被发现），但不阻断启动。
+    """
     _write(tmp_path, "alpha", optionalDependencies=["ghost.read"])
-    with pytest.raises(ManifestError, match="optionalDependencies"):
+    assert len(discover_modules(tmp_path)) == 1  # 不抛错
+
+
+def test_rule1_hard_dep_still_fail_fast(tmp_path: Path) -> None:
+    """★ 对照：硬依赖找不到仍 fail-fast（本刀未放宽这条）。"""
+    _write(tmp_path, "alpha", requires=["ghost.read"])
+    with pytest.raises(ManifestError, match="没有任何模块 provides"):
         discover_modules(tmp_path)
 
 

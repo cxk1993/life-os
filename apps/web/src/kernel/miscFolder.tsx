@@ -83,6 +83,9 @@ export interface MiscEntry {
   isImage: boolean;
 }
 
+/** ★ 固定中文排序器：不随宿主环境 locale 漂移（测试 flake 曾因裸 localeCompare 在 en-US 下退化码点序）。 */
+const NAME_COLLATOR = new Intl.Collator("zh-Hans-CN");
+
 export async function listTopLevel(dir: DirHandleExt): Promise<MiscEntry[]> {
   const out: MiscEntry[] = [];
   // directory 值迭代在 TS lib 里以 async iterator 存在，这里窄化使用
@@ -90,7 +93,12 @@ export async function listTopLevel(dir: DirHandleExt): Promise<MiscEntry[]> {
   for await (const [name, handle] of iterable) {
     out.push({ name, kind: handle.kind === "directory" ? "directory" : "file", isImage: IMAGE_EXT.test(name) });
   }
-  return out.sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "directory" ? -1 : 1));
+  // ★ 排序必须显式指定 locale：裸 localeCompare 跟随运行环境（CI/服务器多为 en-US），
+  //   中文目录名会退化到码点序，导致同一份代码在不同环境排序不同（测试 flake 根因）。
+  //   固定 zh-Hans-CN → 中文按拼音序，且判定稳定可复现。
+  return out.sort((a, b) =>
+    a.kind === b.kind ? NAME_COLLATOR.compare(a.name, b.name) : a.kind === "directory" ? -1 : 1,
+  );
 }
 
 export async function pickDirectory(): Promise<FileSystemDirectoryHandle | null> {

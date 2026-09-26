@@ -1,0 +1,249 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { ApiError } from "@/shared/api/client";
+import { chatStream, piAgentApi } from "./api";
+import type { AgentStatus, SessionInfo } from "./api";
+
+/**
+ * ★ TX-FRAME-01 第⑤刀 · Pi 智能体**对话页**。
+ *
+ * ★ 2026-09-26（主人令「AI 编排也收，并进 pi-agent 当一个 tab」）：
+ *   本组件由 `PiAgentApp` 更名为 `PiChatView` —— **对话逻辑一字未改**，
+ *   只是被新的容器 `PiAgentApp`（MultitabFrame 两页：对话 / 编排）承载。
+ *   改法照 `apps/schedule/ScheduleApp.tsx` 容器样板（原 App 不动，仅被 lazy 引用）。
+ *
+ * 与内置 ai-chat 的区别（也是 pi 的价值所在）：
+ *   1. **流式**（SSE 逐字）；
+ *   2. **会话可切换/锁定**（一个 session = 一个 pi 子进程，互不干扰）；
+ *   3. **降级可见**（L1 可用 / L2 启动中 / L3 熔断，且给「重试」）。
+ *
+ * 契约：见 ./api.ts（后端 plugins/pi-agent/api/router.py）。
+ */
+interface Msg {
+  role: "user" | "assistant";
+  text: string;
+  error?: boolean;
+}
+
+const LEVEL_TEXT: Record<string, string> = {
+  L1: "可用",
+  L2: "启动中",
+  L3: "已熔断",
+};
+
+export default function PiChatView() {
+  const [sessionId, setSessionId] = useState("default");
+  const [messages, setMessages] = useState<Msg[]>([
+    {
+      role: "assistant",
+      text: "你好，我是 Pi 智能体。我能直接查 Life-OS 的日程、待办、健康、理财等数据，也能做多步任务。",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<AgentStatus | null>(null);
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const refreshStatus = useCallback(async () => {
+    try {
+      setStatus(await piAgentApi.status());
+    } catch {
+      setStatus(null);
+    }
+    try {
+      const d = await piAgentApi.listSessions();
+      setSessions(d.sessions ?? []);
+    } catch {
+      setSessions([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshStatus();
+    const t = setInterval(() => void refreshStatus(), 10000);
+    return () => clearInterval(t);
+  }, [refreshStatus]);
+
+  const level = status?.level ?? "L2";
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput("");
+    setNotice(null);
+    setBusy(true);
+    setMessages((m) => [...m, { role: "user", text }, { role: "assistant", text: "" }]);
+
+    const appendDelta = (d: string) =>
+      setMessages((m) => {
+        const next = [...m];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant") next[next.length - 1] = { ...last, text: last.text + d };
+        return next;
+      });
+
+    try {
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      let got = false;
+      await chatStream(text, sessionId, {
+        onDelta: (d) => {
+          got = true;
+          appendDelta(d);
+        },
+        onError: (detail, lv) => {
+          setNotice(`降级（${lv ?? level}）：${detail}`);
+          setMessages((m) => {
+            const next = [...m];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant" && !last.text) {
+              next[next.length - 1] = { role: "assistant", text: "（本次未能回复）", error: true };
+            }
+            return next;
+          });
+        },
+      }, ctrl.signal);
+      if (!got) {
+        // 流式一个字都没来 → 退回同步接口（更稳，且能拿到明确原因）
+        const r = await piAgentApi.chat(text, sessionId);
+        setMessages((m) => {
+          const next = [...m];
+          const last = next[next.length - 1];
+          if (last?.role === "assistant" && !last.text) {
+            next[next.length - 1] = r.degraded
+              ? { role: "assistant", text: `（降级 ${r.level}）${r.detail ?? ""}`, error: true }
+              : { role: "assistant", text: r.reply };
+          }
+          return next;
+        });
+        if (r.degraded) setNotice(`降级（${r.level}）：${r.detail ?? ""}`);
+      }
+    } catch (e) {
+      const err =
+        e instanceof ApiError && e.status >= 500
+          ? "服务异常，请稍后再试"
+          : "发送失败，请稍后再试";
+      setMessages((m) => {
+        const next = [...m];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant" && !last.text) {
+          next[next.length - 1] = { role: "assistant", text: err, error: true };
+        }
+        return next;
+      });
+    } finally {
+      abortRef.current = null;
+      setBusy(false);
+      void refreshStatus();
+    }
+  };
+
+  const stop = () => {
+    abortRef.current?.abort();
+    setBusy(false);
+  };
+
+  const lockSession = async () => {
+    try {
+      await piAgentApi.sessionAction("lock", sessionId);
+      setNotice(`已锁定会话「${sessionId}」`);
+      void refreshStatus();
+    } catch {
+      setNotice("锁定失败（后端不可达）");
+    }
+  };
+
+  const retry = async () => {
+    try {
+      await piAgentApi.resetCircuit();
+      setNotice("已重置熔断，重试中…");
+      void refreshStatus();
+    } catch {
+      setNotice("重置失败");
+    }
+  };
+
+  return (
+    <div className="pi-agent" data-testid="pi-agent-app">
+      <div className="pi-agent__bar">
+        <span className={`pi-agent__level is-${level}`} data-testid="pi-level">
+          {LEVEL_TEXT[level] ?? level}
+        </span>
+        <input
+          className="pi-agent__session"
+          value={sessionId}
+          onChange={(e) => setSessionId(e.target.value)}
+          aria-label="会话名"
+          placeholder="会话名"
+        />
+        <button
+          type="button"
+          className="btn"
+          data-testid="pi-lock"
+          onClick={lockSession}
+          disabled={busy}
+        >
+          锁定
+        </button>
+        <span className="pi-agent__meta" data-testid="pi-sessions">
+          {sessions.length} 个活跃会话
+          {status?.model ? ` · ${status.model}` : ""}
+        </span>
+        {level === "L3" ? (
+          <button type="button" className="btn" onClick={retry}>
+            重试
+          </button>
+        ) : null}
+      </div>
+
+      {notice ? (
+        <div className="pi-agent__notice" role="status">
+          {notice}
+        </div>
+      ) : null}
+
+      <div className="pi-agent__msgs" data-testid="pi-msgs" role="log" aria-live="polite">
+        {messages.map((m, i) => (
+          <div key={i} className={`pi-agent__msg is-${m.role}${m.error ? " is-error" : ""}`}>
+            <div className="pi-agent__bubble">{m.text || (busy ? "…" : "")}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pi-agent__composer">
+        <textarea
+          className="pi-agent__input"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          placeholder="问点什么…（Enter 发送，Shift+Enter 换行）"
+          aria-label="消息输入"
+          data-testid="pi-input"
+          rows={2}
+        />
+        {busy ? (
+          <button type="button" className="btn" onClick={stop}>
+            停止
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn--primary"
+            data-testid="pi-send"
+            onClick={send}
+            disabled={!input.trim()}
+          >
+            发送
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,119 @@
+/* ★ TX-FRAME-01 第⑤刀 · Pi 智能体对话窗样式。只使用设计令牌 var(--xxx)，不写死颜色。 */
+
+.pi-agent {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  color: var(--txt);
+}
+
+.pi-agent__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line, rgba(128, 128, 128, 0.2));
+}
+
+.pi-agent__level {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.pi-agent__level.is-L1 {
+  border-color: var(--ok, #3fb950);
+  color: var(--ok, #3fb950);
+}
+.pi-agent__level.is-L2 {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.pi-agent__level.is-L3 {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.pi-agent__session {
+  width: 140px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: var(--r-1, 4px);
+  border: 1px solid var(--line, rgba(128, 128, 128, 0.25));
+  background: transparent;
+  color: var(--txt);
+}
+
+.pi-agent__meta {
+  font-size: 11px;
+  color: var(--txt-faint);
+  margin-left: auto;
+}
+
+.pi-agent__notice {
+  font-size: 12px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-2, 6px);
+  border: 1px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+
+.pi-agent__msgs {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+}
+
+.pi-agent__msg {
+  display: flex;
+}
+.pi-agent__msg.is-user {
+  justify-content: flex-end;
+}
+
+.pi-agent__bubble {
+  max-width: 78%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-2, 6px);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pi-agent__msg.is-user .pi-agent__bubble {
+  background: color-mix(in srgb, var(--accent, #4c8dff) 22%, transparent);
+}
+.pi-agent__msg.is-assistant .pi-agent__bubble {
+  background: color-mix(in srgb, var(--txt) 8%, transparent);
+}
+.pi-agent__msg.is-error .pi-agent__bubble {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.pi-agent__composer {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line, rgba(128, 128, 128, 0.2));
+}
+
+.pi-agent__input {
+  flex: 1;
+  resize: vertical;
+  font-size: 13px;
+  padding: var(--sp-2);
+  border-radius: var(--r-1, 4px);
+  border: 1px solid var(--line, rgba(128, 128, 128, 0.25));
+  background: transparent;
+  color: var(--txt);
+  font-family: inherit;
+}

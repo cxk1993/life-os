@@ -6,7 +6,7 @@
   "minKernel": "0.1.0",
   "kernelApi": "^1",
   "icon": "bot",
-  "description": "AI 编排控制台 · 任务块分发（把一句话目标拆成任务块、派给 agent、实时看进度、收回报）",
+  "description": "AI 编排控制台 · 任务块分发（把一句话目标拆成任务块、派给 agent、实时看进度、收回报）。★ 第⑥刀：dispatch 支持 mode=\"pi\" —— 由内嵌 Pi agent 真执行。★ pi.chat.write 走软依赖（pi-agent 是可卸载的第三方插件；缺了则 pi 模式降级，其余模式照常）。",
   "author": "yunxi",
   "window": {
     "w": 980,
@@ -49,5 +49,8 @@
     "onEnable": null,
     "onDisable": null,
     "onUninstall": null
-  }
+  },
+  "optionalDependencies": [
+    "pi.chat.write"
+  ]
 }

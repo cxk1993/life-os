@@ -30,7 +30,7 @@ from sqlmodel import Session
 from core.deps import get_current_user, get_db
 from core.security import User
 
-from .schema import TouchOut, WebEntryCreate, WebEntryListOut, WebEntryOut, WebEntryUpdate
+from .schema import FrameUrlOut, TouchOut, WebEntryCreate, WebEntryListOut, WebEntryOut, WebEntryUpdate
 from .service import WebEntryService
 
 router = APIRouter()
@@ -114,3 +114,17 @@ def touch_entry(
 ) -> TouchOut:
     """记一次「打开」。v0.1 只回时间戳（端点先在，便于以后加使用统计）。"""
     return TouchOut(**WebEntryService(db).touch(entry_id))
+
+@router.get("/entries/{entry_id}/frame-url", response_model=FrameUrlOut)
+def frame_url(
+    entry_id: Annotated[str, FPath(description="条目 id")],
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> FrameUrlOut:
+    """返回 iframe 内嵌用的真实 URL（含 auth_ref 解析后的凭据）。
+
+    ★ 条目表永不明文凭据：auth_ref 形如 "pat:env:PI_TOKEN"，运行时从 os.environ 取。
+    ★ 解析失败（env 变量缺失）→ 422 + 错误详情，不吞异常。
+    ★ 无 auth_ref 或 "none" → 直接返回原 url。
+    """
+    return WebEntryService(db).frame_url(entry_id)

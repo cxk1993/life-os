@@ -386,6 +386,20 @@ class ReviewClient:
             raise ReviewUpstreamError("Work-Review 不可达 / token 无效（health 无 version）", 503)
         return data
 
+    def list_report_dates(self) -> list[str]:
+        """★ 列出 Work-Review 上有日报的全部日期（astrbot 下场 · 主人令「同步历史所有日报」）。
+
+        上游：GET /v1/reports（不带日期）→ {"dates": ["2026-09-24", ...]}
+        mock 模式返回内置日期集。
+        """
+        if self.mode == "mock":
+            return ["2026-09-13", "2026-09-12"]
+        data = self._request("GET", "/v1/reports")
+        dates = data.get("dates") if isinstance(data, dict) else None
+        if not isinstance(dates, list):
+            return []
+        return [str(d) for d in dates if d]
+
     def get_report(self, date: DateType) -> dict[str, Any]:
         """结构化日报（主力落库源）。"""
         if self.mode == "mock":

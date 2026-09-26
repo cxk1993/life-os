@@ -6,7 +6,7 @@
   "minKernel": "0.1.0",
   "kernelApi": "^1",
   "icon": "bot",
-  "description": "内置 AI 对话窗：自然语言 → MCP 工具 → 回话（TX-AI-CHAT-01）",
+  "description": "内置 AI 对话窗（TX-AI-CHAT-01）· ★ 2026-09-26 起 **UI 已由 pi-agent 接管**（主人令「替换了吧，宁缺毋滥」）—— 本模块**不再挂 desktop.dock**，前端 UI 已移除；**REST 契约保留**（builtin 不可卸载，且不破坏兼容）。",
   "author": "yunxi",
   "window": {
     "w": 520,
@@ -14,7 +14,7 @@
     "minW": 360,
     "minH": 420
   },
-  "entry": "@/apps/ai-chat",
+  "entry": "",
   "api": {
     "base": "/api/v1/ai-chat",
     "openapi": "/api/v1/ai-chat/openapi.json",
@@ -28,9 +28,7 @@
     "dashboard.today.read"
   ],
   "optionalDependencies": [],
-  "slots": [
-    "desktop.dock"
-  ],
+  "slots": [],
   "emits": [],
   "consumes": [],
   "permissions": [

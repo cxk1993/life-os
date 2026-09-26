@@ -7,6 +7,7 @@ HTTP 契约：成功直接返回资源 JSON；失败由内核转 RFC7807。
 ★ 对 Work-Review 只读：本文件的 POST 只写 Life-OS 自己的库。
 """
 import json
+from typing import Any
 from datetime import date as DateType
 from pathlib import Path
 
@@ -167,6 +168,18 @@ def delete_note(
 ) -> None:
     """删除一条主人批注（主人⑤「增减笔记」的"减"半边 · astrbot 下场）。"""
     ReviewService(db).delete_note(note_id)
+
+
+@router.post("/ingest-all")
+def ingest_all(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """★ 全量同步历史日报（astrbot 下场 · 主人令「同步理应同步历史所有日报」）。
+
+    对 Work-Review **只读**；幂等；返回 {total, ok, skipped, failed, errors}。
+    """
+    return ReviewService(db).ingest_all()
 
 
 @router.post("/ingest", response_model=IngestOut)

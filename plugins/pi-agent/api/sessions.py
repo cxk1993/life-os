@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import logging
 import sys
 import threading
@@ -85,11 +86,16 @@ class PiSessionPool:
         provider: str = "life-os",
         model: str = "life-os:high",
         max_sessions: int = DEFAULT_MAX_SESSIONS,
+        # ★ 第⑧刀：沙箱模式（pi 跑在 Docker 容器里）
+        sandbox: bool = False,
+        sandbox_image: str | None = None,
     ) -> None:
         self._cwd = cwd
         self._binary = binary
         self._provider = provider
         self._model = model
+        self._sandbox = sandbox
+        self._sandbox_image = sandbox_image
         self._max = max(1, max_sessions)
         self._sessions: OrderedDict[str, _SessionEntry] = OrderedDict()
         self._lock = threading.RLock()
@@ -137,6 +143,11 @@ class PiSessionPool:
             cwd=self._cwd, binary=self._binary,
             provider=self._provider, model=self._model,
             extra_args=["--session-dir", self._session_dir],
+            # ★ 第⑨刀：池用**持久会话** —— 会话落盘后，pi-web-ui（同 agent-dir + 同 cwd）
+            #   与外部工具才能看到/续接同一个会话。
+            persist=True,
+            sandbox=self._sandbox,
+            **({"sandbox_image": self._sandbox_image} if self._sandbox_image else {}),
         )
         client.start()
         e = _SessionEntry(name, client)
@@ -254,6 +265,8 @@ class PiSessionPool:
                 "busy": sum(1 for e in self._sessions.values() if e.busy),
                 "alive": sum(1 for e in self._sessions.values() if e.is_alive()),
                 "names": list(self._sessions.keys()),
+                "sandbox": self._sandbox,          # ★ 第⑧刀：是否容器隔离
+                "sandbox_image": self._sandbox_image if self._sandbox else None,
             }
 
     def stop_all(self) -> None:
@@ -276,15 +289,23 @@ def get_pool(
     *, cwd: str | None = None, binary: str | None = None,
     provider: str = "life-os", model: str = "life-os:high",
     max_sessions: int = DEFAULT_MAX_SESSIONS,
+    sandbox: bool | None = None,
+    sandbox_image: str | None = None,
 ) -> PiSessionPool:
+    """取全局单例。★ 沙箱开关默认读环境变量 `PI_AGENT_SANDBOX`（1/true 开）。"""
     global _POOL
     with _POOL_LOCK:
         if _POOL is None:
             if cwd is None:
                 cwd = str(Path(__file__).resolve().parent.parent / "runtime")
+            if sandbox is None:
+                sandbox = (os.environ.get("PI_AGENT_SANDBOX", "") or "").strip().lower() in (
+                    "1", "true", "yes", "on",
+                )
             _POOL = PiSessionPool(
                 cwd=cwd, binary=binary, provider=provider, model=model,
                 max_sessions=max_sessions,
+                sandbox=sandbox, sandbox_image=sandbox_image,
             )
         return _POOL
 

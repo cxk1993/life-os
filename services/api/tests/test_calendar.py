@@ -67,6 +67,22 @@ def _iso(dt: datetime) -> str:
     return dt.astimezone(TZ).isoformat()
 
 
+def _today_within(hours_ahead: int = 2):
+    """★ 2026-09-25 修（TX-FRAME-01 第⑦刀顺带）：造一个**保证落在今天**的未来时刻。
+
+    背景（实测）：原写法 `datetime.now(TZ) + timedelta(hours=2)` 在 **22:00 之后**跑
+    会落到**次日** —— 于是 today-summary 自然查不到它，测试变成
+    「每晚 22 点后必失败」的时间 flaky（本席 22:47 跑全量时撞上）。
+
+    语义保持：仍是"今天之内的未来时刻"（若 now+hours 跨天，则钳到当天 23:59）。
+    """
+    now = datetime.now(TZ)
+    target = now + timedelta(hours=hours_ahead)
+    if target.date() != now.date():
+        target = now.replace(hour=23, minute=59, second=0, microsecond=0)
+    return target
+
+
 # ───────────────────────── 基础 ─────────────────────────
 def test_health(client):
     r = client.get("/api/v1/calendar/health")
@@ -344,8 +360,10 @@ def test_today_summary_200_empty_when_no_events_today(client, auth):
 
 def test_today_summary_includes_todays_event(client, auth):
     """建一个今天的事件 → 摘要 count=1 且 items 含其标题。"""
-    start = (datetime.now(TZ) + timedelta(hours=2)).isoformat()
-    end = (datetime.now(TZ) + timedelta(hours=3)).isoformat()
+    # ★ 2026-09-25 修：改用 _today_within —— 原 now+2h 在 22:00 后会跨天（时间 flaky）
+    start_dt = _today_within(2)
+    start = start_dt.isoformat()
+    end = (start_dt + timedelta(hours=1)).isoformat()
     r = client.post(
         "/api/v1/calendar/events",
         json={"title": "U2测试事件", "start_at": start, "end_at": end},

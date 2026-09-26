@@ -13,7 +13,9 @@
 ★ 两条实测得来的硬约束（别踩）：
   1. **stdin 不能提前关** —— `printf | pi` 会因 EOF 让 pi 立刻退出（0.3s）；
      必须保持管道打开，读到 agent_settled 再收。
-  2. **pi 的 cwd 决定它读哪个 AGENTS.md** —— 生产必须显式指定工作目录
+  2. **`--no-session` vs 持久会话**：前者无状态（不落盘）；**会话共享
+     （与 pi-web-ui / 外部工具）必须用持久会话**（`persist=True`）。
+  3. **pi 的 cwd 决定它读哪个 AGENTS.md** —— 生产必须显式指定工作目录
      （否则会读到 Life-OS 之外的工程指令）。
 
 ★ 进程托管口径（采纳 workbuddy 拍砖）：
@@ -36,6 +38,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Iterator
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -49,6 +52,7 @@ DEFAULT_MODEL = "life-os"
 #   实测不加后缀时默认是 medium，故显式带上。
 DEFAULT_THINKING = "high"
 DEFAULT_MODEL_SPEC = f"{DEFAULT_MODEL}:{DEFAULT_THINKING}"
+DEFAULT_SANDBOX_IMAGE = "lifeos-pi-sandbox:0.87.1"   # ★ 第⑧刀：沙箱镜像（版本 pin 死）
 PROMPT_TIMEOUT_S = 120.0      # 单轮上限（实测 5~11s，留足余量）
 HEARTBEAT_TIMEOUT_S = 10.0    # 心跳单次超时
 HEARTBEAT_FAILS_TO_KILL = 3   # 连续失败判卡死
@@ -86,6 +90,36 @@ class PiEvent:
     def is_settled(self) -> bool:
         """★ 可靠终结信号：pi 不会再自动继续。"""
         return self.type == "agent_settled"
+
+
+def mcp_pat_path() -> str:
+    """★ 本插件自持的 MCP PAT 文件路径（pi 用它调 Life-OS 自己的 MCP 桥）。
+
+    为什么放在插件 runtime/ 下：PAT 是"pi 调 Life-OS"的凭据，
+      与插件同生命周期；runtime/ 已在 permissions 收口范围内（fs:plugin），
+      且**不进 git**（见 .gitignore）。
+    """
+    return str(Path(__file__).resolve().parent.parent / "runtime" / ".mcp_pat")
+
+
+def load_mcp_env() -> dict[str, str]:
+    """构造给 pi 子进程的额外环境（目前只有 MCP PAT）。
+
+    ★ 2026-09-25 第⑥刀实测踩到：pi 通过 `pi-mcp-adapter` 调 Life-OS 的 MCP 桥时
+      报 401「缺少 Authorization: Bearer <PAT>」—— 因为 PAT 只在**我的** shell 里，
+      **没传给 pi 子进程**。此处把它显式注入子进程环境。
+
+    文件缺失 → 返回空（不阻断；pi 仍可聊天，只是 MCP 工具会 401）。
+    """
+    path = mcp_pat_path()
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            pat = f.read().strip()
+        return {"LIFEOS_MCP_PAT": pat} if pat else {}
+    except OSError:
+        return {}
 
 
 def find_pi_binary(configured: str | None = None) -> str | None:
@@ -130,6 +164,12 @@ class PiRpcClient:
         model: str = DEFAULT_MODEL_SPEC,
         extra_args: list[str] | None = None,
         env: dict[str, str] | None = None,
+        # ★ 第⑧刀：沙箱模式 —— pi 跑在 Docker 容器里（Plain Docker 隔离）
+        sandbox: bool = False,
+        sandbox_image: str = DEFAULT_SANDBOX_IMAGE,
+        # ★ 第⑨刀：持久会话（落盘）—— 会话共享（pi-web-ui / 外部工具）的前提。
+        #   默认 False（= `--no-session`，无状态）；会话池应传 True。
+        persist: bool = False,
     ) -> None:
         self.cwd = cwd
         self.binary = binary
@@ -137,6 +177,9 @@ class PiRpcClient:
         self.model = model
         self.extra_args = list(extra_args or [])
         self.env = env
+        self.sandbox = sandbox
+        self.sandbox_image = sandbox_image
+        self.persist = persist
         self._proc: subprocess.Popen[str] | None = None
         self._lock = threading.Lock()
         self._req_seq = 0
@@ -146,19 +189,67 @@ class PiRpcClient:
         """拉起子进程。★ 注意保持 stdin 打开（关掉会让 pi 立即退出）。"""
         if self._proc and self._proc.poll() is None:
             return
-        binary = find_pi_binary(self.binary)
-        if not binary:
-            raise PiRpcError(
-                "找不到 pi 可执行文件（请装 `npm i -g @earendil-works/pi-coding-agent@0.87.1` "
-                "或在插件设置里指定绝对路径）"
-            )
         os.makedirs(self.cwd, exist_ok=True)
-        argv = [
-            binary, "--mode", "rpc", "--no-session",
-            "--provider", self.provider, "--model", self.model,
-            *self.extra_args,
-        ]
-        env = {**os.environ, **(self.env or {})}
+        # ★ 默认注入 MCP PAT（见 load_mcp_env 注释）；显式 self.env 优先。
+        env = {**os.environ, **load_mcp_env(), **(self.env or {})}
+
+        if self.sandbox:
+            # ★ 第⑧刀：容器模式（Plain Docker）。
+            #   - `-i` 保 stdin（RPC 的协议通道就是它，缺了 pi 会立刻退出）；
+            #   - `--network host` 让容器内 127.0.0.1 指向宿主（访问 Life-OS MCP 桥）；
+            #   - `-v <cwd>:/workspace` **只暴露这一个目录**（最小暴露面）；
+            #   - `-e LIFEOS_MCP_PAT`（**不带值**）从宿主环境透传，**不落镜像/不落盘**。
+            if not shutil.which("docker"):
+                raise PiRpcError("沙箱模式需要 docker（未找到可执行文件）")
+            # ★ 容器里必须能拿到 pi 的模型配置（否则报 Unknown provider "life-os"）。
+            #   做法：把宿主的 models.json 复制进 **可写** 的 agent dir（插件 runtime 内，
+            #   已 gitignore），再把它挂成容器内的 PI_CODING_AGENT_DIR。
+            #   ★ key 不 bake 进镜像、也不出现在命令行（只经文件挂载）。
+            agent_dir = Path(self.cwd) / ".pi-agent"
+            agent_dir.mkdir(parents=True, exist_ok=True)
+            host_models = Path.home() / ".pi" / "agent" / "models.json"
+            if host_models.is_file():
+                dst = agent_dir / "models.json"
+                try:
+                    dst.write_bytes(host_models.read_bytes())
+                    dst.chmod(0o600)
+                except OSError:
+                    pass
+            argv = [
+                "docker", "run", "--rm", "-i",
+                "--network", "host",
+                # ★ 以**宿主 uid** 跑容器 —— 挂进来的目录读写无障碍
+                #   （镜像里另建了 pi 用户，这里覆盖它）
+                "--user", f"{os.getuid()}:{os.getgid()}",
+                "-v", f"{self.cwd}:/workspace",
+                "-w", "/workspace",
+                "-e", "PI_CODING_AGENT_DIR=/workspace/.pi-agent",
+                "-e", "HOME=/workspace",
+            ]
+            if env.get("LIFEOS_MCP_PAT"):
+                argv += ["-e", "LIFEOS_MCP_PAT"]
+            argv += [
+                self.sandbox_image,
+                "--mode", "rpc", *([] if self.persist else ["--no-session"]),
+                "--provider", self.provider, "--model", self.model,
+                *self.extra_args,
+            ]
+            log.info(
+                "[pi-agent] 沙箱模式：image=%s cwd=%s agent_dir=%s",
+                self.sandbox_image, self.cwd, agent_dir,
+            )
+        else:
+            binary = find_pi_binary(self.binary)
+            if not binary:
+                raise PiRpcError(
+                    "找不到 pi 可执行文件（请装 `npm i -g @earendil-works/pi-coding-agent@0.87.1` "
+                    "或在插件设置里指定绝对路径）"
+                )
+            argv = [
+                binary, "--mode", "rpc", *([] if self.persist else ["--no-session"]),
+                "--provider", self.provider, "--model", self.model,
+                *self.extra_args,
+            ]
         self._proc = subprocess.Popen(  # noqa: S603
             argv,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,

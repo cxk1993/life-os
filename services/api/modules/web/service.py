@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from sqlmodel import Session, col, select
@@ -20,6 +21,7 @@ from db.base import utcnow
 from .models import WebEntry, caps_from_json, caps_to_json
 from .schema import (
     CapabilityEntry,
+    FrameUrlOut,
     WebEntryCreate,
     WebEntryUpdate,
     normalize_auth_ref,
@@ -132,6 +134,59 @@ class WebEntryService:
         """记一次"打开"。v0.1 只回时间戳（不落库），端点先在，便于以后加使用统计。"""
         row = self.get(entry_id)
         return {"id": row.id, "opened_at": utcnow()}
+
+    def frame_url(self, entry_id: str) -> FrameUrlOut:
+        """返回 iframe 内嵌用的真实 URL（含 auth_ref 解析后的凭据）。
+
+        ★ 条目表永不明文凭据：auth_ref 形如 "pat:env:PI_TOKEN"，运行时从 os.environ 取。
+        ★ 解析失败（env 变量缺失）→ 422 + 错误详情，不吞异常。
+        ★ 无 auth_ref 或 "none" → 直接返回原 url。
+        """
+        row = self.get(entry_id)
+        auth_ref = row.auth_ref
+
+        if not auth_ref or auth_ref.lower() == "none":
+            return FrameUrlOut(
+                id=row.id,
+                slug=row.slug,
+                title=row.title,
+                url=row.url,
+                auth_ref=auth_ref,
+                parsed=False,
+            )
+
+        # 解析 auth_ref: "<type>:env:<VAR_NAME>"
+        try:
+            auth_type, env_var = auth_ref.split(":env:", 1)
+        except ValueError:
+            raise ValidationError(f"auth_ref 格式错误：{auth_ref}")
+
+        # 从环境变量获取凭据
+        secret = os.environ.get(env_var)
+        if not secret:
+            raise ValidationError(
+                f"凭据解析失败：环境变量 {env_var} 未设置。"
+                f"请在 .env 中配置 {env_var}=<凭据值>，然后重启服务。"
+            )
+
+        # 拼接到 URL query 参数
+        from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
+        parsed = urlparse(row.url)
+        query_params = parse_qs(parsed.query)
+        query_params[auth_type] = [secret]
+        new_query = urlencode(query_params, doseq=True)
+        new_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path,
+                              parsed.params, new_query, parsed.fragment))
+
+        return FrameUrlOut(
+            id=row.id,
+            slug=row.slug,
+            title=row.title,
+            url=new_url,
+            auth_ref=auth_ref,
+            parsed=True,
+        )
 
     # ───────────────────────── 内部 ─────────────────────────
 

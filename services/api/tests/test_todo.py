@@ -63,6 +63,22 @@ def _create(client, auth, **kw):
     return r.json()
 
 
+def _today_within(hours_ahead: int = 2):
+    """★ 2026-09-25 修（TX-FRAME-01 第⑦刀顺带）：造一个**保证落在今天**的未来时刻。
+
+    背景（实测）：原写法 `datetime.now(TZ) + timedelta(hours=2)` 在 **22:00 之后**跑
+    会落到**次日** —— 于是 today-summary 自然查不到它，测试变成
+    「每晚 22 点后必失败」的时间 flaky（本席 22:47 跑全量时撞上）。
+
+    语义保持：仍是"今天之内的未来时刻"（若 now+hours 跨天，则钳到当天 23:59）。
+    """
+    now = datetime.now(TZ)
+    target = now + timedelta(hours=hours_ahead)
+    if target.date() != now.date():
+        target = now.replace(hour=23, minute=59, second=0, microsecond=0)
+    return target
+
+
 # ───────────────────────── 基础 ─────────────────────────
 def test_health(client):
     r = client.get("/api/v1/todo/health")
@@ -277,7 +293,7 @@ def test_summary_counts(client, auth):
 # ───────────────────────── U2 today-summary（派工令 62）─────────────────────────
 def test_today_summary_200_shape(client, auth):
     """今日到期 + 逾期 → items（alert 优先），今日完成 → done 计数。"""
-    _create(client, auth, text="今天开会", due_at=_iso(datetime.now(TZ) + timedelta(hours=2)))
+    _create(client, auth, text="今天开会", due_at=_iso(_today_within(2)))
     _create(client, auth, text="昨天逾期", due_at=_iso(datetime.now(TZ) - timedelta(days=1)))
     done = _create(client, auth, text="已完成项", due_at=_iso(datetime.now(TZ)))
     client.post(f"/api/v1/todo/items/{done['id']}/toggle", headers=auth)

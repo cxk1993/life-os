@@ -188,11 +188,16 @@ def get_plugin_client(
     modules: dict[str, dict[str, Any]] = getattr(request.app.state, "modules", {})
     manifest = modules.get(caller) or {}
     requires: list[str] = manifest.get("requires", []) or []
+    # ★ 2026-09-25（TX-FRAME-01 第⑥刀）：**软依赖也算已授权**。
+    #   语义：optionalDependencies 是"缺了降级不死"的可选能力 ——
+    #   **能力在时就应该能用**（否则声明软依赖毫无意义：既要调又永远 403）。
+    optional: list[str] = manifest.get("optionalDependencies", []) or []
+    granted: list[str] = [*requires, *optional]
 
-    missing = [cap for cap in target_capabilities if cap not in requires]
+    missing = [cap for cap in target_capabilities if cap not in granted]
     if missing:
         raise ForbiddenError(
-            f"内部调用未授权：插件「{caller}」requires={requires}，"
+            f"内部调用未授权：插件「{caller}」requires={requires} optional={optional}，"
             f"未声明能力 {missing}（ADR-0002 声明即授权）"
         )
 

@@ -359,9 +359,14 @@ def create_app(
             if _info.source != "third-party":
                 continue
             try:
-                with _db_session() as _db:
-                    _st = _db.get(_PluginState, _info.id)
-                    _enabled = bool(_st.enabled) if _st is not None else False
+                try:
+                    with _db_session() as _db:
+                        _st = _db.get(_PluginState, _info.id)
+                        _enabled = bool(_st.enabled) if _st is not None else False
+                except Exception:
+                    # ★ 表不存在（如测试用的临时库）→ 视为"未启用"，**静默跳过**
+                    #   （不刷 warning 噪音；这是"没记录"的正常情形之一）
+                    continue
                 if not _enabled:
                     log.info(
                         "第三方插件未启用，跳过（可用 /api/v1/plugins/%s/enable 启用）", _info.id

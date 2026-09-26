@@ -42,6 +42,15 @@ export default function NotesApp() {
     enabled: !!activeLib,
   });
 
+  // ★ 默认选中第一个库（astrbot 下场 · 主人「文件夹树要再点击'主仓库'才有用，默认展出的页面还是杂乱无章」）：
+  //   此前 activeLib 默认 null → 树不加载 → 首屏是平铺列表（观感"杂乱"）。
+  //   现在：库列表到位后自动选中第一个（通常是 main 主仓库），树即刻可见。
+  useEffect(() => {
+    if (activeLib) return;
+    const first = libs.data?.[0]?.id;
+    if (first) setActiveLib(first);
+  }, [libs.data, activeLib]);
+
   // ★ 可写：保存（新建/编辑统一走 update 或 create）
   const saveMut = useMutation({
     mutationFn: async () => {

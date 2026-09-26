@@ -44,6 +44,72 @@ _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
 _DISPATCHABLE = {"draft", "queued", "failed"}
 
 
+def _spawn_pi_execution(task_id: str, dispatch_id: str, pi_client: Any, prompt: str) -> None:
+    """★ 第⑦刀：后台线程真跑 Pi，完成后写回任务块。
+
+    ★ 为什么用独立 session：线程不能复用请求线程的 Session（SQLAlchemy Session 非线程安全）。
+    ★ daemon=True：进程退出时不阻塞（半途任务会丢，可接受 —— 编排台看得到 running 未收敛）。
+    ★ 线程内**绝不抛异常**（无人接）—— 一律落成 task.failed + 原因。
+    """
+    import threading
+
+    def _run() -> None:
+        from core.deps import db_session
+
+        try:
+            with db_session() as db:
+                t = db.get(AgentTask, task_id)
+                if t is None:
+                    return
+                d = db.exec(
+                    select(AgentDispatch).where(AgentDispatch.dispatch_id == dispatch_id)
+                ).first()
+                try:
+                    resp = pi_client.post(
+                        "/api/v1/pi-agent/chat",
+                        json={"session_id": f"task-{task_id}", "message": prompt},
+                        # Pi 调工具多轮推理，实测 10~180s；httpx 支持 per-call 覆盖
+                        timeout=600.0,
+                    )
+                    data = resp if isinstance(resp, dict) else {}
+                    if data.get("degraded"):
+                        t.status = "failed"
+                        t.result = f"（Pi 降级 {data.get('level')}）{data.get('detail') or ''}"
+                        t.result_status = "failed"
+                        if d is not None:
+                            d.status = "failed"
+                    else:
+                        t.result = str(data.get("reply") or "")
+                        t.result_status = "ok"
+                        t.status = "done"
+                        t.finished_at = utcnow()
+                        if d is not None:
+                            d.status = "ack"
+                except Exception as exc:  # noqa: BLE001 —— 边界吞一切并如实上报
+                    t.status = "failed"
+                    t.result = f"Pi 执行失败：{type(exc).__name__}: {exc}"[:2000]
+                    t.result_status = "failed"
+                    if d is not None:
+                        d.status = "failed"
+                db.add(t)
+                if d is not None:
+                    db.add(d)
+                db.commit()
+                event_bus.publish(
+                    "agents.task.reported",
+                    {"id": t.id, "status": t.status, "result_status": t.result_status},
+                    source="agents",
+                )
+        except Exception as exc:  # noqa: BLE001 —— 最后一道兜底：线程绝不许把异常漏出去
+            import logging
+
+            logging.getLogger("agents.service").warning(
+                "后台 Pi 执行线程异常（task=%s）：%s", task_id, exc
+            )
+
+    threading.Thread(target=_run, name=f"pi-task-{task_id[:8]}", daemon=True).start()
+
+
 def _as_list(value: Any) -> list[Any]:
     if value is None:
         return []
@@ -308,7 +374,27 @@ class AgentsService:
         if target not in _ALLOWED_TRANSITIONS.get(current, set()):
             raise ValidationError(f"状态不可从 {current} 变为 {target}")
 
-    def dispatch(self, task_id: str, body: DispatchIn) -> dict[str, Any]:
+    def _build_pi_prompt(self, t: AgentTask) -> str:
+        """把一个任务块拼成给 Pi 的指令（结构化字段尽量带上，回报才有依据）。"""
+        parts = [f"任务：{t.title}"]
+        if t.description:
+            parts.append(f"说明：{t.description}")
+        for label, key in (("输入", "inputs"), ("验收标准", "acceptance"), ("约束", "constraints")):
+            v = getattr(t, key, None)
+            if v:
+                parts.append(f"{label}：{v}")
+        if t.payload:
+            parts.append(f"附加数据：{t.payload}")
+        parts.append("请直接执行并给出结论（可调用工具取真实数据，不要臆测）。")
+        return "\n".join(parts)
+
+    def dispatch(
+        self,
+        task_id: str,
+        body: DispatchIn,
+        *,
+        pi_client: Any = None,
+    ) -> dict[str, Any]:
         t = self.db.get(AgentTask, task_id)
         if t is None:
             raise NotFoundError(f"任务不存在：{task_id}")
@@ -356,6 +442,30 @@ class AgentsService:
         self.db.commit()
         self.db.refresh(d)
         self.db.refresh(t)
+
+        # ★ 2026-09-25 TX-FRAME-01 第⑥/⑦刀：mode="pi" —— **真执行**（不再只记账）。
+        #   经 pi.chat.write 能力调 /api/v1/pi-agent/chat（跨插件只走 API，不 import，ADR-0002）。
+        #   会话名用任务块 id：一个任务块一个独立会话（互不干扰，也便于追溯）。
+        #
+        #   ★ 第⑦刀：**异步化**。Pi 调工具实测 10~180s —— 同步等会把 HTTP 请求挂死，
+        #     且不符合"派发"语义。故：**立即返回 running**，真执行放**后台线程**，
+        #     完成后由线程写回 result + 推进状态 + 发事件。编排台可随时 GET 看进度。
+        if body.mode == "pi":
+            if pi_client is None:
+                raise ValidationError(
+                    "mode=pi 需要内部调用客户端（pi.chat.write 能力）；"
+                    "请确认 agents.manifest 已声明该软依赖且 pi-agent 已启用"
+                )
+            t.status = "running"
+            self.db.add(t)
+            self.db.commit()
+            self.db.refresh(t)
+            out = self._dump_dispatch(d, t)
+            event_bus.publish("agents.task.dispatched", out, source="agents")
+            # ★ 交给后台线程（daemon：不阻塞进程退出；自带独立 DB session）
+            _spawn_pi_execution(t.id, d.dispatch_id, pi_client, self._build_pi_prompt(t))
+            return out
+
         out = self._dump_dispatch(d, t)
         event_bus.publish("agents.task.dispatched", out, source="agents")
         return out

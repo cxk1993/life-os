@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePluginEvent } from "@/shared/api/events";
 import { formatSeconds, reviewApi, type DayDetail, type NamedRow, type SourceInfo } from "./api";
+import ReviewCalendar from "./ReviewCalendar";
 import "./review.css";
 
 function sourceLine(src: SourceInfo | null | undefined): string {
@@ -83,8 +84,9 @@ export default function ReviewApp() {
   });
 
   const daysQ = useQuery({
+    // ★ 取全量（日历需要"有日报的全部日期"；原 size=10 只够列表）
     queryKey: ["review", "days", page],
-    queryFn: () => reviewApi.days({ page, size: 10 }),
+    queryFn: () => reviewApi.days({ page, size: 200 }),
   });
 
   const days = daysQ.data?.items ?? [];
@@ -113,9 +115,34 @@ export default function ReviewApp() {
     enabled: Boolean(activeDate),
   });
 
+  // ★ 同步失败原因（astrbot 下场 · 主人「点了没数据/没反应」→ 要让人看见为什么）
+  const [ingestError, setIngestError] = useState<string | null>(null);
   const ingestMut = useMutation({
     mutationFn: (date?: string) => reviewApi.ingest(date),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      setIngestError(null);
+      invalidate();
+    },
+    onError: (err: unknown) => {
+      // 后端把 Work-Review 的 400（如「未找到该日期的日报」）透传上来，这里如实展示。
+      const msg = err instanceof Error ? err.message : String(err);
+      setIngestError(msg);
+    },
+  });
+
+  // ★ 全量同步历史日报（astrbot 下场 · 主人令「同步理应同步历史所有日报」）
+  const [ingestAllMsg, setIngestAllMsg] = useState<string | null>(null);
+  const ingestAllMut = useMutation({
+    mutationFn: () => reviewApi.ingestAll(),
+    onSuccess: (r) => {
+      setIngestAllMsg(
+        `同步完成：共 ${r.total} 天，成功 ${r.ok}，失败 ${r.failed}${r.skipped ? `，跳过 ${r.skipped}` : ""}`,
+      );
+      invalidate();
+    },
+    onError: (err: unknown) => {
+      setIngestAllMsg(`全量同步失败：${err instanceof Error ? err.message : String(err)}`);
+    },
   });
 
   const noteMut = useMutation({
@@ -164,13 +191,49 @@ export default function ReviewApp() {
           onClick={() => ingestMut.mutate(activeDate ?? undefined)}
           disabled={ingestMut.isPending}
           aria-label="手动同步日报"
+          // ★ 说明（astrbot 下场 · 主人「点了没数据/没反应」）：
+          //   同步的是「当前选中日期」；无选中时后端默认「今天」——
+          //   而 Work-Review 若当天没写日报会返回 400「未找到该日期的日报」，
+          //   这正是「点了没数据」的真相（链路本身是通的）。失败原因现由下方 role=alert 如实展示。
+          title={
+            activeDate
+              ? `同步 ${activeDate} 的日报`
+              : "将同步「今天」；若今天没写日报，Work-Review 会返回「未找到该日期的日报」"
+          }
         >
           {ingestMut.isPending ? "同步中…" : offline ? "同步（桥离线）" : "手动同步"}
         </button>
+        {/* ★ 全量同步（astrbot 下场 · 主人令「同步理应同步历史所有日报」） */}
+        <button
+          type="button"
+          className="btn"
+          onClick={() => ingestAllMut.mutate()}
+          disabled={ingestAllMut.isPending}
+          aria-label="同步全部历史日报"
+          title="拉取 Work-Review 上有日报的全部日期（幂等，可重复跑）"
+        >
+          {ingestAllMut.isPending ? "全量同步中…" : "同步全部历史"}
+        </button>
       </div>
+      {ingestAllMsg && (
+        <div className="review-sync-error" role="status">
+          {ingestAllMsg}
+        </div>
+      )}
+      {ingestError && (
+        <div className="review-sync-error" role="alert">
+          同步失败：{ingestError}
+        </div>
+      )}
 
       <div className="review-body">
         <aside className="review-days" aria-label="日报日期列表">
+          {/* ★ 日历视图（astrbot 下场 · 主人令「用日历的形式展示，想看哪天看哪天」） */}
+          <ReviewCalendar
+            dates={days.map((d) => d.date)}
+            activeDate={activeDate}
+            onSelect={(d) => setSelected(d)}
+          />
           {daysQ.isLoading ? (
             <div className="review-empty" style={{ padding: 12 }}>
               加载中…

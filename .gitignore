@@ -60,3 +60,7 @@ deploy/tools/**/*.exe
 !.gitkeep
 id_rsa*
 id_ed25519*
+
+# Build backups
+dist_old_*/
+apps/web/dist_old_*/
