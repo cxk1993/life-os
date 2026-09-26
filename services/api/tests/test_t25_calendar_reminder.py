@@ -121,9 +121,10 @@ def test_n2_quiet_hours_suppress_with_reason(db: Session) -> None:
         return {"ok": True, "channel": "log"}
 
     policy = NotifyPolicy(quiet=QuietHours(start=dtime(23, 0), end=dtime(7, 30)))
-    # evaluate 用 now.time() 做钟面比较（naive 语义）；固定 now 的 time()=15:30 不在静默窗
-    # → 改用静默窗盖住 15:30 的策略，验证抑制路径。
-    policy = NotifyPolicy(quiet=QuietHours(start=dtime(15, 0), end=dtime(16, 0)))
+    # ★ 2026-09-26 更新（astrbot）：静默判断已统一换算 Asia/Shanghai（原先用 now.time()
+    #   直接比钟面，而调用方传 UTC → 白天误判深夜）。now = UTC 15:30 = 上海 23:30，
+    #   故用**默认静默窗（23:00–07:30）**即可命中，无需再"盖住 UTC 钟面"。
+    policy = NotifyPolicy(quiet=QuietHours(start=dtime(23, 0), end=dtime(7, 30)))
     r = run_reminder_tick(db, notify_fn=fake, now=now, lead_minutes=0, policy=policy)
     assert len(r) == 1
     assert r[0]["ok"] is False

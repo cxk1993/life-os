@@ -24,13 +24,15 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe("ScheduleApp（日程待办两页容器）", () => {
-  it("渲染两页签：日程表 / 待办，默认选中日程表", () => {
+describe("ScheduleApp（日程待办学业三页容器）", () => {
+  it("渲染三页签：日程表 / 待办 / 学业，默认选中日程表", () => {
+    // ★ 2026-09-26 更新（astrbot · 主人令「学业页」）：容器由两页扩为三页。
     render(<ScheduleApp />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(2);
+    expect(tabs).toHaveLength(3);
     expect(tabs[0].textContent).toContain("日程表");
     expect(tabs[1].textContent).toContain("待办");
+    expect(tabs[2].textContent).toContain("学业");
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
   });
 

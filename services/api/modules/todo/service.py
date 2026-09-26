@@ -140,6 +140,19 @@ def next_occurrence(rule: str, after: datetime) -> datetime | None:
     return nd.astimezone(UTC)
 
 
+def tag_hit(item_tags: list[str], query: str) -> bool:
+    """★ 2026-09-26（astrbot · 主人令「学业页」）：标签匹配支持**层级**。
+
+    语义：`query="学业"` 命中 `学业` 与 `学业/高数`、`学业/大物`；
+    精确查询行为不变（只是**多匹配了子级**）。与 rename_tag 的层级约定一致。
+    """
+    q = (query or "").strip()
+    if not q:
+        return False
+    prefix = q + "/"
+    return any(t == q or t.startswith(prefix) for t in item_tags)
+
+
 class TodoService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -190,7 +203,7 @@ class TodoService:
             stmt = stmt.where(c)
         rows: list[TodoItem] = list(self.db.exec(stmt).all())
         if tag:
-            rows = [r for r in rows if tag in tags_from_json(r.tags)]
+            rows = [r for r in rows if tag_hit(tags_from_json(r.tags), tag)]
         rows.sort(key=self._sort_key)
         offset = decode_cursor(cursor) if cursor else 0
         page = rows[offset: offset + limit]
@@ -226,7 +239,7 @@ class TodoService:
         now = datetime.now(SH_TZ)
         day = now.date()
         day_start = datetime.combine(day, time.min, tzinfo=SH_TZ)
-        day_end = day_start + timedelta(days=1)
+        # ★ 2026-09-26（astrbot）：原 `day_end` 赋值后从未使用（ruff F841，既有陈账）—— 顺手清掉。
         rows = self.db.exec(select(TodoItem)).all()
         due: list[tuple[datetime, TodoItem]] = []
         for r in rows:
@@ -395,7 +408,7 @@ class TodoService:
         elif status == "todo":
             rows = [r for r in rows if not r.done]
         if tag:
-            rows = [r for r in rows if tag in tags_from_json(r.tags)]
+            rows = [r for r in rows if tag_hit(tags_from_json(r.tags), tag)]
         rows.sort(key=lambda r: (r.source_path or "", r.source_line or 0, r.created_at))
         lines = []
         for r in rows:

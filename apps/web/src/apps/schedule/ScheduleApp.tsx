@@ -1,5 +1,8 @@
 /**
- * ★ 日程待办 · 两页合一窗口（主人 2026-09-25 令：
+ * ★ 日程待办 · **三页**合一窗口（2026-09-26 加「学业」页 · 主人令：
+ *   「大学的课很多很杂…与正常待办混在一起非常乱 → 分一个专门的学业页」）。
+ *
+ * ★ 原两页合一窗口（主人 2026-09-25 令：
  *   「todo（待办）是不是也应该与日程表合并？采用一个窗口多个分页展示的形式」
  *   · 总监令 10 §2 派 Qoder CN 施工，批 J 件）。
  *
@@ -21,6 +24,9 @@ const CalendarApp = lazy(() =>
   import("../calendar/CalendarApp").then((m) => ({ default: m.CalendarApp })),
 );
 const TodoApp = lazy(() => import("../todo/TodoApp"));
+// ★ 2026-09-26（astrbot · 主人令「学业页」）：第三页 —— 学业专页
+//   （作业清单，按 deadline 升序；数据源 = todoApi.list({tag:"学业"})，复用后端层级标签）
+const StudyApp = lazy(() => import("../study/StudyApp"));
 
 function PageFallback() {
   return <div className="dash-muted" data-testid="schedule-loading">加载中…</div>;
@@ -39,6 +45,7 @@ export default function ScheduleApp() {
         pages={[
           { key: "calendar", label: "日程表", content: wrap(<CalendarApp />) },
           { key: "todo", label: "待办", content: wrap(<TodoApp />) },
+          { key: "study", label: "学业", content: wrap(<StudyApp />) },
         ]}
       />
     </div>

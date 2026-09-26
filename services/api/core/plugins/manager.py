@@ -154,6 +154,21 @@ class PluginManager:
             self._upsert_state(info, enabled=True)
             return self.get_plugin(plugin_id)
         self._upsert_state(info, enabled=True, last_error=None)
+        # ★ 2026-09-26 修（astrbot · 主人令「修一下就行」）：
+        #   原先只有 install() 跑迁移，enable() **不跑** —— 而 core/app.py 的
+        #   「启动恢复」走的正是 enable()，于是**已启用但从未 install 过的插件**
+        #   （如 countdown：直接放进 plugins/ 后手工建行启用）**表永远不建**，
+        #   接口恒 500（no such table）。修法：enable() 与 install() 一样先跑迁移
+        #   （run_migrations 自带台账幂等，重复调用零副作用）。
+        try:
+            from db.engine import get_engine
+
+            run_migrations(get_engine(), info)
+        except Exception as mig_exc:  # noqa: BLE001 —— 迁移失败不该阻断启用
+            log.warning(
+                "插件迁移执行失败（已记录，不阻断启用）",
+                extra={"module": info.id, "error": f"{type(mig_exc).__name__}: {mig_exc}"},
+            )
         try:
             mount_plugin(info, registry)
             with db_session() as db:

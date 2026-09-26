@@ -276,3 +276,32 @@
   font-size: 11px;
   color: var(--txt-faint);
 }
+
+
+/* ★ 2026-09-26（astrbot · 主人令「学业页」）：待办页的「只看学业」快捷筛选（轻入口） */
+.todo-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 6px;
+}
+
+.todo-study-filter {
+  margin-left: auto;
+  font-size: 12px;
+  line-height: 22px;
+  padding: 0 10px;
+  border-radius: 11px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.todo-study-filter--on {
+  background: var(--accent-soft, rgba(127, 127, 127, 0.16));
+  color: var(--accent, inherit);
+  border-color: transparent;
+  font-weight: 600;
+}

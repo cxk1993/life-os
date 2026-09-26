@@ -1,0 +1,46 @@
+{
+  "id": "countdown",
+  "name": "纪念日倒数",
+  "version": "0.1.0",
+  "kind": "third-party",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "star",
+  "description": "纪念日发布与倒数天数计算。V1 = 纯 API 插件（不含窗口 UI，理由见 README「当前边界」）。",
+  "author": "astrbot（云昔）",
+  "window": {
+    "w": 640,
+    "h": 480
+  },
+  "entry": "",
+  "api": {
+    "base": "/api/v1/countdown",
+    "openapi": "/api/v1/countdown/openapi.json",
+    "health": "/api/v1/countdown/health"
+  },
+  "provides": [
+    "countdown.item.read",
+    "countdown.item.write"
+  ],
+  "requires": [
+    "catalog.read"
+  ],
+  "slots": [],
+  "emits": [
+    "countdown.item.created",
+    "countdown.item.updated",
+    "countdown.item.deleted"
+  ],
+  "consumes": [],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

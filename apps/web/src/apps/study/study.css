@@ -1,0 +1,80 @@
+/* ★ 学业专页样式（astrbot 2026-09-26）—— 只用设计令牌，不写死颜色 */
+
+.study-win {
+  padding: 4px 0 12px;
+}
+
+.study-section {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 10px 12px 4px;
+  letter-spacing: 0.02em;
+}
+
+.study-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.study-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+/* 课程徽标（学业/高数 → 高数） */
+.study-chip {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--accent-soft, rgba(127, 127, 127, 0.14));
+  color: var(--accent, inherit);
+}
+
+/* 剩余时间徽标 */
+.study-badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+}
+
+.study-badge--over {
+  background: rgba(220, 60, 60, 0.16);
+  color: #d24a4a;
+}
+
+.study-badge--soon {
+  background: rgba(230, 160, 40, 0.18);
+  color: #b5771f;
+}
+
+.study-badge--normal {
+  background: rgba(127, 127, 127, 0.12);
+  color: var(--text-muted);
+}
+
+/* 已完成折叠 */
+.study-done {
+  margin-top: 10px;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.18));
+  padding-top: 8px;
+}
+
+.study-done > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 12px;
+  user-select: none;
+}
+
+.study-done[open] > summary {
+  margin-bottom: 4px;
+}

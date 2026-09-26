@@ -7,6 +7,8 @@ import TodayView from "./views/TodayView";
 import AllView from "./views/AllView";
 import RecurringView from "./views/RecurringView";
 
+const STUDY_TAG = "学业";
+
 const TABS: { id: TodoView; label: string }[] = [
   { id: "today", label: "今日" },
   { id: "all", label: "全部" },
@@ -18,11 +20,17 @@ const TABS: { id: TodoView; label: string }[] = [
  * - 顶部快速添加（语法糖在服务端解析）。
  * - 三个视图用 Tabs 切换（纯 UI 状态在 state.ts 的 useTodoUI）。
  * - 订阅内核 SSE 事件做增量刷新（created/updated/completed）。
+ * - ★ 2026-09-26：右上角「只看学业」快捷筛选（层级标签：学业 / 学业/高数 …）。
  */
 export default function TodoApp() {
   const qc = useQueryClient();
   const view = useTodoUI((s) => s.view);
   const setView = useTodoUI((s) => s.setView);
+  // ★ 2026-09-26（astrbot · 主人令「学业页」）：**快捷筛选器**（轻入口）——
+  //   与 schedule 容器的「学业」专页（重入口）形成一轻一重双入口，不重复。
+  const filterTag = useTodoUI((s) => s.filterTag);
+  const setFilterTag = useTodoUI((s) => s.setFilterTag);
+  const studyOnly = filterTag === STUDY_TAG;
 
   // 后端写入会推 todo.item.* 事件，收到即失效本地缓存（SSE 自动重连）。
   usePluginEvent("todo.item.created", () => qc.invalidateQueries({ queryKey: ["todo"] }));
@@ -32,7 +40,18 @@ export default function TodoApp() {
   return (
     <div className="todo-root">
       <QuickAdd />
-      <Tabs tabs={TABS} active={view} onChange={(id) => setView(id as TodoView)} />
+      <div className="todo-toolbar">
+        <Tabs tabs={TABS} active={view} onChange={(id) => setView(id as TodoView)} />
+        <button
+          type="button"
+          className={studyOnly ? "todo-study-filter todo-study-filter--on" : "todo-study-filter"}
+          aria-pressed={studyOnly}
+          data-testid="todo-study-filter"
+          onClick={() => setFilterTag(studyOnly ? null : STUDY_TAG)}
+        >
+          只看学业
+        </button>
+      </div>
       {view === "today" && <TodayView />}
       {view === "all" && <AllView />}
       {view === "recurring" && <RecurringView />}

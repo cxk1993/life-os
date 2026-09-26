@@ -284,6 +284,27 @@ def run_reminder_tick(
                     log.warning("write n2 suppress log failed: %s", log_exc)
             results.append(row)
             continue
+        # ★ 2026-09-26 修（astrbot · 主人令「全修」）：
+        #   原先 `publish("calendar.reminder.fired")` **嵌在 `if ok:` 里** ——
+        #   即「本机桥（桌面通知）成功」才发事件 → web push 只是桥的副本。
+        #   生产实况：桥报 "Show 拒绝访问 (HRESULT 0x800…)" → ok=False →
+        #   **web push 通道一并哑掉**（push_log 里从无 calendar 记录）。
+        #   现改为：**web push 是独立通道，先发布，不依赖桥的结果**。
+        #   幂等：push_link 用 `tag=reminder-<event_id>`，浏览器按 tag 替换，不堆积。
+        try:
+            event_bus.publish(
+                "calendar.reminder.fired",
+                payload={
+                    "event_id": str(ev.id),
+                    "title": ev.title,
+                    "start_at": start_s,
+                    "channel": channel,
+                },
+                source="calendar",
+            )
+        except Exception as bus_exc:  # noqa: BLE001
+            log.warning("publish calendar.reminder.fired failed: %s", bus_exc)
+
         try:
             out = send(title, body)
             ok = bool(isinstance(out, dict) and out.get("ok", True))
@@ -294,19 +315,6 @@ def run_reminder_tick(
                 mark_notified(str(ev.id))
                 sent_hour += 1
                 sent_today += 1
-                try:
-                    event_bus.publish(
-                        "calendar.reminder.fired",
-                        payload={
-                            "event_id": str(ev.id),
-                            "title": ev.title,
-                            "start_at": start_s,
-                            "channel": channel,
-                        },
-                        source="calendar",
-                    )
-                except Exception as bus_exc:  # noqa: BLE001
-                    log.warning("publish calendar.reminder.fired failed: %s", bus_exc)
         except Exception as exc:  # noqa: BLE001
             row["ok"] = False
             row["error"] = str(exc)[:200]

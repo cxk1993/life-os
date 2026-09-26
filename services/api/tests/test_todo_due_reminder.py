@@ -44,9 +44,13 @@ def test_run_due_tick_publishes_and_is_idempotent(monkeypatch) -> None:
     db.commit()
 
     published: list[dict] = []
-    monkeypatch.setattr(
-        due_scheduler.event_bus, "publish", lambda e: published.append(e)  # type: ignore[arg-type]
-    )
+    # ★ 2026-09-26 更新（astrbot）：发布改为 EventBus 的正规签名
+    #   publish(topic, payload=…, source=…)（原写法把整个 dict 当 topic 传，
+    #   在真实 EventBus 上会 TypeError → 被 except 吞成静默失败）。
+    def _fake_publish(topic, payload=None, source="kernel"):
+        published.append({"topic": topic, "payload": payload or {}, "source": source})
+
+    monkeypatch.setattr(due_scheduler.event_bus, "publish", _fake_publish)
     due_scheduler._notified.clear()
 
     assert due_scheduler.run_due_tick(db) == 1  # 首发

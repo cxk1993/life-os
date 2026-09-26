@@ -29,7 +29,11 @@ export default function AllView() {
   }
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
 
-  const items = data?.items.filter((it) => !filterTag || it.tags.includes(filterTag)) ?? [];
+  // ★ 2026-09-26（astrbot · 主人令「学业页」）：标签过滤支持**层级** ——
+  //   filterTag="学业" 命中 `学业` 与 `学业/高数`、`学业/大物`（与后端 tag_hit 同语义）。
+  const tagHit = (tags: string[], q: string) =>
+    tags.some((t) => t === q || t.startsWith(q + "/"));
+  const items = data?.items.filter((it) => !filterTag || tagHit(it.tags ?? [], filterTag)) ?? [];
 
   if (items.length === 0) {
     return (

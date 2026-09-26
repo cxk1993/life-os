@@ -51,8 +51,8 @@ def _rpc_result(result: dict[str, Any], msg_id: Any) -> dict[str, Any]:
     return {"jsonrpc": "2.0", "id": msg_id, "result": result}
 
 
-def _tool_schema() -> dict[str, Any]:
-    """最小可行 inputSchema：单个 payload 对象（GET 时转查询参数）。"""
+def _fallback_schema() -> dict[str, Any]:
+    """降级 schema：单个 payload 对象（GET 时转查询参数）。"""
     return {
         "type": "object",
         "properties": {
@@ -65,6 +65,50 @@ def _tool_schema() -> dict[str, Any]:
             }
         },
     }
+
+
+def _tool_schema(tool: Any = None) -> dict[str, Any]:
+    """★ 2026-09-26 改进（astrbot · 主人令）：**按工具给出精确 inputSchema**。
+
+    原先所有工具共用"一个通用 payload" → AI 不知道能传什么字段，只能猜
+    （实证：pi 查倒计时时"试了三种方式"）。
+    现从**模块级 openapi**（内核乙案 · `/api/{module_id}/openapi.json`）提取该端点的
+    具名参数（`tag` / `status` / `limit` …），生成"看得懂"的 schema；
+    **拉不到则原样降级**为通用 payload（绝不报错、绝不阻断 tools/list）。
+    """
+    if tool is not None:
+        try:
+            from .openapi_params import params_for
+
+            info = params_for(tool.plugin_id, tool.method, tool.path)
+            props = info.get("properties") or {}
+            if props:
+                schema: dict[str, Any] = {
+                    "type": "object",
+                    "properties": dict(props),
+                    "additionalProperties": True,
+                    "description": (
+                        f"调用 {tool.path}（{tool.method}）。"
+                        + (
+                            "写类工具：字段作为 JSON 请求体；"
+                            if tool.method != "GET"
+                            else "读类工具：字段作为查询参数；"
+                        )
+                        + "也可整体放在 payload 对象里。"
+                    ),
+                }
+                if info.get("required"):
+                    schema["x-required-hint"] = info["required"]
+                # 兼容"payload 包裹"用法
+                schema["properties"]["payload"] = {
+                    "type": "object",
+                    "additionalProperties": True,
+                    "description": "上述字段的包裹形态（与顶层字段二选一）。",
+                }
+                return schema
+        except Exception:  # noqa: BLE001 —— 任何异常都降级
+            pass
+    return _fallback_schema()
 
 
 def _handle_initialize(msg: dict[str, Any], msg_id: Any) -> dict[str, Any]:
@@ -90,7 +134,7 @@ def _handle_tools_list(msg_id: Any) -> dict[str, Any]:
         {
             "name": t.name,
             "description": t.description,
-            "inputSchema": _tool_schema(),
+            "inputSchema": _tool_schema(t),
         }
         for t in build_tool_map()
     ]
