@@ -1,6 +1,6 @@
 {
   "id": "dashboard",
-  "name": "成长罗盘",
+  "name": "今日总览",
   "version": "0.1.0",
   "kind": "builtin",
   "minKernel": "0.1.0",
