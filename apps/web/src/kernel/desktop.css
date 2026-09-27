@@ -199,6 +199,19 @@
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
+/* ★ 2026-09-27（主人令「正式版 1.0.0」）：版本号小标 —— 悬停看构建时刻 */
+.topbar__version {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--txt-dim);
+  white-space: nowrap;
+  cursor: help;
+  flex: 0 0 auto;
+}
 .topbar__search {
   flex: 1;
   max-width: 420px;

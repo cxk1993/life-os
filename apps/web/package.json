@@ -1,7 +1,7 @@
 {
   "name": "lifeos-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Life-OS 前端宿主（壳）—— 只提供框架，不含任何业务",
   "engines": {

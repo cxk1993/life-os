@@ -2,6 +2,10 @@ import { useTheme } from "@/shared/styles/theme";
 import { useDesktopStore } from "./store";
 import { TimeWidget } from "./shell/TimeWidget";
 
+/** ★ 版本号 / 构建时刻 —— 由 vite.config.ts 的 define 注入（见该文件注释）。 */
+declare const __APP_VERSION__: string;
+declare const __BUILD_AT__: string;
+
 interface Props {
   onOpenSearch: () => void;
   onTidy: () => void;
@@ -31,6 +35,15 @@ export function TopBar({ onOpenSearch, onOpenQuery, onTidy, onLogout, onMinimize
   return (
     <div className="topbar">
       <span className="topbar__brand">Life-OS</span>
+      {/* ★ 2026-09-27（主人令「正式版 1.0.0」）：版本号 + 构建时刻。
+          悬停可看构建时间 —— 一眼分清「跑的是新版还是 PWA 缓存的旧版」。 */}
+      <span
+        className="topbar__version"
+        title={`构建于 ${__BUILD_AT__}（UTC）· 若与部署时间不符请强制刷新 Ctrl+Shift+R`}
+        data-testid="app-version"
+      >
+        v{__APP_VERSION__}
+      </span>
       <button
         type="button"
         className="topbar__search"
