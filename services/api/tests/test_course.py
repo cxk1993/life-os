@@ -35,6 +35,10 @@ def client():
     init_engine()
     engine = get_engine()
     CourseItem.__table__.create(bind=engine, checkfirst=True)
+    # ★ 学期设置存内核 plugin_setting 表 —— 隔离测试库也要建（生产由内核建表）
+    from db.models.system import PluginSetting
+
+    PluginSetting.__table__.create(bind=engine, checkfirst=True)
     app = create_app()
     c = TestClient(app)
     yield c
@@ -46,6 +50,10 @@ def _clean():
     engine = get_engine()
     with __import__("sqlmodel").Session(engine) as s:
         s.exec(text("DELETE FROM course_item"))
+        try:
+            s.exec(text("DELETE FROM plugin_setting WHERE plugin_id='course'"))
+        except Exception:  # noqa: BLE001 — 表可能尚未建（首次）
+            pass
         s.commit()
     yield
 

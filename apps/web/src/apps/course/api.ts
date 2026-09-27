@@ -37,6 +37,10 @@ export interface WeekGrid {
   days: DayColumn[];
   term_start: string | null;
   term_week: number | null;
+  /** 纵轴节次列表（如 [1..12]）。 */
+  sections: number[];
+  /** 今天星期几（0=周一），高亮列用。 */
+  today_weekday: number;
 }
 
 export interface CourseCreate {
@@ -79,6 +83,10 @@ export const courseApi = {
   create: (body: CourseCreate) => api.post<CourseItem>(`${BASE}/items`, body),
   update: (id: string, body: CoursePatch) => api.patch<CourseItem>(`${BASE}/items/${id}`, body),
   remove: (id: string) => api.delete<void>(`${BASE}/items/${id}`),
+  /** 学期设置：读 / 写（写空串 = 清除）。 */
+  getTerm: () => api.get<{ term_start: string | null }>(`${BASE}/term`),
+  setTerm: (term_start: string) =>
+    api.put<{ term_start: string | null }>(`${BASE}/term`, { term_start }),
 };
 
 /** 本地日期串 YYYY-MM-DD。 */

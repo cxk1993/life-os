@@ -68,15 +68,28 @@ class CourseUpdate(BaseModel):
 class WeekGridOut(BaseModel):
     """周网格视图（前端直接渲染）。
 
-    days 长度恒为 7（周一…周日），每格该天要上的课按 start_time / start_section 升序。
+    days 长度恒为 7（周一…周日），每格该天要上的课按节次（无节次按时间）升序。
+    sections 为网格纵轴的完整节次列表（主人令「节次做成纵轴」）。
     """
 
     days: list["DayColumn"] = []
     term_start: str | None = None
     term_week: int | None = None  # 当前是第几教学周（无 term_start 时为空）
+    sections: list[int] = []  # 网格纵轴节次（如 [1..12]）
+    today_weekday: int = 0  # 今天星期几（0=周一），前端高亮列用
 
 
 class DayColumn(BaseModel):
     weekday: int
     label: str
     items: list[CourseOut] = []
+
+
+class TermSettingsOut(BaseModel):
+    """学期设置（存 plugin_setting，复用内核插件设置机制）。"""
+
+    term_start: str | None = None
+
+
+class TermSettingsIn(BaseModel):
+    term_start: str | None = Field(default=None, max_length=10, description="YYYY-MM-DD")

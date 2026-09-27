@@ -34,7 +34,8 @@ log = logging.getLogger("course.remind")
 
 EVENT_DUE = "course.session.due"
 DEFAULT_POLL_SECONDS = 60
-DEFAULT_LEAD_MINUTES = 15
+# ★ 2026-09-27（主人令）：提前量由 15 改 **30** 分钟 —— 出门/换楼来得及。
+DEFAULT_LEAD_MINUTES = 30
 
 _SH_TZ = ZoneInfo("Asia/Shanghai")
 _lock_state: dict[str, Any] = {"scheduler": None}

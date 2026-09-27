@@ -5,10 +5,11 @@
  *       与「学业」（作业 deadline）分工：**课程表看「什么时候上课」，学业看「作业什么时候交」**。
  *
  * 设计：
- *   - 主视图 = **周网格**（7 列 = 周一…周日），数据源 `courseApi.week()`；
+ *   - 主视图 = **节次 × 星期 网格**（行=节次，列=周一…周日）—— 主人令「节次做成纵轴」；
+ *   - **学期起始日**可设（toolbar「学期设置」）→ 显示「第 N 教学周」，weeks 才有意义；
  *   - 点卡片 → 编辑；工具条 → 新建；表单一处复用（新建 / 编辑同一张）；
  *   - 「保留推送能力」：后端 `course/remind_scheduler.py` 扫到即将上课 →
- *     发 `course.session.due` → push 插件 broadcast（上课前提醒），本页显示调度状态；
+ *     发 `course.session.due` → push 插件 broadcast（上课前 30 分钟提醒）；
  *   - 挂载点：schedule 容器的第 4 页（[日程表][待办][学业][课程表]）。
  */
 import { useMemo, useState } from "react";
@@ -29,6 +30,8 @@ const EMPTY: CourseCreate = {
   teacher: "",
   location: "",
   weekday: 0,
+  start_section: null,
+  end_section: null,
   start_time: "",
   end_time: "",
   weeks: "",
@@ -41,6 +44,8 @@ export default function CourseApp() {
   const [editing, setEditing] = useState<CourseItem | null>(null);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState<CourseCreate>(EMPTY);
+  const [termOpen, setTermOpen] = useState(false);
+  const [termDraft, setTermDraft] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["course", "week"],
@@ -76,20 +81,42 @@ export default function CourseApp() {
     mutationFn: (id: string) => courseApi.remove(id),
     onSuccess: () => {
       setEditing(null);
+      setCreating(false);
       qc.invalidateQueries({ queryKey: ["course"] });
     },
   });
 
-  const todayStr = localDay();
+  const termMut = useMutation({
+    mutationFn: (v: string) => courseApi.setTerm(v),
+    onSuccess: () => {
+      setTermOpen(false);
+      qc.invalidateQueries({ queryKey: ["course"] });
+    },
+  });
+
   const monday = mondayOf();
   const days = useMemo(() => data?.days ?? [], [data]);
+  const sections = useMemo(() => data?.sections ?? [], [data]);
+  const todayWeekday = data?.today_weekday ?? -1;
 
-  const openNew = (weekday?: number) => {
+  /** 该列对应的真实日期（周一 + offset）。 */
+  const dateOf = (weekday: number) => {
+    const d = new Date(`${monday}T00:00:00`);
+    d.setDate(d.getDate() + weekday);
+    return localDay(d);
+  };
+
+  const openNew = (weekday?: number, section?: number) => {
     setEditing(null);
     // 默认星期 = 今天（JS getDay 0=周日 → 本系统 0=周一）
     const jsDay = new Date().getDay();
     const fallback = jsDay === 0 ? 6 : jsDay - 1;
-    setDraft({ ...EMPTY, weekday: weekday ?? fallback });
+    setDraft({
+      ...EMPTY,
+      weekday: weekday ?? fallback,
+      start_section: section ?? null,
+      end_section: section ?? null,
+    });
     setCreating(true);
   };
 
@@ -100,6 +127,8 @@ export default function CourseApp() {
       teacher: item.teacher ?? "",
       location: item.location ?? "",
       weekday: item.weekday,
+      start_section: item.start_section,
+      end_section: item.end_section,
       start_time: item.start_time ?? "",
       end_time: item.end_time ?? "",
       weeks: item.weeks ?? "",
@@ -109,14 +138,46 @@ export default function CourseApp() {
     setCreating(true);
   };
 
-  /** 该列对应的真实日期（周一 + offset）。 */
-  const dateOf = (weekday: number) => {
-    const d = new Date(`${monday}T00:00:00`);
-    d.setDate(d.getDate() + weekday);
-    return localDay(d);
-  };
+  /** 按节次分桶：section → weekday → items（只按 start_section 定位，跨节在卡片上标注）。 */
+  const buckets = useMemo(() => {
+    const m: Record<number, Record<number, CourseItem[]>> = {};
+    const unscheduled: CourseItem[] = [];
+    for (const col of days) {
+      for (const it of col.items) {
+        if (!it.start_section) {
+          unscheduled.push(it);
+          continue;
+        }
+        (m[it.start_section] ??= {})[col.weekday] ??= [];
+        m[it.start_section][col.weekday].push(it);
+      }
+    }
+    return { m, unscheduled };
+  }, [days]);
 
   const total = useMemo(() => days.reduce((n, c) => n + c.items.length, 0), [days]);
+
+  const renderCard = (it: CourseItem) => (
+    <button
+      type="button"
+      key={it.id}
+      className={`course-card${it.enabled ? "" : " is-off"}`}
+      onClick={() => openEdit(it)}
+      title={`${it.name}${it.location ? ` @ ${it.location}` : ""}`}
+    >
+      <span className="course-card__name">{it.name}</span>
+      {it.start_time ? (
+        <span className="course-card__time">
+          {it.start_time}
+          {it.end_time ? `–${it.end_time}` : ""}
+        </span>
+      ) : null}
+      {it.location || it.teacher ? (
+        <span className="course-card__meta">{[it.location, it.teacher].filter(Boolean).join(" · ")}</span>
+      ) : null}
+      {it.weeks ? <span className="course-card__weeks">周次 {it.weeks}</span> : null}
+    </button>
+  );
 
   return (
     <div className="course-win" data-testid="course-app">
@@ -132,6 +193,17 @@ export default function CourseApp() {
             : ""}
         </span>
         <span className="course-bar__spacer" />
+        <button
+          type="button"
+          className="course-btn"
+          onClick={() => {
+            setTermDraft(data?.term_start ?? "");
+            setTermOpen(true);
+          }}
+          data-testid="course-term"
+        >
+          学期设置
+        </button>
         <button type="button" className="course-btn" onClick={() => refetch()} aria-label="刷新课表">
           刷新
         </button>
@@ -159,57 +231,114 @@ export default function CourseApp() {
           hint="点右上角「+ 加课」录入：课名、周几、第几节、地点。录完就能在上课前收到提醒。"
         />
       ) : (
-        <div className="course-grid" data-testid="course-grid">
-          {days.map((col) => {
-            const ds = dateOf(col.weekday);
-            const isToday = ds === todayStr;
-            return (
-              <div className="course-col" key={col.weekday}>
-                <div className={`course-col__head${isToday ? " is-today" : ""}`}>
-                  <span>{col.label}</span>
-                  <span className="course-col__date">{ds.slice(5)}</span>
-                </div>
-                {col.items.length === 0 ? (
-                  <div className="course-col__empty">—</div>
-                ) : (
-                  col.items.map((it) => (
-                    <button
-                      type="button"
-                      key={it.id}
-                      className={`course-card${it.enabled ? "" : " is-off"}`}
-                      onClick={() => openEdit(it)}
-                      title={`${it.name}${it.location ? ` @ ${it.location}` : ""}`}
-                    >
-                      <span className="course-card__name">{it.name}</span>
-                      {it.start_time ? (
-                        <span className="course-card__time">
-                          {it.start_time}
-                          {it.end_time ? `–${it.end_time}` : ""}
-                        </span>
-                      ) : null}
-                      {it.location || it.teacher ? (
-                        <span className="course-card__meta">
-                          {[it.location, it.teacher].filter(Boolean).join(" · ")}
-                        </span>
-                      ) : null}
-                      {it.weeks ? <span className="course-card__weeks">周次 {it.weeks}</span> : null}
-                    </button>
-                  ))
-                )}
-                <button
-                  type="button"
-                  className="course-btn"
-                  style={{ fontSize: 11, padding: "2px 6px" }}
-                  onClick={() => openNew(col.weekday)}
-                  aria-label={`给${col.label}加课`}
+        <div className="course-sheet" data-testid="course-grid">
+          {/* 表头：角 + 7 天 */}
+          <div className="course-hrow">
+            <div className="course-hcell course-hcell--corner">节次</div>
+            {days.map((col) => {
+              const isToday = col.weekday === todayWeekday;
+              return (
+                <div
+                  key={col.weekday}
+                  className={`course-hcell${isToday ? " is-today" : ""}`}
                 >
-                  +
-                </button>
-              </div>
-            );
-          })}
+                  <span className="course-hcell__name">{col.label}</span>
+                  <span className="course-hcell__date">{dateOf(col.weekday).slice(5)}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 正文：行=节次，列=星期 */}
+          {sections.map((sec) => (
+            <div className="course-row" key={sec} data-testid={`course-sec-${sec}`}>
+              <div className="course-sec">{sec}</div>
+              {days.map((col) => {
+                const items = buckets.m[sec]?.[col.weekday] ?? [];
+                return (
+                  <div className="course-cell" key={col.weekday}>
+                    {items.map(renderCard)}
+                    {items.length === 0 ? (
+                      <button
+                        type="button"
+                        className="course-cell__add"
+                        aria-label={`给${col.label}第${sec}节加课`}
+                        onClick={() => openNew(col.weekday, sec)}
+                      >
+                        +
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          {/* 未填节次的课（只填了时间）单独一区 */}
+          {buckets.unscheduled.length > 0 ? (
+            <div className="course-row course-row--extra">
+              <div className="course-sec">—</div>
+              {days.map((col) => {
+                const items = buckets.unscheduled.filter((it) => it.weekday === col.weekday);
+                return (
+                  <div className="course-cell" key={col.weekday}>
+                    {items.map(renderCard)}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       )}
+
+      {/* ── 学期设置 ── */}
+      <Modal open={termOpen} title="学期设置" onClose={() => setTermOpen(false)}>
+        <form
+          className="course-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (termMut.isPending) return;
+            termMut.mutate(termDraft.trim());
+          }}
+        >
+          <div className="course-field course-field--wide">
+            <label htmlFor="ct-term">第一周周一（填写后显示「第 N 教学周」，周次表达式才有意义）</label>
+            <input
+              id="ct-term"
+              type="date"
+              value={termDraft}
+              onChange={(e) => setTermDraft(e.target.value)}
+              data-testid="course-term-input"
+            />
+          </div>
+          <div className="course-field course-field--wide">
+            <span className="course-hint">
+              当前：{data?.term_start ? `${data.term_start}（第 ${data.term_week ?? "?"} 教学周）` : "未设置"}
+            </span>
+          </div>
+          {termMut.error ? (
+            <div className="course-form__err" role="alert">
+              保存失败：{(termMut.error as Error).message}
+            </div>
+          ) : null}
+          <div className="course-actions">
+            <button
+              type="button"
+              className="course-btn"
+              onClick={() => termMut.mutate("")}
+              disabled={termMut.isPending}
+            >
+              清除
+            </button>
+            <button type="button" className="course-btn" onClick={() => setTermOpen(false)}>
+              取消
+            </button>
+            <button type="submit" className="course-btn course-btn--primary" disabled={termMut.isPending}>
+              {termMut.isPending ? "保存中…" : "保存"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal
         open={creating}
@@ -228,6 +357,8 @@ export default function CourseApp() {
               ...draft,
               name: draft.name.trim(),
               weekday: Number(draft.weekday ?? 0),
+              start_section: draft.start_section ? Number(draft.start_section) : null,
+              end_section: draft.end_section ? Number(draft.end_section) : null,
             });
           }}
         >
@@ -271,6 +402,37 @@ export default function CourseApp() {
               value={draft.location ?? ""}
               onChange={(e) => setDraft({ ...draft, location: e.target.value })}
               placeholder="知新楼 B203"
+            />
+          </div>
+          <div className="course-field">
+            <label htmlFor="cf-sec-start">起始节次</label>
+            <input
+              id="cf-sec-start"
+              type="number"
+              min={1}
+              max={20}
+              value={draft.start_section ?? ""}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  start_section: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+              placeholder="1"
+            />
+          </div>
+          <div className="course-field">
+            <label htmlFor="cf-sec-end">结束节次</label>
+            <input
+              id="cf-sec-end"
+              type="number"
+              min={1}
+              max={20}
+              value={draft.end_section ?? ""}
+              onChange={(e) =>
+                setDraft({ ...draft, end_section: e.target.value ? Number(e.target.value) : null })
+              }
+              placeholder="2"
             />
           </div>
           <div className="course-field">

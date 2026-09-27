@@ -25,7 +25,7 @@ from core.errors import ValidationError
 from core.security import User
 
 from . import remind_scheduler as _remind  # noqa: E402,F401  （导入即装载调度）
-from .schema import CourseCreate, CourseOut, CourseUpdate, WeekGridOut  # noqa: E402
+from .schema import CourseCreate, CourseOut, CourseUpdate, TermSettingsIn, TermSettingsOut, WeekGridOut  # noqa: E402
 from .service import CourseService  # noqa: E402
 
 router = APIRouter()
@@ -115,6 +115,26 @@ def week_grid(
     else:
         day = datetime.now(_SH_TZ).date()
     return CourseService(db).week_grid(day=day, term_start=term_start)
+
+
+# ═══════ ★ 学期设置（主人令「学期起始日固定」· 存 plugin_setting）═══════
+@router.get("/term", response_model=TermSettingsOut)
+def get_term(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """读学期设置（当前只有 term_start）。"""
+    return {"term_start": CourseService(db).get_term_start()}
+
+
+@router.put("/term", response_model=TermSettingsOut)
+def put_term(
+    body: TermSettingsIn,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """写学期起始日（第一周周一）。传空串/不传 = 清除。"""
+    return CourseService(db).set_term_start(body.term_start)
 
 
 # ═══════ ★ 上课前提醒（复用日历/待办同款三段式）═══════

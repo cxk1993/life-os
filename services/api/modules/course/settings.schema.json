@@ -1,7 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "插件设置",
+  "title": "课程表设置",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "term_start": {
+      "type": ["string", "null"],
+      "description": "学期第一周周一（YYYY-MM-DD）；用于把 weeks 换算成真实教学周"
+    }
+  },
   "additionalProperties": false
 }

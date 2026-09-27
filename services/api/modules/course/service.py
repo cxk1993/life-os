@@ -22,9 +22,23 @@ from .schema import CourseCreate, CourseUpdate
 
 SH_TZ = ZoneInfo("Asia/Shanghai")
 
+PLUGIN_ID = "course"
+# 网格纵轴：默认 1..12 节（大学一天常见上限）。有更高节次的课会自动扩展。
+DEFAULT_SECTION_MAX = 12
+
 EVENT_CREATED = "course.item.created"
 EVENT_UPDATED = "course.item.updated"
 EVENT_DELETED = "course.item.deleted"
+
+
+def _section_axis(rows: list[CourseItem]) -> list[int]:
+    """网格纵轴节次列表：默认 1..12；若课表用到更大节次则扩到该值（上限 20）。"""
+    top = DEFAULT_SECTION_MAX
+    for r in rows:
+        for v in (r.start_section, r.end_section):
+            if isinstance(v, int) and v > top:
+                top = min(20, v)
+    return list(range(1, top + 1))
 
 
 def local_today() -> DateType:
@@ -102,9 +116,14 @@ def _row_out(row: CourseItem) -> dict[str, Any]:
     }
 
 
-def _sort_key(row: CourseItem) -> tuple[int, str, int, int]:
-    """网格内排序：有时间的按时间，没时间的按节次，再按 sort。"""
-    return (0 if row.start_time else 1, row.start_time or "", row.start_section or 99, row.sort)
+def _sort_key(row: CourseItem) -> tuple[int, int, str, int]:
+    """网格内排序：**优先节次**（大学课表以「第几节」为准），无节次再按时间。
+
+    2026-09-27 改（主人令「节次做成网格纵轴」）：原为「有时间先按时间」，
+    与按节次排课的课表直觉相反 —— 现在有节次的一律按节次升序，
+    没填节次的（只有时间）排在后面按时间。
+    """
+    return (0 if row.start_section else 1, row.start_section or 99, row.start_time or "", row.sort)
 
 
 class CourseService:
@@ -129,16 +148,16 @@ class CourseService:
         return _row_out(row)
 
     def week_grid(self, *, day: DateType | None = None, term_start: str | None = None) -> dict:
-        """一周课表网格：days 恒 7 列（周一…周日）。
+        """一周课表网格：days 恒 7 列（周一…周日）+ sections 纵轴节次。
 
-        term_start：优先用请求参数，其次取「课数据里最近出现的 term_start」。
-        有 weeks 表达式的课：只有命中当前周次才出现；否则每周都出现。
+        term_start：优先用请求参数，其次读插件设置（`term_start`），再退回「课数据里
+        最近出现的 term_start」。有 weeks 表达式的课：只有命中当前周次才出现。
         """
         day = day or local_today()
         monday = day - timedelta(days=day.weekday())
         rows = list(self.db.exec(select(CourseItem).where(CourseItem.enabled == True)).all())  # noqa: E712
 
-        ts = term_start
+        ts = term_start or self.get_term_start()
         if not ts:
             for r in rows:
                 if r.term_start:
@@ -168,7 +187,56 @@ class CourseService:
                     "items": cell,
                 }
             )
-        return {"days": days, "term_start": ts, "term_week": cur_week}
+        return {
+            "days": days,
+            "term_start": ts,
+            "term_week": cur_week,
+            "sections": _section_axis(rows),
+            "today_weekday": day.weekday(),
+        }
+
+    # ── 学期设置（存 plugin_setting，复用内核插件设置机制）──────────
+    def get_term_start(self) -> str | None:
+        """读学期起始日（plugin_setting 的 term_start 键）。
+
+        ★ 容错：`plugin_setting` 表在极少数场景可能尚未建（如隔离测试库只建了
+        本插件的表）——读不到就当作「未设置」，**绝不让课表视图因此挂掉**。
+        """
+        from core.plugins.settings import read_settings
+
+        try:
+            val = read_settings(self.db, PLUGIN_ID).get("term_start")
+        except Exception:  # noqa: BLE001 — 设置读不到不该影响主视图
+            return None
+        return str(val) if val else None
+
+    def set_term_start(self, term_start: str | None) -> dict[str, Any]:
+        """写学期起始日。空串 / None = 清除。"""
+        import json
+
+        from core.plugins.settings import read_settings
+        from db.models.system import PluginSetting
+
+        raw = (term_start or "").strip()
+        if raw:
+            try:
+                datetime.strptime(raw, "%Y-%m-%d")
+            except ValueError as exc:
+                raise ValidationError(f"term_start 需为 YYYY-MM-DD：{raw}") from exc
+        value = raw or None
+        row = self.db.exec(
+            select(PluginSetting).where(
+                PluginSetting.plugin_id == PLUGIN_ID, PluginSetting.key == "term_start"
+            )
+        ).first()
+        payload = json.dumps(value, ensure_ascii=False)
+        if row is None:
+            self.db.add(PluginSetting(plugin_id=PLUGIN_ID, key="term_start", value_json=payload))
+        else:
+            row.value_json = payload
+            self.db.add(row)
+        self.db.commit()
+        return {"term_start": read_settings(self.db, PLUGIN_ID).get("term_start")}
 
     # ── 写 ──────────────────────────────────────────────────────────
     def create(self, body: CourseCreate) -> dict[str, Any]:
@@ -210,5 +278,11 @@ class CourseService:
         event_bus.publish(EVENT_DELETED, payload={"id": item_id}, source="course")
 
 
-def _sort_key_by_dict(c: dict[str, Any]) -> tuple[int, str, int, int]:
-    return (0 if c.get("start_time") else 1, c.get("start_time") or "", c.get("start_section") or 99, c.get("sort") or 0)
+def _sort_key_by_dict(c: dict[str, Any]) -> tuple[int, int, str, int]:
+    """与 `_sort_key` 同序（网格 cell 内排序）：优先节次，无节次再按时间。"""
+    return (
+        0 if c.get("start_section") else 1,
+        c.get("start_section") or 99,
+        c.get("start_time") or "",
+        c.get("sort") or 0,
+    )
