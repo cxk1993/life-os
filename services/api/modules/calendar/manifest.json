@@ -32,8 +32,7 @@
   ],
   "requires": [],
   "slots": [
-    "dashboard.card",
-    "desktop.dock-right"
+    "dashboard.card"
   ],
   "emits": [
     "calendar.event.created",

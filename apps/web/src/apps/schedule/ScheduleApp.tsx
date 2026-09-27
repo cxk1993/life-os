@@ -27,6 +27,9 @@ const TodoApp = lazy(() => import("../todo/TodoApp"));
 // ★ 2026-09-26（astrbot · 主人令「学业页」）：第三页 —— 学业专页
 //   （作业清单，按 deadline 升序；数据源 = todoApi.list({tag:"学业"})，复用后端层级标签）
 const StudyApp = lazy(() => import("../study/StudyApp"));
+// ★ 2026-09-27（hermes · 主人令「日程待办里加一页课程表」）：第四页 —— 课程表
+//   （周网格：课名/教师/地点/节次/周次；数据源 = /api/v1/course/week）
+const CourseApp = lazy(() => import("../course/CourseApp"));
 
 function PageFallback() {
   return <div className="dash-muted" data-testid="schedule-loading">加载中…</div>;
@@ -46,6 +49,7 @@ export default function ScheduleApp() {
           { key: "calendar", label: "日程表", content: wrap(<CalendarApp />) },
           { key: "todo", label: "待办", content: wrap(<TodoApp />) },
           { key: "study", label: "学业", content: wrap(<StudyApp />) },
+          { key: "course", label: "课程表", content: wrap(<CourseApp />) },
         ]}
       />
     </div>

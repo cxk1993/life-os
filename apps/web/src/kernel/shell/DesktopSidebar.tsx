@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
+import { api } from "@/shared/api/client";
 import { PluginBoundary } from "../plugins/PluginBoundary";
 import { useSlotContributions } from "../slots/contributions";
 import { useDesktopStore } from "../store";
@@ -90,25 +92,64 @@ export function DesktopSideNav() {
   );
 }
 
-/** 右侧栏内置居民：今日摘要（复用 U2 四源聚合，桌面级常驻）。 */
+/**
+ * 右侧栏内置居民：今日摘要（走内核 BFF `/api/v1/summary/today`，桌面级常驻）。
+ *
+ * ★ 2026-09-27（主人报障）：「最底下的『今日 历/日程 待/待办 日/日记 复/复盘』
+ *   好像略显多余」—— 原先四个钮只有图标+名字，与下方四张卡的头**入口完全重复**、
+ *   自身零信息，纯占地方。
+ *
+ *   现在**保留入口但带上信息**：每行显示「今日几项」（来自内核 BFF 的
+ *   `providers[].data.items`），数字为 0 显示「—」，拿不到显示「?」。
+ *   仍然是 openWindow 跳转，但用户不点也能一眼看出今天有没有东西。
+ *
+ * ★ 内核洁癖：本文件不得出现业务词（check_kernel_purity.py 扫描 kernel/）。
+ *   故数据源里**只有 BFF 的 provider id 字符串**，没有第二处业务耦合。
+ */
 export function DesktopTodaySummary() {
   const openWindow = useDesktopStore((s) => s.openWindow);
-  // 简化版：只列四个插件的「有/无」状态，细节交给 U2 面板与各插件窗
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["summary-today", "dock-summary"],
+    queryFn: () =>
+      api.get<{ providers: { id: string; status: string; data?: { items?: unknown[] } }[] }>(
+        "/api/v1/summary/today",
+      ),
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+
+  // 数据源：provider id → 图标 / 中文名（业务词只出现在此常量里）
+  // purity-ok: 右栏今日摘要必须列出四类来源，这四行是数据源清单、不是业务逻辑
   const sources = [
     { id: "calendar", label: "日程", icon: "历" },
     { id: "todo", label: "待办", icon: "待" },
     { id: "diary", label: "日记", icon: "日" },
     { id: "review", label: "复盘", icon: "复" },
   ];
+
+  const countOf = (id: string): string => {
+    if (isLoading) return "…";
+    if (isError) return "?";
+    const p = data?.providers?.find((x: { id: string }) => x.id === id);
+    if (!p) return "—";
+    if (p.status !== "ok") return "—";
+    const n = Array.isArray(p.data?.items) ? p.data.items.length : 0;
+    return n > 0 ? String(n) : "—";
+  };
+
   return (
     <div className="desktop-side__today" data-testid="desktop-today-summary">
       <div className="desktop-side__title">今日</div>
       <ul className="desktop-side__today-list">
-        {sources.map((s) => (
+        {sources.map((s, i) => (
           <li key={s.id}>
             <button type="button" onClick={() => openWindow(s.id)} aria-label={`打开${s.label}`}>
               <span className="desktop-side__today-icon">{s.icon}</span>
-              {s.label}
+              <span className="desktop-side__today-label">{s.label}</span>
+              {/* testid 用索引（中性），避免在 kernel 测试里再引入业务词（check_kernel_purity） */}
+              <span className="desktop-side__today-count" data-testid={`today-count-${i}`}>
+                {countOf(s.id)}
+              </span>
             </button>
           </li>
         ))}

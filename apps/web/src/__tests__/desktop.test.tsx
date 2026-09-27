@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -6,6 +7,17 @@ import { registerModules } from "@/kernel/ModuleRegistry";
 import { makeWorkspace, useDesktopStore, type DesktopState } from "@/kernel/store";
 import { setToken } from "@/shared/api/client";
 import type { ModuleManifest } from "@/kernel/types";
+
+// ★ 2026-09-27（hermes）：桌面右栏「今日摘要」拉内核 BFF（useQuery），
+//   整桌面渲染需 QueryClientProvider（与 main.tsx 一致）。
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderApp() {
+  return render(
+    <QueryClientProvider client={qc}>
+      <App />
+    </QueryClientProvider>,
+  );
+}
 
 const mods: ModuleManifest[] = [
   {
@@ -57,7 +69,7 @@ beforeEach(() => {
 describe("桌面集成（mock 模块）", () => {
   it("坞上渲染 4 个模块图标", () => {
     registerModules(mods);
-    render(<App />);
+    renderApp();
     expect(screen.getByLabelText("演示模块 · 甲")).toBeTruthy();
     expect(screen.getByLabelText("演示模块 · 乙")).toBeTruthy();
     expect(screen.getByLabelText("演示模块 · 丙")).toBeTruthy();
@@ -66,7 +78,7 @@ describe("桌面集成（mock 模块）", () => {
 
   it("点击坞图标开一扇窗", () => {
     registerModules(mods);
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByLabelText("演示模块 · 甲"));
     expect(useDesktopStore.getState().windows).toHaveLength(1);
     expect(useDesktopStore.getState().windows[0].moduleId).toBe("mod-alpha");
@@ -74,7 +86,7 @@ describe("桌面集成（mock 模块）", () => {
 
   it("单例模块重复点击不重复开窗（只聚焦）", () => {
     registerModules(mods);
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByLabelText("演示模块 · 丁"));
     fireEvent.click(screen.getByLabelText("演示模块 · 丁"));
     const opened = useDesktopStore.getState().windows.filter((w) => w.moduleId === "mod-delta");

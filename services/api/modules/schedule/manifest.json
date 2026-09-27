@@ -25,7 +25,9 @@
   "permissions": [],
   "tabs": [
     { "key": "calendar", "label": "日程表", "entry": "calendar" },
-    { "key": "todo", "label": "待办", "entry": "todo" }
+    { "key": "todo", "label": "待办", "entry": "todo" },
+    { "key": "study", "label": "学业", "entry": "todo" },
+    { "key": "course", "label": "课程表", "entry": "course" }
   ],
   "lifecycle": {
     "onInstall": null,

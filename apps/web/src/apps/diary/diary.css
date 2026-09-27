@@ -198,3 +198,199 @@
   color: var(--text-dim, rgba(255, 255, 255, 0.4));
   padding: 20px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   U3 右栏「日历」融合卡（2026-09-27 · 主人令「右栏更新一下」）
+   合并原「日程」+「日记 · 复盘」两张重复迷你日历为一张：
+   四色点阵 + 点选某天 + 按源直达窗口。只用设计令牌。
+   ═══════════════════════════════════════════════════════════════ */
+.dock-fuse__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 4px;
+}
+.dock-fuse__nav > button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--txt);
+  border-radius: var(--r-xs);
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dock-fuse__nav > button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.dock-fuse__title {
+  flex: 1;
+  font-size: 11px;
+  color: var(--txt-dim);
+}
+.dock-fuse__today {
+  width: auto !important;
+  padding: 0 6px;
+}
+
+.dock-fuse__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dock-fuse__cell {
+  position: relative;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--txt);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.dock-fuse__cell:hover {
+  background: var(--surface-2);
+}
+.dock-fuse__cell.is-empty {
+  visibility: hidden;
+}
+.dock-fuse__cell.is-today {
+  outline: 1px solid var(--accent);
+}
+.dock-fuse__cell.is-selected {
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 700;
+}
+.dock-fuse__dots {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+.dock-fuse__dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--line-strong, rgba(127, 127, 127, 0.25));
+}
+.dock-fuse__dot.is-on {
+  background: var(--txt-faint);
+}
+.dock-fuse__dot--calendar.is-on {
+  background: var(--accent);
+}
+.dock-fuse__dot--todo.is-on {
+  background: var(--warn);
+}
+.dock-fuse__dot--diary.is-on {
+  background: var(--ok);
+}
+.dock-fuse__dot--review.is-on {
+  background: var(--danger);
+}
+
+.dock-fuse__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 2px 2px;
+}
+.dock-fuse__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--txt-dim);
+}
+
+.dock-fuse__peek {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+.dock-fuse__peek-title {
+  font-size: 10px;
+  color: var(--txt-faint);
+  padding: 2px;
+}
+.dock-fuse__sec {
+  margin-bottom: 2px;
+}
+.dock-fuse__sec-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--txt);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--r-xs);
+}
+.dock-fuse__sec-head:hover {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+.dock-fuse__sec-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  font-size: 9px;
+}
+.dock-fuse__cnt {
+  min-width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 9px;
+  padding: 0 3px;
+}
+.dock-fuse__go {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--txt-faint);
+}
+.dock-fuse__list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: none;
+}
+.dock-fuse__item {
+  display: flex;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--txt-dim);
+  overflow: hidden;
+}
+.dock-fuse__time {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.dock-fuse__txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

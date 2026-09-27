@@ -20,7 +20,38 @@ log = logging.getLogger("push.link")
 EVENT_REMINDER = "calendar.reminder.fired"
 # ★ 主人 2026-09-25「做」：待办到期 → web push（与日程提醒同构）
 EVENT_TODO_DUE = "todo.item.due"
+# ★ 主人 2026-09-27「课程表保留推送能力」：上课前提醒 → web push（同构第三路）
+EVENT_COURSE_DUE = "course.session.due"
 _installed = False
+
+
+def handle_course_due_event(event: dict[str, Any]) -> None:
+    """即将上课 → web push（由 course/remind_scheduler 发布 `course.session.due`）。"""
+    if not isinstance(event, dict) or event.get("topic") != EVENT_COURSE_DUE:
+        return
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        return
+    title = f"上课提醒：{payload.get('title') or ''}".strip()
+    parts: list[str] = []
+    if payload.get("start_time"):
+        parts.append(f"{payload['start_time']} 上课")
+    if payload.get("location"):
+        parts.append(str(payload["location"]))
+    body = " · ".join(parts)
+    with db_session() as db:
+        try:
+            out = send_broadcast(
+                db,
+                title=title,
+                body=body,
+                url="/",
+                tag=f"course-{payload.get('item_id') or ''}",
+                topic=EVENT_COURSE_DUE,
+            )
+            log.info("course due → web push", extra={"sent": out.get("sent")})
+        except Exception as exc:  # noqa: BLE001 — 联动失败不打断事件广播
+            log.warning("course due push 联动失败: %s", exc)
 
 
 def handle_todo_due_event(event: dict[str, Any]) -> None:
@@ -82,8 +113,14 @@ def install_push_link() -> bool:
         return False
     event_bus.add_listener(handle_reminder_event)
     event_bus.add_listener(handle_todo_due_event)  # ★ 主人 09-25：待办到期通道
+    event_bus.add_listener(handle_course_due_event)  # ★ 主人 09-27：上课提醒通道
     _installed = True
-    log.info("push 事件联动已装载（%s / %s → web push）", EVENT_REMINDER, EVENT_TODO_DUE)
+    log.info(
+        "push 事件联动已装载（%s / %s / %s → web push）",
+        EVENT_REMINDER,
+        EVENT_TODO_DUE,
+        EVENT_COURSE_DUE,
+    )
     return True
 
 

@@ -1,0 +1,211 @@
+/* ★ 课程表样式（2026-09-27 · 主人令「日程待办加一页课程表」）
+   只用设计令牌，不写死颜色。 */
+
+.course-win {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* —— 工具条 —— */
+.course-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.course-bar__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+}
+
+.course-bar__sub {
+  font-size: 11px;
+  color: var(--txt-dim);
+}
+
+.course-bar__spacer {
+  flex: 1;
+}
+
+.course-btn {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--txt);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.course-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.course-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.course-btn--primary:hover {
+  color: var(--accent-fg);
+  opacity: 0.9;
+}
+
+/* —— 周网格 —— */
+.course-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+}
+
+.course-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.course-col__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+}
+
+.course-col__head.is-today {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.course-col__date {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.course-col__empty {
+  font-size: 11px;
+  color: var(--txt-faint);
+  padding: 6px;
+}
+
+/* —— 课程卡片 —— */
+.course-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--txt);
+  font: inherit;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.course-card:hover {
+  border-color: var(--accent);
+}
+
+.course-card.is-off {
+  opacity: 0.5;
+  border-left-color: var(--txt-faint);
+}
+
+.course-card__name {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-card__time {
+  font-size: 11px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.course-card__meta {
+  font-size: 10px;
+  color: var(--txt-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-card__weeks {
+  font-size: 10px;
+  color: var(--txt-faint);
+}
+
+/* —— 表单 —— */
+.course-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2) var(--sp-3);
+}
+
+.course-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.course-field > label {
+  font-size: 11px;
+  color: var(--txt-dim);
+}
+
+.course-field input,
+.course-field select,
+.course-field textarea {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--txt);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.course-field--wide {
+  grid-column: 1 / -1;
+}
+
+.course-form__err {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.course-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}

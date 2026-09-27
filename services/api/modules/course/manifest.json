@@ -1,0 +1,48 @@
+{
+  "id": "course",
+  "name": "课程表",
+  "version": "0.1.0",
+  "kind": "builtin",
+  "minKernel": "0.1.0",
+  "kernelApi": "^1",
+  "icon": "课",
+  "description": "一周课表：课名/教师/地点/节次/周次，上课前提醒推送到浏览器与桌面",
+  "author": "hermes",
+  "window": {
+    "w": 1000,
+    "h": 640,
+    "minW": 640,
+    "minH": 420
+  },
+  "entry": "@/apps/course",
+  "api": {
+    "base": "/api/v1/course",
+    "openapi": "/api/v1/course/openapi.json",
+    "health": "/api/v1/course/health"
+  },
+  "provides": [
+    "course.item.read",
+    "course.item.write",
+    "course.schedule.read"
+  ],
+  "requires": [],
+  "slots": [],
+  "emits": [
+    "course.item.created",
+    "course.item.updated",
+    "course.item.deleted",
+    "course.session.due"
+  ],
+  "consumes": [],
+  "permissions": [
+    "db:own"
+  ],
+  "migrations": "api/migrations",
+  "settingsSchema": "api/settings.schema.json",
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
+}

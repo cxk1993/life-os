@@ -768,6 +768,30 @@
   color: var(--txt);
   flex: 0 0 auto;
 }
+/* ★ 2026-09-27：今日摘要带上真实计数（原先只有图标+名字 = 零信息） */
+.desktop-side__today-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.desktop-side__today-count {
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--txt-dim);
+  font-size: 11px;
+  padding: 0 5px;
+  flex: 0 0 auto;
+}
+.desktop-side__today-list button:hover .desktop-side__today-count {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
 .desktop-sidebar__slots {
   display: flex;
   flex-direction: column;

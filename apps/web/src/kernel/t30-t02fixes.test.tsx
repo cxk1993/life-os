@@ -14,6 +14,7 @@
  *   修法（双保险）：① 搜索框 onKeyDown Escape 分支 `e.stopPropagation()`（原生冒泡停止 → window 收不到）；
  *                ② useHotkey 输入守卫（焦点在可编辑元素时裸键直接跳过）。证据 L2-32-t02-esc-narrow.png。
  */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -112,7 +113,11 @@ describe("★ BUG-T02-1：搜索浮层开着 + 桌面有窗，一次 Esc 只关�
       activeWorkspaceId: "ws1",
     });
 
-    render(<Desktop />);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <Desktop />
+      </QueryClientProvider>,
+    );
     useDesktopStore.getState().openWindow("escbug");
     expect(useDesktopStore.getState().windows).toHaveLength(1);
 

@@ -41,6 +41,11 @@ const DOCK_MERGE: Record<string, string> = {
   //   （坑谱 #15：manifest.slots 不产生隐藏效果，MiMo 4c8aace 前车之鉴）。
   calendar: "schedule",
   todo: "schedule",
+  // ★ 主人 2026-09-27 令「日程待办里加一个分页课程表」：
+  //   course（课程表）作为 schedule 容器的**第 4 页**（[日程表][待办][学业][课程表]）。
+  //   必须在 DOCK_MERGE 收口 —— Dock 渲染遍历 store 全部模块、**从不读 manifest.slots**
+  //   （坑谱 #15）。fail-safe：schedule 未启用时自动保留 course 原按钮。
+  course: "schedule",
   // ★ 主人 2026-09-26 令「替换了吧，宁缺毋滥」：
   //   ai-chat（AI 对话）已由 pi-agent 接管 —— **必须在 DOCK_MERGE 收口**，
   //   因为 Dock 渲染遍历 store 全部模块、**从不读 manifest.slots**
