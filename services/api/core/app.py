@@ -355,6 +355,8 @@ def create_app(
         _res = _discover_plugins()
         _mgr = _PluginManager()
         _registry = getattr(app.state, "registry", None) or registry
+        _mounted = 0
+        _skipped: list[str] = []
         for _info in _res.plugins:
             if _info.source != "third-party":
                 continue
@@ -371,17 +373,28 @@ def create_app(
                     log.info(
                         "第三方插件未启用，跳过（可用 /api/v1/plugins/%s/enable 启用）", _info.id
                     )
+                    _skipped.append(_info.id)
                     continue
                 _mgr.enable(_info.id, _registry)
                 # ★ 只有**真正挂载成功**的才进 app.state.modules ——
                 #   否则会与 /health/modules（只报已激活）不自洽（O1 自洽测试会红）。
                 app.state.modules[_info.id] = _info.manifest
+                _mounted += 1
                 log.info("第三方插件已恢复挂载", extra={"module": _info.id})
             except Exception as _exc:  # noqa: BLE001 —— 单个失败不影响其它
                 log.warning(
                     "第三方插件恢复失败（已记录，不阻断启动）",
                     extra={"module": _info.id, "error": f"{type(_exc).__name__}: {_exc}"},
                 )
+        # 启动对账摘要（2026-09-27 · 主人令件①）：「放进去但未启用」不再只是一条
+        # 易漏的 INFO——摘要里点名，一眼可见（countdown 404 勘察教训）。
+        if _skipped:
+            log.info(
+                "第三方插件启动对账：已恢复挂载 %d 个；未启用跳过 %d 个（%s）",
+                _mounted,
+                len(_skipped),
+                "、".join(_skipped),
+            )
     except Exception as _exc:  # noqa: BLE001 —— 整段兜底，绝不让它拖垮启动
         log.warning("第三方插件恢复流程整体跳过：%s", _exc)
 

@@ -316,6 +316,43 @@ def test_full_lifecycle_install_enable_disable_uninstall(
     assert not demo_plugin_dir.exists(), "卸载后插件目录应被删除"
 
 
+# ───────────────────── 口径统一：third-party 无状态行 = 未启用 ─────────────────────
+def test_third_party_without_state_row_is_not_enabled(
+    client: TestClient, demo_plugin_dir: Path
+) -> None:
+    """口径统一（2026-09-27 · 主人令件①）：third-party 无状态行 = 未启用。
+
+    防回归 countdown 404：插件放进 plugins/ 但从未 enable 时——
+    清单可见（发现）但 enabled=False；slots 贡献不标启用；MCP 不暴露
+    幽灵工具（工具看得见、路由 404）；/reload 不误报 needs_restart。
+    builtin 无状态行仍默认启用（随系统发布）。
+    """
+    # 清单可见但未启用
+    listed = client.get("/api/v1/plugins", headers=AUTH).json()
+    item = next(p for p in listed["plugins"] if p.get("id") == DEMO_ID)
+    assert item["enabled"] is False
+
+    # builtin 无状态行仍默认启用
+    builtins = [p for p in listed["plugins"] if p.get("source") == "builtin"]
+    assert builtins, "测试环境应有内置插件"
+    assert all(p["enabled"] is True for p in builtins)
+
+    # 扩展点贡献可见但不标启用
+    slots = client.get("/api/v1/plugins/slots/dashboard.card", headers=AUTH).json()
+    contrib = next(c for c in slots["contributions"] if c["plugin_id"] == DEMO_ID)
+    assert contrib["enabled"] is False
+
+    # MCP 不暴露幽灵工具
+    from modules.mcp.registry_adapter import build_tool_map
+
+    tool_plugin_ids = {t.plugin_id for t in build_tool_map()}
+    assert DEMO_ID not in tool_plugin_ids
+
+    # /reload 不把「无行未启用」误报为需要重启
+    reload_body = client.post("/api/v1/plugins/reload", headers=AUTH).json()
+    assert not any(d["id"] == DEMO_ID for d in reload_body["reload_required"])
+
+
 # ───────────────────── 硬规则：core 不可禁用 / builtin 不可卸载 ─────────────────────
 def test_disable_core_rejected(client: TestClient) -> None:
     # 管理模块本身是 core

@@ -117,8 +117,13 @@ def build_tool_map() -> list[ToolMapping]:
     out: list[ToolMapping] = []
     for info in manager.discover().plugins:
         st = states.get(info.id)
-        # 无状态行 = 从未动过 = 默认启用（与 PluginManager 口径一致）。
-        if st is not None and not st.get("enabled", True):
+        # 口径统一（2026-09-27 · 主人令件①）：无状态行 = 非 third-party 默认启用；
+        # third-party 从未动过 = 未启用，不暴露工具——防「工具看得见、路由 404」
+        # 的幽灵工具（countdown 404 根因之一）。与 PluginManager.list_plugins 及
+        # core/app.py 启动恢复三方同一规则（原注释「与 PluginManager 口径一致」
+        # 在旧行为下并不成立，属注释自证式口径漂移，随本刀纠正）。
+        enabled = st.get("enabled") if st is not None else info.source != "third-party"
+        if not enabled:
             continue
         api = info.manifest.get("api") or {}
         api_base = api.get("base", "")

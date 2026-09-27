@@ -55,7 +55,12 @@ class PluginManager:
         out: list[dict[str, Any]] = []
         for p in result.plugins:
             st = states.get(p.id)
-            enabled = st.enabled if st is not None else True
+            # 口径统一（2026-09-27 · 主人令件①）：无状态行的默认启用态按来源判——
+            # builtin/core 随系统发布默认在用；third-party 从未动过 = 未启用
+            # （ADR-0002「可禁用」语义的权威态，与 core/app.py 启动恢复同规则）。
+            # 旧值恒 True 会造成「MCP 工具已暴露 / 路由未挂载」的幽灵工具
+            # （countdown 404 根因之一）。
+            enabled = st.enabled if st is not None else p.source != "third-party"
             granted = (
                 json.loads(st.granted_permissions)
                 if st and st.granted_permissions
@@ -107,15 +112,15 @@ class PluginManager:
                     {
                         "plugin_id": p.id,
                         "name": p.manifest.get("name"),
-                        "enabled": self._enabled(p.id),
+                        "enabled": self._enabled(p.id, default_enabled=p.source != "third-party"),
                     }
                 )
         return out
 
-    def _enabled(self, plugin_id: str) -> bool:
+    def _enabled(self, plugin_id: str, *, default_enabled: bool = True) -> bool:
         with db_session() as db:
             st = db.get(PluginState, plugin_id)
-        return st.enabled if st else True
+        return st.enabled if st else default_enabled
 
     # ───────────────────────── 状态落库 ─────────────────────────
     def _upsert_state(
