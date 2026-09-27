@@ -192,6 +192,27 @@ def chat(body: ChatIn) -> ChatOut:
 # ── 会话管理（★ 第④刀：外部 agent 锁定/切换会话）────────────────
 
 
+@router.get("/sessions/history")
+def get_session_history(
+    session: str | None = None,
+    limit: int = 200,
+    include_tools: bool = False,
+) -> dict[str, Any]:
+    """★ TX-FRAME-01 补刀（2026-09-27）：**读取会话历史消息**。
+
+    主人报障「找不到历史」—— 实测此前 8 个端点**无任何读消息接口**（下游不存在，
+    不是"读路径不统一"）。本端点补齐：读 runtime/sessions/*.jsonl（pi 原生 JSONL）
+    并归一化为前端可直接渲染的 [{role, text, ts}]。
+
+    - session：pi 会话 id / 文件名前缀 / 序号（0=最新）；空或 default = 最新会话
+    - limit：返回末尾 N 条（默认 200）
+    - include_tools：是否含 toolResult 条目（默认否 —— 前端只展示对话流）
+    """
+    from .history import read_messages
+
+    return read_messages(session, limit=limit, include_tools=include_tools)
+
+
 @router.get("/sessions")
 def list_sessions() -> dict[str, Any]:
     """★ 列出当前活跃会话（外部 agent 据此发现"谁在用哪个会话"）。

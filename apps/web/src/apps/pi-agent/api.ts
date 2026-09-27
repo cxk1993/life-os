@@ -37,6 +37,24 @@ export interface PoolStatus {
   names: string[];
 }
 
+/** ★ 会话历史条目（后端 /sessions/history 归一化后）。 */
+export interface HistoryMsg {
+  role: "user" | "assistant" | "tool";
+  text: string;
+  ts?: string | number;
+  tool?: string;
+  error?: boolean;
+}
+
+export interface HistoryOut {
+  session: string | null;
+  session_id: string | null;
+  count: number;
+  total: number;
+  messages: HistoryMsg[];
+  detail?: string;
+}
+
 export interface AgentStatus {
   id?: string;
   stage?: string;
@@ -57,6 +75,16 @@ export const piAgentApi = {
 
   listSessions: () =>
     api.get<{ sessions: SessionInfo[]; pool: PoolStatus }>(`${BASE}/sessions`),
+
+  /**
+   * ★ 2026-09-27（主人候办③「找不到历史」补刀）：**读取会话历史消息**。
+   * 后端 `GET /sessions/history` 读 pi 原生 JSONL 并归一化 → [{role, text, ts}]。
+   * session 空/`default` = 最新会话。
+   */
+  history: (session: string, limit = 200) =>
+    api.get<HistoryOut>(
+      `${BASE}/sessions/history?session=${encodeURIComponent(session)}&limit=${limit}`,
+    ),
 
   sessionAction: (action: string, session: string) =>
     api.post<Record<string, unknown>>(`${BASE}/sessions`, { action, session }),

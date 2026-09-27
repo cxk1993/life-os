@@ -79,6 +79,31 @@ export default function PiChatView() {
   // ★ 三态区分（修「恒显启动中」）：真实 level > 拉取失败(ERR) > 首次未拉到(CONN)
   const level = status?.level ?? (statusErr ? "ERR" : "CONN");
 
+  // ★ 2026-09-27（主人候办③「找不到历史」补刀）：**加载会话历史**。
+  //   后端新增 `GET /sessions/history`（读 pi 原生 JSONL 归一化）——此前无任何读消息端点。
+  //   策略：挂载 + 切换会话时拉一次；**只填充，不打断进行中的对话**（loadedRef 去重）。
+  const loadedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (loadedRef.current === sessionId) return;
+    loadedRef.current = sessionId;
+    void (async () => {
+      try {
+        const h = await piAgentApi.history(sessionId);
+        const chat = (h.messages ?? []).filter((m) => m.role !== "tool");
+        if (chat.length > 0) {
+          setMessages(
+            chat.map((m) => ({
+              role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+              text: m.text,
+            })),
+          );
+        }
+      } catch {
+        /* 历史拉取失败不阻塞对话（可能尚无会话文件 / 后端旧版） */
+      }
+    })();
+  }, [sessionId]);
+
   const send = async () => {
     const text = input.trim();
     if (!text || busy) return;
