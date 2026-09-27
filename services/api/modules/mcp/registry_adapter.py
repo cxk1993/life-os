@@ -33,13 +33,17 @@ _METHOD_BY_VERB: dict[str, str] = {
     "write": "POST",
     "create": "POST",
     "update": "PUT",
+    # ★ 2026-09-27（主人令「把挂路径参数的整类端点修通」）：
+    #   此前**没有任何动词映射 PATCH** ⇒ 满地的 PATCH 端点（改待办 / 改文档 /
+    #   改课 / 改日程…）在工具面上天然不可达。补一条 `patch`。
+    "patch": "PATCH",
     "delete": "DELETE",
     "remove": "DELETE",
 }
 
 # 写类动词集合（审计用：落在集合里的 tool 调用要落 audit_log）。
 WRITE_VERBS: frozenset[str] = frozenset(
-    {"write", "create", "update", "delete", "remove"}
+    {"write", "create", "update", "patch", "delete", "remove"}
 )
 # （ISSUE-008 方案 A，2026-09-20）不规则/语义命名路由的显式映射不在本文件——
 # 在各插件 manifest 的 api.tools（resource → 路由段，声明则优先，未声明走机械
@@ -83,7 +87,13 @@ def derive_tool(
         return None
     name = "_".join(parts)
     scope = f"{domain}:{verb}"
-    explicit = (tool_routes or {}).get(resource)
+    # ★ 2026-09-27：路由键**先查细粒度 `resource.verb`，再回落 `resource`**。
+    #   为什么：同一个 resource 上常挂多个端点（docs 的 node 有 read/write + patch/delete，
+    #   路径还不一样），只按 resource 查会撞车。旧 manifest 一律只有 resource 键
+    #   ⇒ 回落路径完全不变，零影响（test_derive_tool_* 表驱动守着）。
+    explicit = (tool_routes or {}).get(f"{resource}.{verb}")
+    if explicit is None:
+        explicit = (tool_routes or {}).get(resource)
     base = api_base.rstrip("/")
     if explicit is None:
         path = f"{base}/{resource}s"

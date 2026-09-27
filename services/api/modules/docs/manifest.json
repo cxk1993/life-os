@@ -17,11 +17,17 @@
     "base": "/api/v1/docs",
     "openapi": "/api/v1/docs/openapi.json",
     "health": "/api/v1/docs/health",
-    "tools": { "content": "/content" }
+    "tools": {
+      "content": "/content",
+      "node.patch": "/nodes/{node_id}",
+      "node.delete": "/nodes/{node_id}"
+    }
   },
   "provides": [
     "docs.node.read",
     "docs.node.write",
+    "docs.node.patch",
+    "docs.node.delete",
     "docs.search",
     "docs.content.write"
   ],

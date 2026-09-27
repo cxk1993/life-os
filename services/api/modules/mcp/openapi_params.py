@@ -25,6 +25,12 @@
 - **短超时 + 全兜底**：任何异常 → 返回 {} → 调用方降级；
 - **不 import 业务插件**（与 registry_adapter 同纪律，只走 HTTP）；
 - **schema 解析绝不外联**：只解析 `#/` 文档内引用，外部文件/URL 引用一律不追。
+
+★ 2026-09-27 二次补刀（主人令「把挂路径参数的整类端点修通」）：
+  **路径参数改为暴露且标必填**。旧版遇 `in: path` 直接 `continue` 跳过 —— 因为
+  当时桥接层不做替换，暴露了也没用。现在 `forward._substitute_path_params()`
+  会把它代入 URL，于是这里必须让 AI 看得见这个坑（否则调用必然 422）。
+  **两半合起来**，路径参数型端点（改文档/改待办/打卡…）才真正可达。
 """
 from __future__ import annotations
 
@@ -166,6 +172,44 @@ def _frag(spec: dict[str, Any], raw: Any) -> dict[str, Any]:
     return frag
 
 
+def _props_from_operation(spec: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
+    """单个 operation → `{"properties": {...}, "required": [...]}`（纯函数，便于直测）。"""
+    props: dict[str, Any] = {}
+    required: list[str] = []
+    # ① 查询 / 路径参数
+    for prm in op.get("parameters") or []:
+        prm = _deref(spec, prm)  # 参数本身也可能是 $ref
+        name = prm.get("name")
+        if not name:
+            continue
+        frag = _frag(spec, prm.get("schema") or {})
+        if prm.get("in") == "path":
+            # ★ 2026-09-27：路径参数**要暴露**。旧版直接跳过（当时桥接层不做替换），
+            #   结果 AI 压根不知道 {id} 这个坑拿什么填。现在桥接层会把它代入 URL
+            #   （见 forward._substitute_path_params），于是带进 schema 并标必填 ——
+            #   两半合起来，路径参数型端点才真正可达。
+            frag["description"] = (
+                (frag.get("description") or "") + "（路径参数，会代入 URL）"
+            )
+            props[name] = frag
+            required.append(name)  # 路径参数恒必填
+            continue
+        props[name] = frag
+        if prm.get("required"):
+            required.append(name)
+    # ② 请求体（JSON）—— 必须先解 $ref
+    body = ((op.get("requestBody") or {}).get("content") or {}).get("application/json")
+    if isinstance(body, dict):
+        sch = _deref(spec, body.get("schema") or {})
+        for k, v in (sch.get("properties") or {}).items():
+            props[k] = _frag(spec, v)
+        required.extend(k for k in (sch.get("required") or []) if k in props)
+    entry: dict[str, Any] = {"properties": props}
+    if props and required:
+        entry["required"] = sorted(set(required))
+    return entry
+
+
 def _load_module(module_id: str) -> dict[tuple[str, str], dict[str, Any]]:
     """拉某模块的 openapi，摊平成 {(METHOD, path): {字段名: schema}}。失败返回 {}。"""
     if module_id in _CACHE:
@@ -184,32 +228,8 @@ def _load_module(module_id: str) -> dict[tuple[str, str], dict[str, Any]]:
                 for method, op in ops.items():
                     if not isinstance(op, dict):
                         continue
-                    props: dict[str, Any] = {}
-                    required: list[str] = []
-                    # ① 查询/路径参数（path 参数由调用方在 URL 里给，不暴露）
-                    for prm in op.get("parameters") or []:
-                        prm = _deref(spec, prm)  # 参数本身也可能是 $ref
-                        name = prm.get("name")
-                        if not name or prm.get("in") == "path":
-                            continue
-                        props[name] = _frag(spec, prm.get("schema") or {})
-                        if prm.get("required"):
-                            required.append(name)
-                    # ② 请求体（JSON）—— ★ 必须先解 $ref，否则 properties 恒为空
-                    body = ((op.get("requestBody") or {}).get("content") or {}).get(
-                        "application/json"
-                    )
-                    if isinstance(body, dict):
-                        sch = _deref(spec, body.get("schema") or {})
-                        for k, v in (sch.get("properties") or {}).items():
-                            props[k] = _frag(spec, v)
-                        required.extend(
-                            k for k in (sch.get("required") or []) if k in props
-                        )
-                    if props:
-                        entry: dict[str, Any] = {"properties": props}
-                        if required:
-                            entry["required"] = sorted(set(required))
+                    entry = _props_from_operation(spec, op)
+                    if entry.get("properties"):
                         out[(method.upper(), path)] = entry
     except Exception as exc:  # noqa: BLE001 —— 拉不到就降级，绝不阻断
         log.info("模块 %s 的 openapi 拉取失败（降级为通用 payload）：%s", module_id, exc)

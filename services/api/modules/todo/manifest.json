@@ -16,11 +16,13 @@
   "api": {
     "base": "/api/v1/todo",
     "openapi": "/api/v1/todo/openapi.json",
-    "health": "/api/v1/todo/health"
+    "health": "/api/v1/todo/health",
+    "tools": { "item.patch": "/items/{item_id}" }
   },
   "provides": [
     "todo.item.read",
     "todo.item.write",
+    "todo.item.patch",
     "x.summary.today"
   ],
   "requires": [],

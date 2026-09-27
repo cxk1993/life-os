@@ -10,7 +10,9 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -18,6 +20,30 @@ from core.security import USER_SUB, create_access_token
 
 _DEFAULT_BASE = "http://127.0.0.1:18000"
 _TIMEOUT = 15.0
+
+# ★ 2026-09-27（主人令「把挂路径参数的整类端点修通」）：路径参数占位符。
+#   工具面是**机械推导**出来的，manifest 里写的是 OpenAPI 原样的 path（含 `{x}`）；
+#   不代入就只能打到字面量 `{x}` → 404。故在桥接层做替换。
+_PATH_PARAM_RE = re.compile(r"\{([^{}/]+)\}")
+
+
+def _substitute_path_params(
+    path: str, payload: dict[str, Any] | None
+) -> tuple[str, dict[str, Any], list[str]]:
+    """把路径里的 `{name}` 用 payload 的同名值代入，并从 body 里摘掉这些键。
+
+    返回 (新路径, 剩余 payload, 缺失的参数名列表)。
+    ★ 值会做 URL 转义（`quote(safe="")`）—— 否则参数里带个 `/` 就能拼出跨段路径。
+    ★ 缺参数**不静默**：由调用方转成明确 422，而不是打出去 404 让人猜。
+    """
+    body = dict(payload or {})
+    missing: list[str] = []
+    for name in _PATH_PARAM_RE.findall(path or ""):
+        if name in body and body[name] is not None:
+            path = path.replace("{" + name + "}", quote(str(body.pop(name)), safe=""))
+        else:
+            missing.append(name)
+    return path, body, missing
 
 
 def internal_base() -> str:
@@ -41,14 +67,23 @@ def forward(
     transport 参数仅供测试注入 httpx.MockTransport（官方测试机制），
     生产调用一律默认 None。
     """
+    path, body, missing = _substitute_path_params(path, payload)
+    if missing:
+        return 422, {
+            "type": "about:blank",
+            "title": "缺少路径参数",
+            "status": 422,
+            "detail": f"该工具路径需要参数 {missing}，请在 payload 里给出",
+            "path_template": path,
+        }
     headers = {"Authorization": f"Bearer {create_access_token(USER_SUB)}"}
     with httpx.Client(
         base_url=internal_base(), timeout=_TIMEOUT, transport=transport
     ) as client:
         if method == "GET":
-            resp = client.get(path, params=payload or None, headers=headers)
+            resp = client.get(path, params=body or None, headers=headers)
         else:
-            resp = client.request(method, path, json=payload or {}, headers=headers)
+            resp = client.request(method, path, json=body, headers=headers)
     if resp.status_code == 204 or not resp.content:
         return resp.status_code, None
     try:

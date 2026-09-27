@@ -167,9 +167,18 @@ def test_tool_map_explicit_routes_end_to_end(client):
     assert tools["calendar_slot_free"].path == "/api/v1/calendar/free-slots"
     # 机械推导命中组不受影响（照常）
     assert tools["calendar_event_write"].path == "/api/v1/calendar/events"
-    # habits_log_write：诚实少暴露（T18 哲学），未删的照常
-    assert "habits_log_write" not in tools
+    # ★ 2026-09-27：habits_log_write **恢复暴露** —— 当初删它的唯一理由就是
+    #   "写端点带 {habit_id}、MCP 无法直通"（T18 哲学：宁可少暴露）。
+    #   桥接层支持路径参数代入后，那条理由消失了。
+    assert tools["habits_log_write"].method == "POST"
+    assert tools["habits_log_write"].path == "/api/v1/habits/{habit_id}/checkin"
     assert "habits_habit_read" in tools
+    # ★ 2026-09-27：路径参数型端点成批打通（patch 动词 + 细粒度路由键 + 桥接层代入）
+    assert tools["todo_item_patch"].method == "PATCH"
+    assert tools["todo_item_patch"].path == "/api/v1/todo/items/{item_id}"
+    assert tools["docs_node_patch"].path == "/api/v1/docs/nodes/{node_id}"
+    assert tools["docs_node_delete"].method == "DELETE"
+    assert tools["docs_node_delete"].path == "/api/v1/docs/nodes/{node_id}"
     # 工具数量随模块扩展而增长（含 agents 模块新工具）
     assert len(tools) >= 25, f"当前 {len(tools)} 个工具，期望 ≥25"
 
@@ -457,3 +466,93 @@ def _is_docstring(node: ast.Constant, tree: ast.AST) -> bool:
     if not body:
         return False
     return body[0] is owner
+
+
+# ───── 路径参数型端点（2026-09-27 主人令「把挂路径参数的整类端点修通」）─────
+def test_derive_tool_patch_verb_and_fine_grained_key():
+    """patch → PATCH（此前无动词映射 PATCH）；路由键先查 resource.verb 再回落。"""
+    routes = {"item": "/items", "item.patch": "/items/{item_id}"}
+    t = derive_tool("todo.item.patch", "/api/v1/todo", "todo", routes)
+    assert t is not None
+    assert (t.method, t.path, t.scope) == (
+        "PATCH", "/api/v1/todo/items/{item_id}", "todo:patch")
+    # 同一 resource 的另一条端点回落 resource 键，不被细粒度键误伤
+    w = derive_tool("todo.item.write", "/api/v1/todo", "todo", routes)
+    assert (w.method, w.path) == ("POST", "/api/v1/todo/items")
+    # 旧 manifest（只有 resource 键）行为完全不变
+    old = derive_tool("todo.item.write", "/api/v1/todo", "todo", {"item": "/items"})
+    assert old is not None and old.path == "/api/v1/todo/items"
+
+
+def test_patch_counts_as_write_verb_for_audit():
+    """patch 属写类 → 必须落审计（否则"改了数据不留痕"）。"""
+    from modules.mcp.registry_adapter import is_write_tool
+
+    t = derive_tool("docs.node.patch", "/api/v1/docs", "docs",
+                    {"node.patch": "/nodes/{node_id}"})
+    assert t is not None and is_write_tool(t) is True
+
+
+def test_forward_substitutes_path_params():
+    """{node_id} 从 payload 代入 URL，并从 body 摘掉（不再打一个字面量 {node_id}）。"""
+    from modules.mcp.forward import forward
+
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["body"] = json.loads(request.content or b"{}")
+        return httpx.Response(200, json={"ok": True})
+
+    code, _ = forward("PATCH", "/api/v1/docs/nodes/{node_id}",
+                      {"node_id": "abc123", "name": "新名字"},
+                      transport=httpx.MockTransport(handler))
+    assert code == 200
+    assert seen["path"] == "/api/v1/docs/nodes/abc123"
+    assert seen["body"] == {"name": "新名字"}  # 路径参数已摘除，不污染请求体
+
+
+def test_forward_path_param_is_escaped():
+    """参数值里的 / 必须转义，否则能拼出跨段路径（越权面）。"""
+    from modules.mcp.forward import forward
+
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        # ★ 必须看 raw_path：url.path 会被 httpx **解码**回 "a/b c"，
+        #   那时断言就变成"看不出转义有没有生效"了。
+        seen["raw"] = request.url.raw_path
+        return httpx.Response(200, json={})
+
+    forward("GET", "/api/v1/x/{k}", {"k": "a/b c"},
+            transport=httpx.MockTransport(handler))
+    assert seen["raw"] == b"/api/v1/x/a%2Fb%20c"
+
+
+def test_forward_missing_path_param_is_422():
+    """缺路径参数 → 明确 422（而不是打出去 404 让人猜）。"""
+    from modules.mcp.forward import forward
+
+    code, body = forward("PATCH", "/api/v1/docs/nodes/{node_id}", {"name": "x"},
+                         transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    assert code == 422
+    assert "node_id" in json.dumps(body, ensure_ascii=False)
+
+
+def test_openapi_params_exposes_path_params():
+    """路径参数要进 schema 且标必填（旧版直接跳过，AI 无从知道该填什么）。"""
+    from modules.mcp.openapi_params import _props_from_operation
+
+    spec = {"components": {"schemas": {
+        "BodyIn": {"properties": {"name": {"type": "string"}}}}}}
+    op = {
+        "parameters": [{"name": "node_id", "in": "path", "required": True,
+                        "schema": {"type": "string"}, "description": "节点 id"}],
+        "requestBody": {"content": {"application/json": {
+            "schema": {"$ref": "#/components/schemas/BodyIn"}}}},
+    }
+    entry = _props_from_operation(spec, op)
+    assert "node_id" in entry["properties"]
+    assert "路径参数" in entry["properties"]["node_id"]["description"]
+    assert "node_id" in entry["required"]
+    assert entry["properties"]["name"]["type"] == "string"  # $ref 解析照常

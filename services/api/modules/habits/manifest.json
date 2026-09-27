@@ -20,11 +20,15 @@
     "base": "/api/v1/habits",
     "openapi": "/api/v1/habits/openapi.json",
     "health": "/api/v1/habits/health",
-    "tools": { "habit": "/api/v1/habits" }
+    "tools": {
+      "habit": "/api/v1/habits",
+      "log.write": "/{habit_id}/checkin"
+    }
   },
   "provides": [
     "habits.habit.read",
-    "habits.habit.write"
+    "habits.habit.write",
+    "habits.log.write"
   ],
   "requires": [],
   "slots": [

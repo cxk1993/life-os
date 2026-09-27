@@ -108,6 +108,10 @@ def test_manifest(client):
     assert "docs.search" in m["provides"]
     assert "docs.content.write" in m["provides"]  # 2026-09-27 按路径写正文
     assert m["api"]["tools"]["content"] == "/content"
+    # 2026-09-27：路径参数型端点（改名/移动、软删）
+    assert "docs.node.patch" in m["provides"]
+    assert "docs.node.delete" in m["provides"]
+    assert m["api"]["tools"]["node.patch"] == "/nodes/{node_id}"
     assert "docs.node.created" in m["emits"]
 
 
