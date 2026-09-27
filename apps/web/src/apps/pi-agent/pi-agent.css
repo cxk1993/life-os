@@ -36,6 +36,16 @@
   border-color: var(--danger);
   color: var(--danger);
 }
+/* ★ 2026-09-27（主人候办③）：修「恒显启动中」后新增的两态 ——
+   CONN = 首次未拉到状态（中性，不是故障）；ERR = 拉取失败（fail-loud，红色）。 */
+.pi-agent__level.is-CONN {
+  border-color: var(--txt-dim);
+  color: var(--txt-dim);
+}
+.pi-agent__level.is-ERR {
+  border-color: var(--danger);
+  color: var(--danger);
+}
 
 .pi-agent__session {
   width: 140px;

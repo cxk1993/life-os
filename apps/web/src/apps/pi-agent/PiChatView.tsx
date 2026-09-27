@@ -29,6 +29,12 @@ const LEVEL_TEXT: Record<string, string> = {
   L1: "可用",
   L2: "启动中",
   L3: "已熔断",
+  // ★ 2026-09-27 修（主人候办③「状态点恒显启动中」）：
+  //   此前 `level = status?.level ?? "L2"` —— **status 为 null（首次未拉到 / 请求失败）
+  //   会稳定落回 L2「启动中」**，造成"永远启动中"的假象（后端挂了也不变）。
+  //   现在把"没拉到"与"真的在启动"分开：连接中 / 状态未知。
+  CONN: "连接中…",
+  ERR: "状态未知",
 };
 
 export default function PiChatView() {
@@ -42,6 +48,8 @@ export default function PiChatView() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<AgentStatus | null>(null);
+  // ★ 09-27：状态拉取失败标记（fail-loud）—— 不再静默落回 L2 冒充"启动中"
+  const [statusErr, setStatusErr] = useState(false);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -49,8 +57,10 @@ export default function PiChatView() {
   const refreshStatus = useCallback(async () => {
     try {
       setStatus(await piAgentApi.status());
+      setStatusErr(false); // ★ 拉到即清错
     } catch {
       setStatus(null);
+      setStatusErr(true); // ★ 失败可见（此前静默 → 与 L2 混淆）
     }
     try {
       const d = await piAgentApi.listSessions();
@@ -66,7 +76,8 @@ export default function PiChatView() {
     return () => clearInterval(t);
   }, [refreshStatus]);
 
-  const level = status?.level ?? "L2";
+  // ★ 三态区分（修「恒显启动中」）：真实 level > 拉取失败(ERR) > 首次未拉到(CONN)
+  const level = status?.level ?? (statusErr ? "ERR" : "CONN");
 
   const send = async () => {
     const text = input.trim();
