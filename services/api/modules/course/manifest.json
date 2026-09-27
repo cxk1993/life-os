@@ -18,7 +18,8 @@
   "api": {
     "base": "/api/v1/course",
     "openapi": "/api/v1/course/openapi.json",
-    "health": "/api/v1/course/health"
+    "health": "/api/v1/course/health",
+    "tools": { "schedule": "/week" }
   },
   "provides": [
     "course.item.read",
