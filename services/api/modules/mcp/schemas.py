@@ -21,7 +21,10 @@ class PatCreateIn(BaseModel):
 
     name: str = Field(min_length=1, max_length=64)
     # 空列表 = 不给任何 scope（创建了也调不了工具，安全默认）。
-    scopes: list[str] = Field(default_factory=list, max_length=32)
+    # ★ 2026-09-27（云昔）：32 → 1024。原上限是"防灌爆"的形态守卫，但平台现有
+    #   30 个活 scope，再上一个模块就顶格 ——「发一枚全权限令牌」会变成不可能
+    #   （实测 32+1 直接 422）。放宽到 1024；真正该收紧的是 scope 语义，不是数字。
+    scopes: list[str] = Field(default_factory=list, max_length=1024)
 
     @field_validator("name")
     @classmethod
@@ -44,7 +47,7 @@ class PatCreateIn(BaseModel):
 class PatScopesPatch(BaseModel):
     """PATCH /pats/{id} 请求体：只允许改 scopes（收窄/扩大范围）。"""
 
-    scopes: list[str] = Field(max_length=32)
+    scopes: list[str] = Field(max_length=1024)  # ★ 2026-09-27：32 → 1024（同上）
 
     @field_validator("scopes")
     @classmethod

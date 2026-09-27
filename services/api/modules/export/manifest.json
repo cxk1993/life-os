@@ -15,7 +15,7 @@
     "openapi": "/api/v1/export/openapi.json",
     "health": "/api/v1/export/health"
   },
-  "provides": ["export.job.read", "export.job.write"],
+  "provides": ["export.profile.read"],
   "requires": [],
   "optionalDependencies": [],
   "slots": [],

@@ -13,9 +13,10 @@
   "api": {
     "base": "/api/v1/push",
     "openapi": "/api/v1/push/openapi.json",
-    "health": "/api/v1/push/health"
+    "health": "/api/v1/push/health",
+    "tools": { "send": "/send" }
   },
-  "provides": ["push.subscription.read"],
+  "provides": ["push.subscription.read", "push.send.write"],
   "requires": [],
   "slots": ["settings.page"],
   "emits": ["push.sent"],

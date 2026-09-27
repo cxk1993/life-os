@@ -19,7 +19,8 @@
   "api": {
     "base": "/api/v1/habits",
     "openapi": "/api/v1/habits/openapi.json",
-    "health": "/api/v1/habits/health"
+    "health": "/api/v1/habits/health",
+    "tools": { "habit": "/api/v1/habits" }
   },
   "provides": [
     "habits.habit.read",
