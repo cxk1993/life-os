@@ -96,6 +96,7 @@ describe("Dock · DOCK_MERGE 归口机制（令 9 §2 判据）", () => {
       "health",
       "calendar",
       "todo",
+      "countdown", // ★ 09-27 主人候办 ⑤：第三方纯 API 插件归口（entry="" 不再单列）
     ];
     setModules([
       { id: "system", name: "系统" },

@@ -24,6 +24,10 @@ const DOCK_MERGE: Record<string, string> = {
   //   desktop.dock 槽不产生隐藏效果；收口必须在 DOCK_MERGE 做（此处即真修法）。
   query: "system",
   plugins: "system",
+  // ★ 2026-09-27 主人候办 ⑤「countdown 归口」：countdown 是 `kind:third-party` +
+  //   `entry:""`（**纯 API 插件**，无窗口 UI）→ 若单列在底端栏，点开只有薄壳页。
+  //   归入 system（与 catalog/mcp/push/auth/export/query/plugins 同族）。
+  countdown: "system",
   // ⑤ 复盘 / 笔记 / 文档 → 知识库容器（三合一）
   review: "knowledge",
   notes: "knowledge",
