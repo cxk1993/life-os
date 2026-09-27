@@ -32,6 +32,7 @@ from .schema import (
     DocsNodeUpdate,
     DocsTreeNode,
 )
+from .schema import DocsContentByPathIn  # 2026-09-27 按路径写正文（AI 友好入口）
 from .service import DocsService
 
 router = APIRouter()
@@ -135,6 +136,22 @@ def purge_node(
 ) -> None:
     """彻底删除（硬删，清 content/revisions/fts）。"""
     DocsService(db).hard_delete(node_id)
+
+
+@router.post("/content", response_model=DocsNodeDetailOut)
+def post_content_by_path(
+    body: DocsContentByPathIn,
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> dict[str, Any]:
+    """按路径写正文（AI 友好）：一次调用完成「建文件夹 -> 建文档 -> 写正文」。
+
+    与 `PUT /nodes/{node_id}/content` 的分工：
+      前者面向**已经知道 id** 的调用方（前端文档树）；
+      本端点面向**只知道路径**的调用方（AI / MCP 工具面），
+      也正好绕开"桥接层不做路径参数替换"这条硬限制。
+    """
+    return DocsService(db).upsert_content_by_path(body)
 
 
 @router.put("/nodes/{node_id}/content", response_model=DocsNodeDetailOut)

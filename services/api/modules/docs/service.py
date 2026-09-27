@@ -249,6 +249,61 @@ class DocsService:
         event_bus.publish("docs.node.updated", _dump_detail(node, content), source="docs")
         return _dump_detail(node, content)
 
+    # ───────── 按路径写正文（2026-09-27 · 主人令「补 docs.content.write」）─────────
+    def _find_child(self, parent_id: str | None, name: str) -> DocsNode | None:
+        """同层找同名**未删**节点；多个取第一个（按 sort, created_at）。"""
+        stmt = (
+            select(DocsNode)
+            .where(
+                col(DocsNode.parent_id) == parent_id,
+                col(DocsNode.name) == name,
+                col(DocsNode.deleted_at).is_(None),
+            )
+            .order_by(col(DocsNode.sort), col(DocsNode.created_at))
+        )
+        return self.db.exec(stmt).first()
+
+    def _make_node(self, parent_id: str | None, name: str, kind: str) -> DocsNode:
+        """建一个节点（与 create() 同语义：FTS + 事件都不落下）。"""
+        node = DocsNode(parent_id=parent_id, kind=kind, name=name, sort=0, meta_json=None)
+        self.db.add(node)
+        self.db.commit()
+        self.db.refresh(node)
+        if kind == "doc":
+            self._sync_fts(node, "")
+        event_bus.publish("docs.node.created", _dump_node(node), source="docs")
+        return node
+
+    def upsert_content_by_path(self, body: Any) -> dict[str, Any]:
+        """按路径写正文：逐段解析，缺则按需建（中段 folder / 末段 doc）。
+
+        幂等：同一条路径重复写只更新正文（保存即快照，历史不丢），不会重复建节点。
+        冲突不静默：中段撞上 doc / 末段撞上 folder -> 直接报错，绝不乱建。
+        """
+        raw = (body.path or "").strip()
+        segments = [s.strip() for s in raw.split("/") if s.strip()]
+        if not segments:
+            raise ValidationError(f"path 无法定位（全是空段）：{raw!r}")
+
+        parent_id: str | None = None
+        node: DocsNode | None = None
+        for idx, seg in enumerate(segments):
+            last = idx == len(segments) - 1
+            want = "doc" if last else "folder"
+            node = self._find_child(parent_id, seg)
+            if node is None:
+                if not getattr(body, "create_if_missing", True):
+                    raise NotFoundError(f"路径不存在：{raw}（缺 {seg!r}）")
+                node = self._make_node(parent_id, seg, want)
+            elif node.kind != want:
+                raise ValidationError(
+                    f"路径第 {idx + 1} 段 {seg!r} 是 {node.kind}，应为 {want}"
+                )
+            parent_id = node.id
+
+        assert node is not None  # segments 非空 => 循环至少执行一次
+        return self.save_content(node.id, body)
+
     def list_revisions(
         self, id_: str, limit: int = 50, cursor: str | None = None
     ) -> tuple[list[dict[str, Any]], str | None]:

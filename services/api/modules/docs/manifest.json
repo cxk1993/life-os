@@ -16,12 +16,14 @@
   "api": {
     "base": "/api/v1/docs",
     "openapi": "/api/v1/docs/openapi.json",
-    "health": "/api/v1/docs/health"
+    "health": "/api/v1/docs/health",
+    "tools": { "content": "/content" }
   },
   "provides": [
     "docs.node.read",
     "docs.node.write",
-    "docs.search"
+    "docs.search",
+    "docs.content.write"
   ],
   "requires": [],
   "slots": [

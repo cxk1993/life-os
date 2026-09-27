@@ -106,6 +106,8 @@ def test_manifest(client):
     assert "docs.node.read" in m["provides"]
     assert "docs.node.write" in m["provides"]
     assert "docs.search" in m["provides"]
+    assert "docs.content.write" in m["provides"]  # 2026-09-27 按路径写正文
+    assert m["api"]["tools"]["content"] == "/content"
     assert "docs.node.created" in m["emits"]
 
 
@@ -455,3 +457,59 @@ def test_zero_business_columns(client, auth):
     )
     r = client.get(f"/api/v1/docs/nodes/{doc['id']}", headers=auth)
     assert r.json()["meta_json"]["mood"] == "平静"
+
+
+# ---------- 按路径写正文（AI 友好 · 2026-09-27 主人令）----------
+def _by_path(client, auth, **kw):
+    return client.post("/api/v1/docs/content", json=kw, headers=auth)
+
+
+def test_put_content_by_path_creates_whole_chain(client, auth):
+    """一次调用：建文件夹 -> 建文档 -> 写正文（AI 不必先查 id）。"""
+    r = _by_path(client, auth, path="线上课/计算机视觉", body="# CV")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["kind"] == "doc" and d["name"] == "计算机视觉"
+    assert (d["body"] or "").startswith("# CV")
+    tree = client.get("/api/v1/docs/nodes", headers=auth).json()
+    folder = [n for n in tree if n["name"] == "线上课"]
+    assert folder and folder[0]["kind"] == "folder"
+    assert [c["name"] for c in folder[0]["children"]] == ["计算机视觉"]
+
+
+def test_put_content_by_path_is_idempotent_and_snapshots(client, auth):
+    """同路径重复写 = 更新正文（不重复建节点），且每次保存都留版本快照。"""
+    a = _by_path(client, auth, path="线上课/英语", body="v1").json()
+    b = _by_path(client, auth, path="线上课/英语", body="v2").json()
+    assert a["id"] == b["id"]
+    assert b["body"] == "v2"
+    revs = client.get(f"/api/v1/docs/nodes/{a['id']}/revisions", headers=auth).json()
+    assert len(revs["items"]) == 2
+
+
+def test_put_content_by_path_deep_nesting(client, auth):
+    """多级路径逐段建：A/B/C -> 两个 folder + 一个 doc。"""
+    d = _by_path(client, auth, path="A/B/C", body="deep").json()
+    assert d["name"] == "C" and d["kind"] == "doc"
+    tree = client.get("/api/v1/docs/nodes", headers=auth).json()
+    a = [n for n in tree if n["name"] == "A"][0]
+    b = a["children"][0]
+    assert b["name"] == "B" and b["kind"] == "folder"
+    assert b["children"][0]["name"] == "C"
+
+
+def test_put_content_by_path_respects_create_if_missing(client, auth):
+    r = _by_path(client, auth, path="没有的/文档", body="x", create_if_missing=False)
+    assert r.status_code == 404
+
+
+def test_put_content_by_path_rejects_all_empty_segments(client, auth):
+    r = _by_path(client, auth, path="///", body="x")
+    assert r.status_code == 422
+
+
+def test_put_content_by_path_rejects_kind_conflict(client, auth):
+    """中段撞上 doc（该是 folder）-> 422，不静默乱建。"""
+    _create(client, auth, kind="doc", name="撞名")
+    r = _by_path(client, auth, path="撞名/子文档", body="x")
+    assert r.status_code == 422

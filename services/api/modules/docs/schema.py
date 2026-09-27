@@ -66,6 +66,28 @@ class DocsContentIn(BaseModel):
     body: str = Field(default="", description="正文")
 
 
+class DocsContentByPathIn(BaseModel):
+    """按路径写正文（AI 友好 · 2026-09-27 · 主人令「补 docs.content.write」）。
+
+    为什么需要它：MCP 工具面只暴露**无路径参数**的端点 ——
+    `PUT /nodes/{id}/content` 带 `{id}`，而桥接层**不做路径参数替换**，
+    于是 AI 拿不到"先查 id 再写"的入口（实测：只能建节点、写不了正文）。
+    本 schema 给出一条「**说清路径就能写**」的路：一次调用完成
+    「建文件夹 -> 建文档 -> 写正文」，与前端树用的 id 入口并存、互不取代。
+    """
+
+    path: str = Field(
+        min_length=1,
+        max_length=500,
+        description="从根开始的路径，用 / 分层（如「线上课/计算机视觉」）",
+    )
+    format: str = Field(default="md", description="txt | md")
+    body: str = Field(default="", description="正文")
+    create_if_missing: bool = Field(
+        default=True, description="路径缺段时按需创建（中段建 folder、末段建 doc）"
+    )
+
+
 class DocsListOut(BaseModel):
     """扁平列表（/trash /revisions /search 通用分页形状）。"""
 
