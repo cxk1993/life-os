@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { aggregateTrend, deriveInsight } from "./slots/trend";
@@ -10,6 +10,18 @@ vi.mock("./api", () => ({
     list: vi.fn(),
   },
 }));
+
+// ★ 2026-09-28（hermes）：固定「今天」为周四 —— deriveInsight 按 isoWeekStart（周一）分桶，
+//   若今天是周一/周二/周三，rec(0..3) 会跨到上周桶，导致「本周」不满 2 次 → 测试假红。
+//   周四时 rec(0..3) = 周四/三/二/一 全在本周桶，与星期几无关，稳定。
+beforeEach(() => {
+  // 只伪造 Date，保留真实定时器（否则 React Query 的异步等待会卡死）
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-01T12:00:00+08:00")); // 2026-10-01 是周四
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function rec(daysAgo: number, title: string, severity: number | null) {
   const d = new Date();
