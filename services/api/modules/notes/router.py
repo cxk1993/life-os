@@ -45,15 +45,17 @@ def list_libs(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
+    """列出已登记的本机笔记库（每个库 = 一个 Obsidian 仓库）。"""
     return NotesService(db).list_libs()
 
 
 @router.get("/libs/{lib_id}/tree", response_model=NoteTree)
 def get_tree(
-    lib_id: Annotated[str, FPath()],
+    lib_id: Annotated[str, FPath(description="库 id —— 从 GET /libs 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读某个库的**目录树**（文件夹 / 笔记层级）。"""
     return NotesService(db).get_tree(lib_id)
 
 
@@ -63,15 +65,17 @@ def upsert_lib(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """登记或更新一个笔记库（按 `key` upsert）。"""
     return NotesService(db).upsert_lib(body)
 
 
 @router.post("/libs/{lib_id}/sync", response_model=SyncResult)
 def sync_lib(
-    lib_id: Annotated[str, FPath()],
+    lib_id: Annotated[str, FPath(description="库 id —— 从 GET /libs 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """**增量同步**某个库：把索引（路径/大小/mtime/摘要）刷进服务器；正文仍留在本机。"""
     return NotesService(db).sync_lib(lib_id)
 
 
@@ -87,8 +91,8 @@ def sync_all(
 @router.get("/search", response_model=SearchOut)
 def search(
     q: str | None = Query(None, description="标题 / 摘要模糊搜索"),
-    lib_id: str | None = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    lib_id: str | None = Query(None, description="只在某个库内搜索（不传=全部库）"),
+    limit: int = Query(50, ge=1, le=200, description="返回条数上限（1–200，默认 50）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -130,11 +134,12 @@ def get_attachment(
 
 @router.post("/libs/{lib_id}/notes", response_model=NoteDetail, status_code=status.HTTP_201_CREATED)
 def create_note(
-    lib_id: Annotated[str, FPath()],
+    lib_id: Annotated[str, FPath(description="库 id —— 从 GET /libs 的结果里取")],
     body: NoteCreate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """新建一篇笔记（**经本机桥写到磁盘**；服务器只登记索引）。"""
     return NotesService(db).create_note(lib_id, body)
 
 
@@ -145,6 +150,7 @@ def update_note(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改一篇笔记的标题或正文（正文经本机桥落盘）。"""
     return NotesService(db).update_note(note_id, body)
 
 
@@ -154,4 +160,5 @@ def delete_note(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一篇笔记（⚠️ 会**同时删本机文件**，请确认后再调）。"""
     NotesService(db).delete_note(note_id)

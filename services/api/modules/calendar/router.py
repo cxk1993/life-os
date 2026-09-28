@@ -142,7 +142,7 @@ def create_event(
 
 @router.get("/events/{event_id}", response_model=EventOut)
 def get_event(
-    event_id: Annotated[str, FPath(...)],
+    event_id: Annotated[str, FPath(description="日历事件 id —— 从 GET /events 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
@@ -152,7 +152,7 @@ def get_event(
 
 @router.patch("/events/{event_id}", response_model=EventOut)
 def update_event(
-    event_id: Annotated[str, FPath(...)],
+    event_id: Annotated[str, FPath(description="日历事件 id —— 从 GET /events 的结果里取")],
     body: EventUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -168,7 +168,7 @@ def update_event(
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
-    event_id: Annotated[str, FPath(...)],
+    event_id: Annotated[str, FPath(description="日历事件 id —— 从 GET /events 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
@@ -183,7 +183,7 @@ def delete_event(
     status_code=status.HTTP_201_CREATED,
 )
 def add_child(
-    event_id: Annotated[str, FPath(...)],
+    event_id: Annotated[str, FPath(description="日历事件 id —— 从 GET /events 的结果里取")],
     body: EventCreate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -196,8 +196,8 @@ def add_child(
 
 @router.patch("/events/{event_id}/children/{child_id}", response_model=EventOut)
 def update_child(
-    event_id: Annotated[str, FPath(...)],
-    child_id: Annotated[str, FPath(...)],
+    event_id: Annotated[str, FPath(description="日历事件 id —— 从 GET /events 的结果里取")],
+    child_id: Annotated[str, FPath(description="子块 id —— 父事件下的那条子事件")],
     body: EventUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -213,8 +213,8 @@ def update_child(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_child(
-    event_id: Annotated[str, FPath(...)],
-    child_id: Annotated[str, FPath(...)],
+    event_id: Annotated[str, FPath(description="日历事件 id —— 从 GET /events 的结果里取")],
+    child_id: Annotated[str, FPath(description="子块 id —— 父事件下的那条子事件")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:

@@ -54,13 +54,18 @@ def manifest() -> dict:
 
 @router.get("/records", response_model=list[HealthRecordOut])
 def list_records(
-    kind: str | None = Query(default=None),
-    frm: str | None = Query(default=None, alias="from"),
-    to: str | None = Query(default=None),
-    followup_only: bool = Query(default=False),
+    kind: str | None = Query(
+        default=None, description="按类型过滤：symptom | medication | appointment | lab（不传=全部）"
+    ),
+    frm: str | None = Query(default=None, alias="from", description="起始日（YYYY-MM-DD 日历日）"),
+    to: str | None = Query(default=None, description="结束日（YYYY-MM-DD 日历日）"),
+    followup_only: bool = Query(
+        default=False, description="true=只看**需要跟进**的记录（followup_needed=true）"
+    ),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
+    """按条件列健康记录：`kind` 筛类型、`from`/`to` 圈时间区间、`followup_only=true` 只看**待跟进**的。"""
     return HealthService(db).list_records(
         kind=kind, date_from=frm, date_to=to, followup_only=followup_only
     )
@@ -68,10 +73,11 @@ def list_records(
 
 @router.get("/records/{record_id}", response_model=HealthRecordOut)
 def get_record(
-    record_id: Annotated[str, FPath(...)],
+    record_id: Annotated[str, FPath(description="健康记录 id —— 从 GET /records 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单条健康记录。"""
     return HealthService(db).get(record_id)
 
 
@@ -92,20 +98,22 @@ def create_record(
 
 @router.patch("/records/{record_id}", response_model=HealthRecordOut)
 def update_record(
-    record_id: Annotated[str, FPath(...)],
+    record_id: Annotated[str, FPath(description="健康记录 id —— 从 GET /records 的结果里取")],
     body: HealthRecordUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改一条健康记录（部分更新）。⚠️ 把 `followup_needed` 由 false 改 true 会**联动建待办**。"""
     return HealthService(db).update(record_id, body)
 
 
 @router.delete("/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_record(
-    record_id: Annotated[str, FPath(...)],
+    record_id: Annotated[str, FPath(description="健康记录 id —— 从 GET /records 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一条健康记录（不可恢复）。"""
     HealthService(db).delete(record_id)
 
 
@@ -114,7 +122,7 @@ def delete_record(
     response_model=FollowupRequestOut,
 )
 def request_followup(
-    record_id: Annotated[str, FPath(...)],
+    record_id: Annotated[str, FPath(description="健康记录 id —— 从 GET /records 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -147,6 +155,7 @@ def get_reconcile_status(
 def get_reconcile_scheduler(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """看「跟进核对」定时任务的状态（开没开、上次何时跑）。"""
     return reconcile_scheduler_status()
 
 

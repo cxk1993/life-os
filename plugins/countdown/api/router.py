@@ -85,19 +85,23 @@ class CountdownCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=120, description="纪念日名称")
     target_date: DateType = Field(..., description="目标日 YYYY-MM-DD（日历日，不含时刻）")
     kind: str = Field(default=KIND_COUNTDOWN, description=f"{KIND_COUNTDOWN} | {KIND_ANNIVERSARY}")
-    note: str = Field(default="", max_length=500)
-    color: str = Field(default="var(--accent)", max_length=40)
+    note: str = Field(default="", max_length=500, description="备注（可选）")
+    color: str = Field(default="var(--accent)", max_length=40, description="卡片颜色（设计令牌或 #rrggbb）")
 
 
 class CountdownUpdate(BaseModel):
     """PATCH 语义：只改写出来的字段，None = 不动。"""
 
-    title: str | None = Field(default=None, min_length=1, max_length=120)
-    target_date: DateType | None = None
-    kind: str | None = None
-    note: str | None = Field(default=None, max_length=500)
-    color: str | None = Field(default=None, max_length=40)
-    archived: bool | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=120, description="改名称（不传=不改）")
+    target_date: DateType | None = Field(default=None, description="改目标日（YYYY-MM-DD 日历日）")
+    kind: str | None = Field(
+        default=None, description="改类型：countdown=一次性倒数（过期可为负）· anniversary=每年重复（恒 ≥0）"
+    )
+    note: str | None = Field(default=None, max_length=500, description="改备注")
+    color: str | None = Field(default=None, max_length=40, description="改卡片颜色")
+    archived: bool | None = Field(
+        default=None, description="true=归档（从列表默认隐藏，**数据保留**）· false=取消归档"
+    )
 
 
 class CountdownOut(BaseModel):
@@ -196,7 +200,7 @@ def manifest() -> dict[str, Any]:
 
 @router.get("/items", response_model=list[CountdownOut])
 def list_items(
-    include_archived: bool = Query(False),
+    include_archived: bool = Query(False, description="是否连**已归档**的一起返回（默认 false）"),
     only_upcoming: bool = Query(False, description="只返回未过期的（countdown 过期即排除）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
