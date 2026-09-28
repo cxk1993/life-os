@@ -82,7 +82,7 @@ def create_agent(
 
 @router.get("/agents/{agent_id}", response_model=AgentOut)
 def get_agent(
-    agent_id: Annotated[str, FPath()],
+    agent_id: Annotated[str, FPath(description="agent id —— 从 GET /agents 列表里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -92,7 +92,7 @@ def get_agent(
 
 @router.patch("/agents/{agent_id}", response_model=AgentOut)
 def update_agent(
-    agent_id: Annotated[str, FPath()],
+    agent_id: Annotated[str, FPath(description="agent id —— 从 GET /agents 列表里取")],
     body: AgentUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -104,7 +104,7 @@ def update_agent(
 
 @router.delete("/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_agent(
-    agent_id: Annotated[str, FPath()],
+    agent_id: Annotated[str, FPath(description="agent id —— 从 GET /agents 列表里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
@@ -142,7 +142,7 @@ def create_task(
 
 @router.get("/tasks/{task_id}", response_model=TaskOut)
 def get_task(
-    task_id: Annotated[str, FPath()],
+    task_id: Annotated[str, FPath(description="任务块 id —— 从 GET /tasks 列表里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -152,7 +152,7 @@ def get_task(
 
 @router.patch("/tasks/{task_id}", response_model=TaskOut)
 def update_task(
-    task_id: Annotated[str, FPath()],
+    task_id: Annotated[str, FPath(description="任务块 id —— 从 GET /tasks 列表里取")],
     body: TaskUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -165,7 +165,7 @@ def update_task(
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(
-    task_id: Annotated[str, FPath()],
+    task_id: Annotated[str, FPath(description="任务块 id —— 从 GET /tasks 列表里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
@@ -175,7 +175,7 @@ def delete_task(
 
 @router.post("/tasks/{task_id}/dispatch", response_model=DispatchOut)
 def dispatch_task(
-    task_id: Annotated[str, FPath()],
+    task_id: Annotated[str, FPath(description="任务块 id —— 从 GET /tasks 列表里取")],
     body: DispatchIn,
     request: Request,
     db: DbDep = Depends(get_db),
@@ -199,7 +199,7 @@ def dispatch_task(
 
 @router.post("/tasks/{task_id}/report", response_model=TaskOut)
 def report_task(
-    task_id: Annotated[str, FPath()],
+    task_id: Annotated[str, FPath(description="任务块 id —— 从 GET /tasks 列表里取")],
     body: ReportIn,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),

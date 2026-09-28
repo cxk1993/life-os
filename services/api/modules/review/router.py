@@ -62,15 +62,16 @@ def source(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> SourceOut:
+    """上游数据源状态：Work-Review 接入模式（mock/api）、走直连还是桥、**桥是否在线**。"""
     return ReviewService(db).source()
 
 
 @router.get("/days", response_model=DaysOut)
 def list_days(
-    frm: DateType | None = Query(None, alias="from"),
+    frm: DateType | None = Query(None, alias="from", description="起始日（YYYY-MM-DD 日历日）"),
     to: DateType | None = Query(None),
-    page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=500),
+    page: int = Query(1, ge=1, description="页码（从 1 起）"),
+    size: int = Query(20, ge=1, le=500, description="每页条数（1–500）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> DaysOut:
@@ -123,6 +124,7 @@ def get_trend(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> TrendOut:
+    """按指标看趋势：最近 `days` 天的变化（前端画曲线用）。"""
     return ReviewService(db).trend(metric=metric, days=days)
 
 
@@ -133,6 +135,7 @@ def get_compare(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> CompareOut:
+    """**两天对比**：`date`（基准日）vs `against`（对比日）。"""
     return ReviewService(db).compare(date, against)
 
 
@@ -142,6 +145,7 @@ def get_weekly(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> WeeklyOut:
+    """某一周（含 `date` 的那一周）的汇总。"""
     return ReviewService(db).weekly(date or local_today())
 
 
@@ -151,6 +155,7 @@ def get_raw(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> RawOut:
+    """回看某一天的**原始记录**（未经归类的明细）。"""
     return ReviewService(db).get_raw(date)
 
 
@@ -160,6 +165,7 @@ def list_notes(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> NotesListOut:
+    """列某一天的**批注**（自己写的复盘备注）。"""
     return ReviewService(db).list_notes(date)
 
 

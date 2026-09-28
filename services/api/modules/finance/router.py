@@ -70,6 +70,7 @@ def list_entries(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """分页列出流水（可按方向 / 账户 / 分类 / 时间区间过滤）。"""
     return FinanceService(db).list_entries(
         category=category,
         account=account,
@@ -104,6 +105,7 @@ def get_entry(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单条流水。"""
     return FinanceService(db).get(entry_id)
 
 

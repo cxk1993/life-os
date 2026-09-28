@@ -68,6 +68,7 @@ def create_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """新建一门课（课表的最小单位：课名 + 星期 + 节次 + 周次 + 地点）。"""
     return CourseService(db).create(body)
 
 
@@ -77,6 +78,7 @@ def get_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单门课。"""
     return CourseService(db).get(item_id)
 
 
@@ -87,6 +89,7 @@ def update_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改一门课（部分更新）。"""
     return CourseService(db).update(item_id, body)
 
 
@@ -96,6 +99,7 @@ def delete_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一门课（**不影响已有提醒日志**）。"""
     CourseService(db).delete(item_id)
 
 

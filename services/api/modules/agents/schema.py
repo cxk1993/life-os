@@ -143,9 +143,15 @@ class DispatchOut(BaseModel):
 class ReportIn(BaseModel):
     """子 agent 回报。v0.1 由前端/测试直接写入，不依赖外部 AI API。"""
 
-    result: str = Field(default="", max_length=20000)
-    result_status: str | None = Field(default=None, max_length=16)
-    outputs: list[Any] | None = None
+    result: str = Field(
+        default="", max_length=20000, description="执行结果正文（人话总结或结构化文本，≤20000 字）"
+    )
+    result_status: str | None = Field(
+        default=None, max_length=16, description='结果状态，常用 "ok" / "failed"（自由字符串，服务端不强校验）'
+    )
+    outputs: list[Any] | None = Field(
+        default=None, description="产出物清单（**整组替换**；结构自由 — 文件路径 / 链接 / 摘要条目等）"
+    )
 
 
 class SummaryOut(BaseModel):

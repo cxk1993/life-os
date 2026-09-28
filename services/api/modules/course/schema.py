@@ -34,35 +34,38 @@ class CourseListOut(BaseModel):
 
 
 class CourseCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    teacher: str | None = Field(default=None, max_length=50)
-    location: str | None = Field(default=None, max_length=100)
-    weekday: int = Field(default=0, ge=0, le=6, description="0=周一 … 6=周日")
-    start_section: int | None = Field(default=None, ge=1, le=20)
-    end_section: int | None = Field(default=None, ge=1, le=20)
-    start_time: str | None = Field(default=None, max_length=5, description="HH:MM")
-    end_time: str | None = Field(default=None, max_length=5, description="HH:MM")
-    weeks: str | None = Field(default=None, max_length=200)
-    term_start: str | None = Field(default=None, max_length=10, description="YYYY-MM-DD")
-    note: str | None = Field(default=None, max_length=500)
-    enabled: bool = True
-    sort: int = 0
+    name: str = Field(min_length=1, max_length=100, description="课名（如「高等数学」）")
+    teacher: str | None = Field(default=None, max_length=50, description="任课教师（可选）")
+    location: str | None = Field(default=None, max_length=100, description="上课地点（可选，如「中心校区理综楼 305」）")
+    weekday: int = Field(default=0, ge=0, le=6, description="**0=周一 … 6=周日**（注意不是 0=周日）")
+    start_section: int | None = Field(default=None, ge=1, le=20, description="起始节次（第几节开始，1–20）")
+    end_section: int | None = Field(default=None, ge=1, le=20, description="结束节次（第几节结束，1–20）")
+    start_time: str | None = Field(default=None, max_length=5, description='开始时刻 "HH:MM"（与节次二选一或并存）')
+    end_time: str | None = Field(default=None, max_length=5, description='结束时刻 "HH:MM"')
+    weeks: str | None = Field(
+        default=None, max_length=200,
+        description="周次范围（如 1-16 或 1-8,10-16）—— 决定这一周是否要上课",
+    )
+    term_start: str | None = Field(default=None, max_length=10, description="开学日 YYYY-MM-DD（算周次用；留空则用系统设置）")
+    note: str | None = Field(default=None, max_length=500, description="备注")
+    enabled: bool = Field(default=True, description="是否启用（停用后不排进课表、也不提醒）")
+    sort: int = Field(default=0, description="排序权重（越小越靠前）")
 
 
 class CourseUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=100)
-    teacher: str | None = Field(default=None, max_length=50)
-    location: str | None = Field(default=None, max_length=100)
-    weekday: int | None = Field(default=None, ge=0, le=6)
-    start_section: int | None = Field(default=None, ge=1, le=20)
-    end_section: int | None = Field(default=None, ge=1, le=20)
-    start_time: str | None = Field(default=None, max_length=5)
-    end_time: str | None = Field(default=None, max_length=5)
-    weeks: str | None = Field(default=None, max_length=200)
-    term_start: str | None = Field(default=None, max_length=10)
-    note: str | None = Field(default=None, max_length=500)
-    enabled: bool | None = None
-    sort: int | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=100, description="改课名")
+    teacher: str | None = Field(default=None, max_length=50, description="改教师")
+    location: str | None = Field(default=None, max_length=100, description="改地点")
+    weekday: int | None = Field(default=None, ge=0, le=6, description="改星期（**0=周一 … 6=周日**）")
+    start_section: int | None = Field(default=None, ge=1, le=20, description="改起始节次")
+    end_section: int | None = Field(default=None, ge=1, le=20, description="改结束节次")
+    start_time: str | None = Field(default=None, max_length=5, description='改开始时刻 "HH:MM"')
+    end_time: str | None = Field(default=None, max_length=5, description='改结束时刻 "HH:MM"')
+    weeks: str | None = Field(default=None, max_length=200, description="改周次范围（如 1-16）")
+    term_start: str | None = Field(default=None, max_length=10, description="改开学日（YYYY-MM-DD）")
+    note: str | None = Field(default=None, max_length=500, description="改备注")
+    enabled: bool | None = Field(default=None, description="启用 / 停用")
+    sort: int | None = Field(default=None, description="改排序权重")
 
 
 class WeekGridOut(BaseModel):

@@ -41,13 +41,13 @@ class FinanceEntryCreate(BaseModel):
     - amount：Decimal 字符串，如 "12.34"（服务端换算成分，最多两位小数）
     """
 
-    direction: Literal["expense", "income"]
-    amount_cents: int | None = Field(default=None, ge=1, description="金额（分）")
+    direction: Literal["expense", "income"] = Field(description="expense=支出 · income=收入")
+    amount_cents: int | None = Field(default=None, ge=1, description="金额，**单位是分**（1 元 = 100 分）")
     amount: str | None = Field(default=None, max_length=32, description="Decimal 字符串金额")
-    category: str = Field(default="", max_length=64)
-    account: str = Field(default="", max_length=64)
-    occurred_at: datetime  # 必须带时区
-    note: str | None = Field(default=None, max_length=2000)
+    category: str = Field(default="", max_length=64, description="分类（如「餐饮」「交通」「工资」）")
+    account: str = Field(default="", max_length=64, description="账户（如「微信」「银行卡」「现金」）")
+    occurred_at: datetime = Field(description="发生时间，**必须带时区** ISO8601（如 2026-09-28T12:00:00+08:00）")
+    note: str | None = Field(default=None, max_length=2000, description="备注（可选）")
 
 
 class FinanceEntryUpdate(BaseModel):
