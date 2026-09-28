@@ -1,7 +1,8 @@
 """声明基类与通用 Mixin（T04 · 步骤 2）。
 
-所有表统一带：id（UUID 字符串）/ created_at / updated_at（UTC，带时区）。
-软删插件可选用 SoftDeleteMixin；内核表不用软删。
+所有表统一带：id（UUID 字符串）/ created_at / updated_at。
+★ 时间口径（2026-09-28 主人令统一）：**库里存 UTC，读出转主人本地时区**。
+  见 `TZDateTime` 的类注释。
 
 ★ 各插件建表规矩（照抄 docs/示例/calendar_event_示例.py）：
     class CalendarEvent(PkMixin, TimestampMixin, SQLModel, table=True):
@@ -12,11 +13,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import DateTime, event
 from sqlalchemy.orm import Session as SASession
 from sqlalchemy.types import TypeDecorator
 from sqlmodel import Field, SQLModel
+
+from core.config import get_settings
 
 
 def utcnow() -> datetime:
@@ -24,12 +28,22 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-class UTCDateTime(TypeDecorator[datetime]):
-    """UTC 时间列（SQLite 往返不丢时区，验收项：存取往返不乱时区）。
+class TZDateTime(TypeDecorator[datetime]):
+    """时间列：**UTC 存储 + 本地时区读出**（★ 2026-09-28 · 主人令统一口径）。
 
     - 写入：必须带时区；统一转成 UTC 后存储（SQLite 本身无时区概念）
-    - 读出：自动补 UTC tzinfo
+    - 读出：**转成主人本地时区**（settings.tz，默认 Asia/Shanghai）再交给上层
     - naive 输入**直接报错**：项目铁律"时间必须带时区"，静默按本地处理是雷区 #7
+
+    ★ 为什么"读出即本地"必须放在**这里**，而不是各模块各转一次：
+      全平台 **14 个模块 / 56 个输出时间字段**都要口径一致。若靠"每个模块记得转"，
+      迟早会漏 —— 本次的起因正是"出参一律 UTC"这条约定在 calendar 上被单独推翻，
+      暴露出 `today-summary` 拿 UTC 串切片当本地小时显示（**主人可见的错**）。
+      钉在**唯一的存储原语**上 ⇒ 一处改、全体一致，且**未来新模块不可能忘**。
+
+    ⚠️ 语义边界（很重要）：**库里存的仍是 UTC**（写入侧一个字没动），
+      只是**进程内表示**变成本地。两者是**同一瞬间**，
+      任何跨时区比较、排序、算术都不受影响（tz-aware 之间比较按瞬间比）。
     """
 
     impl = DateTime
@@ -47,7 +61,8 @@ class UTCDateTime(TypeDecorator[datetime]):
     def process_result_value(self, value: datetime | None, _dialect: Any) -> datetime | None:
         if value is None:
             return None
-        return value.replace(tzinfo=UTC)
+        # 先补回 UTC（库里存的是 naive UTC 串），再转主人本地时区 —— 同一瞬间，换个表示。
+        return value.replace(tzinfo=UTC).astimezone(ZoneInfo(get_settings().tz))
 
 
 # 全项目统一的时间列类型：UTC 存储 + 往返保时区。
@@ -57,7 +72,11 @@ class UTCDateTime(TypeDecorator[datetime]):
 #      同一个 Column 对象会被复制进每一张表，第二张表就抛
 #      `ArgumentError: Column object 'created_at' already assigned to Table`（实测踩过）。
 #   传类时 SQLAlchemy 会自行实例化，每列一个实例，两条都满足。
-TimestampTZ = UTCDateTime
+TimestampTZ = TZDateTime
+
+# ⚠️ 旧名保留**仅为了不断外部引用**：它现在**不再是纯 UTC**（读出转本地）。
+#    新代码请一律用 `TimestampTZ`；看到 `UTCDateTime` 请当成历史遗留。
+UTCDateTime = TZDateTime
 
 
 # ★ 索引创建全局幂等（令102/103）：测试中模型被反复注册（探针/lifespan reconcile/
@@ -99,7 +118,7 @@ class PkMixin(SQLModel):
 
 
 class TimestampMixin(SQLModel):
-    """created_at / updated_at，一律 UTC（UTCDateTime：往返保时区）。"""
+    """created_at / updated_at（TZDateTime：UTC 存储、本地读出）。"""
 
     created_at: datetime = Field(
         default_factory=utcnow,
