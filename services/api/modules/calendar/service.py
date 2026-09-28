@@ -11,15 +11,31 @@ import re
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, col, select
 
+from core.config import get_settings
 from core.errors import NotFoundError, ValidationError
 
 from .models import CalendarEvent
 from .schema import EventCreate, EventUpdate, FreeSlotOut
 
 MAX_DEPTH = 3  # 父(1)/子(2)/孙(3) 合法，第 4 层拒绝
+
+
+def to_local(value: datetime) -> datetime:
+    """把**库内存的 UTC** 转成**主人本地时区**再出参（★ 2026-09-28 · 主人令）。
+
+    背景：此前 API 一律回 UTC（当时的"项目规则"），人与 AI 都得先做一次心算；
+    还连累出一个**用户可见的真 bug** —— `today-summary` 用字符串切片取小时
+    （`str(start)[11:16]`），UTC 串切出来就是 UTC 的小时，于是**下午 3 点的课
+    会显示成 "07:00"**。改为本地时区出参后，那个 bug 自动消失。
+
+    注意：仍是**完整带偏移的 ISO8601**（如 `2026-09-28T15:00:00+08:00`），
+    前端 `new Date(...)` 照旧按同一瞬间解析，**不影响前端**。
+    """
+    return value.astimezone(ZoneInfo(get_settings().tz))
 
 
 def to_utc(value: str | datetime) -> datetime:
@@ -51,8 +67,8 @@ class CalendarService:
             "id": ev.id,
             "title": ev.title,
             "color": ev.color,
-            "start_at": ev.start_at,
-            "end_at": ev.end_at,
+            "start_at": to_local(ev.start_at),
+            "end_at": to_local(ev.end_at),
             "all_day": ev.all_day,
             "span_days": ev.span_days,
             "source": ev.source,
@@ -381,5 +397,7 @@ class CalendarService:
     @staticmethod
     def _mk_slot(start: datetime, end: datetime) -> FreeSlotOut:
         return FreeSlotOut(
-            start=start, end=end, hours=round((end - start).total_seconds() / 3600, 2)
+            start=to_local(start),
+            end=to_local(end),
+            hours=round((end - start).total_seconds() / 3600, 2),
         )

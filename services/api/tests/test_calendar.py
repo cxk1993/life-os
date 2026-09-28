@@ -11,6 +11,7 @@ import os
 os.environ["DB_PATH"] = "./data/tmp_t05.db"
 
 from datetime import datetime, timedelta, timezone  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -142,10 +143,10 @@ def test_update_returns_clamped_children(client, auth):
     tree = ru.json()
     kid = next(c for c in tree["children"] if c["id"] == cid)
     # 子块跟随 +2h：9:30->11:30, 10:30->12:30（本地），且仍在父块 [11:00,14:00] 内。
-    # ★ API 按项目规则返回 UTC（09:30+08:00 == 01:30Z，+2h 后是 03:30Z）。
-    #   早期版本的断言写成 endswith("11:30:00") —— 拿本地串去比 UTC 串，永远为假。
-    assert kid["start_at"].endswith("03:30:00Z"), kid["start_at"]
-    assert kid["end_at"].endswith("04:30:00Z"), kid["end_at"]
+    # ★ 2026-09-28（主人令）：出参改为**主人本地时区**（原为 UTC）——
+    #   于是断言恢复"本地串"的原意（早期版本正是这么写的，当时因出参是 UTC 才改成 Z）。
+    assert kid["start_at"].endswith("11:30:00+08:00"), kid["start_at"]
+    assert kid["end_at"].endswith("12:30:00+08:00"), kid["end_at"]
 
 
 # ───────────────────────── 树形（无 N+1） ─────────────────────────
@@ -339,10 +340,10 @@ def test_child_cannot_exceed_parent(client, auth):
     # 钳制后子块仍在父块 [09:00,12:00] 内
     cc = client.get(f"/api/v1/calendar/events/{pid}", headers=auth).json()
     kid = cc["children"][0]
-    # 越界子块 00:00-23:00 被钳进父块 [09:00,12:00]（本地）= 01:00Z-04:00Z。
-    # ★ API 返回 UTC，断言必须按 UTC 写（同上）。
-    assert kid["start_at"].endswith("01:00:00Z"), kid["start_at"]
-    assert kid["end_at"].endswith("04:00:00Z"), kid["end_at"]
+    # 越界子块 00:00-23:00 被钳进父块 [09:00,12:00]（本地）。
+    # ★ 2026-09-28：出参改本地时区（同上）→ 断言写本地串。
+    assert kid["start_at"].endswith("09:00:00+08:00"), kid["start_at"]
+    assert kid["end_at"].endswith("12:00:00+08:00"), kid["end_at"]
 
 
 # ── U2 聚合数据源（令 62）：/today-summary ──────────────────────────
@@ -381,3 +382,31 @@ def test_today_summary_401_without_token(client):
     """★ 令 62 §2-3：绝不裸奔 —— 无 token 一律 401。"""
     r = client.get("/api/v1/calendar/today-summary")
     assert r.status_code == 401
+
+
+def test_today_summary_shows_local_hhmm(client, auth):
+    """★ 2026-09-28（主人令「改回本地时区」）：today-summary 的 items[].text 前 5 字
+    必须是**本地 HH:MM**。
+
+    修前：路由按字符串切片取小时（`str(start)[11:16]`），而出参是 UTC ⇒
+    **下午 3 点的课会显示成 "07:00"**（用户可见的真 bug）。
+    改为本地时区出参后自动治好 —— 本用例守的就是它。
+    """
+    tz = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(tz)
+    start = now + timedelta(hours=3)
+    if start.date() != now.date():  # 跨天则钳到当天 23:59（与文件内 _today_at 同款防 flaky）
+        start = now.replace(hour=23, minute=59, second=0, microsecond=0)
+    r = client.post(
+        "/api/v1/calendar/events",
+        json={"title": "本地时间校验", "start_at": start.isoformat(),
+              "end_at": (start + timedelta(minutes=30)).isoformat()},
+        headers=auth,
+    )
+    assert r.status_code == 201, r.text
+    s = client.get("/api/v1/calendar/today-summary", headers=auth)
+    assert s.status_code == 200, s.text
+    items = s.json()["items"]
+    assert items, s.json()
+    assert items[0]["text"].startswith(f"{start.hour:02d}:{start.minute:02d}"), (
+        items[0], f"期望本地 {start.hour:02d}:{start.minute:02d}")
