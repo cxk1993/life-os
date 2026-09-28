@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { todoApi, type TodoItem, type Priority } from "./api";
+import { TODO_KEY_ROOT } from "./keys";
 
 const PRIORITY_LABEL: Record<Priority, string> = {
   high: "高",
@@ -40,9 +41,9 @@ export default function ItemRow({ item }: Props) {
   const toggleMut = useMutation({
     mutationFn: () => todoApi.toggle(item.id),
     onMutate: async () => {
-      await qc.cancelQueries({ queryKey: ["todo"] });
-      const prev = qc.getQueriesData<{ items: TodoItem[] }>({ queryKey: ["todo"] });
-      qc.setQueriesData<{ items: TodoItem[] }>({ queryKey: ["todo"] }, (old) =>
+      await qc.cancelQueries({ queryKey: [TODO_KEY_ROOT] });
+      const prev = qc.getQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] });
+      qc.setQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] }, (old) =>
         old
           ? {
               ...old,
@@ -63,15 +64,15 @@ export default function ItemRow({ item }: Props) {
     onError: (_e, _v, ctx) => {
       ctx?.prev?.forEach(([key, data]) => qc.setQueryData(key, data));
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["todo"] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: [TODO_KEY_ROOT] }),
   });
 
   const updateMut = useMutation({
     mutationFn: (body: Partial<TodoItem>) => todoApi.update(item.id, body),
     onMutate: async (body) => {
-      await qc.cancelQueries({ queryKey: ["todo"] });
-      const prev = qc.getQueriesData<{ items: TodoItem[] }>({ queryKey: ["todo"] });
-      qc.setQueriesData<{ items: TodoItem[] }>({ queryKey: ["todo"] }, (old) =>
+      await qc.cancelQueries({ queryKey: [TODO_KEY_ROOT] });
+      const prev = qc.getQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] });
+      qc.setQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] }, (old) =>
         old
           ? { ...old, items: old.items.map((i) => (i.id === item.id ? { ...i, ...body } : i)) }
           : old,
@@ -81,12 +82,12 @@ export default function ItemRow({ item }: Props) {
     onError: (_e, _v, ctx) => {
       ctx?.prev?.forEach(([key, data]) => qc.setQueryData(key, data));
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["todo"] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: [TODO_KEY_ROOT] }),
   });
 
   const deleteMut = useMutation({
     mutationFn: () => todoApi.remove(item.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["todo"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [TODO_KEY_ROOT] }),
   });
 
   const due = formatDue(item.due_at);

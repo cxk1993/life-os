@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { todoApi } from "./api";
 import { parseTodoNL } from "./todo-nl";
+import { TODO_KEY_ROOT } from "./keys";
 
 /**
  * 一句话快速添加。
@@ -45,7 +46,7 @@ export default function QuickAdd() {
     },
     onSuccess: () => {
       setText("");
-      qc.invalidateQueries({ queryKey: ["todo"] });
+      qc.invalidateQueries({ queryKey: [TODO_KEY_ROOT] });
     },
   });
 

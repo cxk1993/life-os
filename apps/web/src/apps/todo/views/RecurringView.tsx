@@ -4,6 +4,7 @@ import ItemRow from "../ItemRow";
 import ErrorState from "../ErrorState";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Skeleton } from "@/shared/components/Skeleton";
+import { TODO_KEY_ROOT } from "../keys";
 
 /**
  * 周期视图：所有带 recur_rule 的待办（周期任务）。
@@ -11,7 +12,7 @@ import { Skeleton } from "@/shared/components/Skeleton";
  */
 export default function RecurringView() {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["todo", "recurring"],
+    queryKey: [TODO_KEY_ROOT, "recurring"],
     queryFn: () => todoApi.list({ status: "all", limit: 200 }),
   });
 

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { todoApi } from "../api";
+import { TODO_KEY_ROOT } from "../keys";
 
 /**
  * E5 首例：窗口侧栏卡片（`window.sidecar` 扩展点，attachTo: "calendar"）。
@@ -8,7 +9,7 @@ import { todoApi } from "../api";
  */
 export default function SidecarSummary() {
   const { data } = useQuery({
-    queryKey: ["todo", "summary"],
+    queryKey: [TODO_KEY_ROOT, "summary"],
     queryFn: () => todoApi.summary(),
     retry: 1,
   });

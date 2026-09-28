@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { todoApi } from "../api";
+import { TODO_KEY_ROOT } from "../keys";
 
 /**
  * 概览页卡片（dashboard.card 扩展点）。
@@ -8,7 +9,7 @@ import { todoApi } from "../api";
  */
 export default function DashboardCard() {
   const { data } = useQuery({
-    queryKey: ["todo", "summary"],
+    queryKey: [TODO_KEY_ROOT, "summary"],
     queryFn: () => todoApi.summary(),
     retry: 1,
   });

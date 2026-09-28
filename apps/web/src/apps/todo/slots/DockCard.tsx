@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/shared/api/client";
 import { useDesktopStore } from "../../../kernel/store";
 import { todoApi } from "../api";
+import { TODO_KEY_ROOT } from "../keys";
 import type { TodaySummary } from "../api";
 
 /**
@@ -18,7 +19,7 @@ import type { TodaySummary } from "../api";
 export default function DockCard() {
   const openWindow = useDesktopStore((s) => s.openWindow);
   const { data, isError, isLoading } = useQuery({
-    queryKey: ["todo", "today-summary"],
+    queryKey: [TODO_KEY_ROOT, "today-summary"],
     queryFn: async (): Promise<TodaySummary | null> => {
       try {
         return await todoApi.todaySummary();

@@ -5,6 +5,7 @@ import ErrorState from "../ErrorState";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Skeleton } from "@/shared/components/Skeleton";
 import { useTodoUI } from "../state";
+import { TODO_KEY_ROOT } from "../keys";
 
 /**
  * 全部视图：所有待办（含已完成），可按标签过滤。
@@ -14,7 +15,7 @@ export default function AllView() {
   const filterTag = useTodoUI((s) => s.filterTag);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["todo", "all", filterTag],
+    queryKey: [TODO_KEY_ROOT, "all", filterTag],
     queryFn: () => todoApi.list({ status: "all", limit: 200 }),
   });
 

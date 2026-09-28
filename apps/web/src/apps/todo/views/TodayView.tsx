@@ -4,6 +4,7 @@ import ItemRow from "../ItemRow";
 import ErrorState from "../ErrorState";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Skeleton } from "@/shared/components/Skeleton";
+import { TODO_KEY_ROOT } from "../keys";
 
 /** 本地今日 23:59:59 的 UTC ISO，作为 due_before 边界（含逾期项）。 */
 function endOfTodayISO(): string {
@@ -18,7 +19,7 @@ function endOfTodayISO(): string {
  */
 export default function TodayView() {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["todo", "today"],
+    queryKey: [TODO_KEY_ROOT, "today"],
     queryFn: () => todoApi.list({ status: "todo", due_before: endOfTodayISO(), limit: 200 }),
   });
 

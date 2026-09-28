@@ -7,6 +7,7 @@ import TodayView from "./views/TodayView";
 import AllView from "./views/AllView";
 import RecurringView from "./views/RecurringView";
 import { todoApi } from "./api";
+import { TODO_KEY_ROOT } from "./keys";
 
 const STUDY_TAG = "学业";
 
@@ -37,16 +38,16 @@ export default function TodoApp() {
   //   标签条由**硬编码**改为**数据驱动** —— 数据源 = GET /api/v1/todo/tags
   //   （同一端点也是 AI 的 MCP 工具 todo_tag_read：**一份数据喂两边**）
   const { data: tagCounts } = useQuery({
-    queryKey: ["todo", "tags"],
+    queryKey: [TODO_KEY_ROOT, "tags"],
     queryFn: () => todoApi.tags(),
   });
   // 学业已由左侧固定按钮承担，这里不重复列，免得同一个筛选出现两个入口
   const tagChips = (tagCounts ?? []).filter((c) => c.tag !== STUDY_TAG);
 
   // 后端写入会推 todo.item.* 事件，收到即失效本地缓存（SSE 自动重连）。
-  usePluginEvent("todo.item.created", () => qc.invalidateQueries({ queryKey: ["todo"] }));
-  usePluginEvent("todo.item.updated", () => qc.invalidateQueries({ queryKey: ["todo"] }));
-  usePluginEvent("todo.item.completed", () => qc.invalidateQueries({ queryKey: ["todo"] }));
+  usePluginEvent("todo.item.created", () => qc.invalidateQueries({ queryKey: [TODO_KEY_ROOT] }));
+  usePluginEvent("todo.item.updated", () => qc.invalidateQueries({ queryKey: [TODO_KEY_ROOT] }));
+  usePluginEvent("todo.item.completed", () => qc.invalidateQueries({ queryKey: [TODO_KEY_ROOT] }));
 
   return (
     <div className="todo-root">

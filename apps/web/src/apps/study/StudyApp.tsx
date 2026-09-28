@@ -25,6 +25,7 @@ import ItemRow from "../todo/ItemRow";
 import { todoApi } from "../todo/api";
 import type { TodoItem } from "../todo/api";
 import "../todo/todo.css";
+import { TODO_KEY_ROOT } from "../todo/keys";
 import "./study.css";
 
 const STUDY_TAG = "学业";
@@ -54,7 +55,7 @@ function dueBadge(due: string | null): { text: string; level: "over" | "soon" | 
 
 export default function StudyApp() {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["study", "list"],
+    queryKey: [TODO_KEY_ROOT, "study", "list"],
     // ★ tag=学业 → 后端层级匹配（含 学业/高数 等子标签）
     queryFn: () => todoApi.list({ status: "all", tag: STUDY_TAG, limit: 200 }),
   });
