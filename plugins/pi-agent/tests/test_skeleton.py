@@ -100,7 +100,7 @@ def test_router_health():
     h = mod.health()
     assert h["ok"] is True
     assert isinstance(h["ready"], bool)
-    assert h["level"] in ("L1", "L2", "L3")
+    assert h["level"] in ("L0", "L1", "L2", "L3")
 
 
 def test_router_manifest_and_status():
@@ -108,7 +108,7 @@ def test_router_manifest_and_status():
     assert mod.manifest()["id"] == "pi-agent"
     st = mod.status()
     assert st["stage"] == "rpc+sessions"   # ★ 第④刀：rpc → rpc+sessions
-    assert st["level"] in ("L1", "L2", "L3")  # 三层降级口径
+    assert st["level"] in ("L0", "L1", "L2", "L3")  # ★ 四层降级口径（09-28 加 L0 待命）
     assert "level_text" in st
 
 

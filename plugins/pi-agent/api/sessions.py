@@ -99,6 +99,11 @@ class PiSessionPool:
         self._max = max(1, max_sessions)
         self._sessions: OrderedDict[str, _SessionEntry] = OrderedDict()
         self._lock = threading.RLock()
+        # ★ 2026-09-28（方案 A）：是否**尝试过**启动会话进程。
+        #   与 process.PiProcessManager 同语义 —— 供 router._level() 区分
+        #   「从未启动（L0 待命）」与「尝试过但失败（L2）」。
+        self._ever_started = False
+        self._last_error: str | None = None
         self._session_dir = str(Path(cwd) / "sessions")
         Path(self._session_dir).mkdir(parents=True, exist_ok=True)
 
@@ -139,6 +144,8 @@ class PiSessionPool:
             del self._sessions[name]
         self._evict_if_needed()
         rpc = _load_sibling("rpc")
+        # ★ 2026-09-28（方案 A）：走到这里 = 真尝试过建会话进程
+        self._ever_started = True
         client = rpc.PiRpcClient(
             cwd=self._cwd, binary=self._binary,
             provider=self._provider, model=self._model,
@@ -149,9 +156,15 @@ class PiSessionPool:
             sandbox=self._sandbox,
             **({"sandbox_image": self._sandbox_image} if self._sandbox_image else {}),
         )
-        client.start()
+        try:
+            client.start()
+        except Exception as exc:  # noqa: BLE001
+            # ★ 2026-09-28（方案 A）：记下真实失败原因（供 _level()/status 判"启动失败"）
+            self._last_error = f"{type(exc).__name__}: {exc}"
+            raise
         e = _SessionEntry(name, client)
         self._sessions[name] = e
+        self._last_error = None
         log.info("[pi-agent] 新会话 %s（当前 %d 个）", name, len(self._sessions))
         return e
 
@@ -265,6 +278,8 @@ class PiSessionPool:
                 "busy": sum(1 for e in self._sessions.values() if e.busy),
                 "alive": sum(1 for e in self._sessions.values() if e.is_alive()),
                 "names": list(self._sessions.keys()),
+                "ever_started": self._ever_started,   # ★ 09-28：供 _level() 区分 L0/L2
+                "last_error": self._last_error,
                 "sandbox": self._sandbox,          # ★ 第⑧刀：是否容器隔离
                 "sandbox_image": self._sandbox_image if self._sandbox else None,
             }

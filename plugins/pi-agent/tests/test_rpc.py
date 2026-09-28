@@ -75,12 +75,27 @@ def test_find_pi_binary_missing_returns_none_or_path():
 
 # ── process.py：降级 / 熔断 / 退避（全离线）────────────────────
 
-def test_manager_starts_at_l2_when_not_started(tmp_path):
-    """未启动时层级是 L2（重启中语义 = 尚不可用），不是 L1。"""
+def test_manager_starts_at_l0_when_never_started(tmp_path):
+    """★ 2026-09-28（方案 A）：未启动过的管理器层级是 **L0「待命」**（懒启动正常态），
+
+    不是 L1（没进程）也不是 L2（那是"尝试过但失败"）。
+    原断言 `== L2` 正是「状态点恒显启动中」的后端根因，随本次修复一并更正。
+    """
     proc = _load("process")
     m = proc.PiProcessManager(cwd=str(tmp_path))
-    assert m.level == proc.LEVEL_L2
+    assert m.level == proc.LEVEL_L0
     assert m.status()["alive"] is False
+    assert m.status()["ever_started"] is False
+
+
+def test_manager_l2_after_failed_start_attempt(tmp_path):
+    """★ 2026-09-28（方案 A）：**尝试过**启动但没进程 → L2（真·异常），与 L0 区分开。"""
+    proc = _load("process")
+    m = proc.PiProcessManager(cwd=str(tmp_path), binary="/nonexistent/pi-xyz")
+    assert m.level == proc.LEVEL_L0          # 先待命
+    m.ensure_started()                        # 试一次（必失败）
+    assert m.status()["ever_started"] is True
+    assert m.level == proc.LEVEL_L2           # 试过失败 → 才是"启动失败"
 
 
 def test_backoff_grows_exponentially_and_caps(tmp_path):

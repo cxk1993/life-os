@@ -74,12 +74,44 @@ def _pool():
 
 
 def _level() -> str:
-    """降级层级：池里有活进程 = L1；否则 L2（熔断态由 process 层管，这里给保守值）。"""
+    """降级层级（给 UI 顶栏状态点用）。
+
+    ★ 2026-09-28 方案 A 重写（主人候办③「状态点恒显启动中」）：
+      修复前只看**单会话管理器**（`_manager()`，第②刀）—— 而**真实对话走的是会话池**
+      （`_pool()`，第④刀）。两条路各管各的：从没聊过天时单管理器 `_client` 恒为 None
+      ⇒ 恒报 L2「启动中」，**pi 明明健康可用也一直显示"启动中"**。
+
+      修后口径（按"哪个更活"取最高态）：
+        L3 熔断（单管理器熔断态）
+        L1 有活进程（池里有活会话 **或** 单管理器有活进程）
+        L0 从未启动过（懒启动待命 —— 正常态）
+        L2 尝试过但没进程（真·启动失败/重启中）
+    """
+    # 熔断优先（单管理器管熔断；池层面暂无熔断态）
     try:
-        st = _pool().status()
-        return "L1" if st.get("alive", 0) > 0 else "L2"
+        m_st = _manager().status()
     except Exception:  # noqa: BLE001
-        return "L2"
+        m_st = {}
+    if m_st.get("circuit_open"):
+        return "L3"
+
+    # ★ 有活进程：池 or 单管理器，任一活着即 L1
+    p_st: dict[str, Any] = {}
+    try:
+        p_st = _pool().status()
+        if int(p_st.get("alive", 0)) > 0:
+            return "L1"
+    except Exception:  # noqa: BLE001
+        pass
+    if m_st.get("alive"):
+        return "L1"
+
+    # ★ 从未启动过 = 待命（懒启动正常态），不是"启动中"
+    #   池与单管理器**任一**尝试过启动 → 才算真·启动失败（L2）
+    if not m_st.get("ever_started", False) and not p_st.get("ever_started", False):
+        return "L0"
+
+    return "L2"
 
 
 # ── 出入参 ────────────────────────────────────────────────────
@@ -112,11 +144,14 @@ class ChatOut(BaseModel):
 
 @router.get("/health")
 def health() -> dict[str, Any]:
-    """存活探针。ready=子进程是否活着（不主动起进程，避免探针触发拉起）。"""
+    """存活探针。ready=子进程是否活着（不主动起进程，避免探针触发拉起）。
+
+    ★ 2026-09-28（方案 A）：`level` 改用综合口径 `_level()`（池 + 单管理器），
+      与 /status 一致 —— 此前用 `st.get("level")`（只看单管理器）会误报。
+    """
     try:
-        m = _manager()
-        st = m.status()
-        return {"ok": True, "ready": bool(st.get("alive")), "level": st.get("level")}
+        st = _manager().status()
+        return {"ok": True, "ready": bool(st.get("alive")), "level": _level()}
     except Exception as exc:  # noqa: BLE001
         return {"ok": True, "ready": False, "level": "L2", "detail": f"{type(exc).__name__}: {exc}"}
 
@@ -128,7 +163,12 @@ def manifest() -> dict[str, Any]:
 
 @router.get("/status")
 def status() -> dict[str, Any]:
-    """状态快照（UI 顶栏状态点）。"""
+    """状态快照（UI 顶栏状态点）。
+
+    ★ 2026-09-28（方案 A）关键修正：`level` 必须取 **`_level()`**（池 + 单管理器综合口径），
+      不能取 `m.status()["level"]`（只看单管理器）—— 后者从没聊过天时恒为 L0/L2，
+      正是「状态点恒显启动中」的最后一处漏洞。
+    """
     m = _manager()
     st = m.status()
     try:
@@ -137,9 +177,12 @@ def status() -> dict[str, Any]:
         st["pool"] = {"detail": str(exc)}
     st["id"] = "pi-agent"
     st["stage"] = "rpc+sessions"
+    # ★ 用综合口径覆盖（此前直接用 m.status()["level"] → 恒报错值）
+    st["level"] = _level()
     st["level_text"] = {
+        "L0": "AI 工具能力待命（未启动，发消息即用）",
         "L1": "AI 工具能力可用",
-        "L2": "AI 服务启动中，请稍后重试",
+        "L2": "AI 服务启动失败，请稍后重试",
         "L3": "AI 工具能力暂不可用（pi 熔断）· 可重试",
     }.get(str(st.get("level")), "未知")
     return st

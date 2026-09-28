@@ -34,12 +34,29 @@ def router_mod():
 
     ★ 教训：单例是全局的，测试之间会串（第一次跑时前一个测试真的把 pi 起了起来，
       后一个测试就拿到 L1 而不是预期的降级态）。
+    ★ 2026-09-28 补充：连 `_ever_started` 标记也要重置 —— 否则跑过
+      "尝试启动"用例后，后续"从未启动"用例会拿到被污染的 True。
     """
     mod = _load("router")
     proc = _load("process")
     proc.shutdown_manager()
+    # ★ 池单例同样要清标记（它不是 fixture 管的）
+    try:
+        pool = mod._pool()
+        pool.stop_all()
+        pool._ever_started = False
+        pool._last_error = None
+    except Exception:  # noqa: BLE001
+        pass
     yield mod
     proc.shutdown_manager()
+    try:
+        pool = mod._pool()
+        pool.stop_all()
+        pool._ever_started = False
+        pool._last_error = None
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ── 端点存在性与形状 ────────────────────────────────────────────
@@ -143,6 +160,46 @@ def test_pool_status_shape(router_mod):
     st = router_mod._pool().status()
     for k in ("sessions", "max_sessions", "busy", "alive", "names"):
         assert k in st
+
+
+# ── ★ 2026-09-28（方案 A · 主人候办③「状态点恒显启动中」）回归 ──────
+
+def test_level_is_l0_when_never_started(router_mod):
+    """★ 回归：**从未启动过**（懒启动待命）→ level = L0，**不再报 L2「启动中」**。
+
+    这是本轮修复的核心判据。修复前 `_level()` 只看单会话管理器，
+    从没聊过天 ⇒ 恒报 L2「启动中」，pi 明明健康可用也一直显示"启动中"。
+    """
+    pool = router_mod._pool()
+    pool.stop_all()
+    # 模拟"从未启动"：清掉两处标记
+    pool._ever_started = False
+    m = router_mod._manager()
+    m._client = None
+    m._ever_started = False
+    m._circuit_open = False
+
+    st = router_mod.status()
+    assert st["level"] == "L0", f"应报 L0 待命，实际 {st['level']}"
+    assert "待命" in st["level_text"]
+
+
+def test_level_is_l2_after_start_attempt_failed(router_mod):
+    """★ 回归：**尝试过**启动但失败 → level = L2（真·异常），与 L0 区分开。"""
+    pool = router_mod._pool()
+    pool.stop_all()
+    pool._binary = "/nonexistent/pi-xyz"
+    m = router_mod._manager()
+    m._client = None
+    m._circuit_open = False
+
+    # 发一条消息 → 池真尝试建会话（必失败）
+    out = router_mod.chat(router_mod.ChatIn(message="你好"))
+    assert out.degraded is True
+
+    st = router_mod.status()
+    assert st["level"] == "L2", f"试过失败应报 L2，实际 {st['level']}"
+    assert "启动失败" in st["level_text"]
 
 
 # ── SSE 形状（离线：只验证事件编码格式）─────────────────────────

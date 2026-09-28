@@ -46,7 +46,9 @@ _rpc = _load_sibling("rpc")
 PiRpcClient = _rpc.PiRpcClient
 PiRpcError = _rpc.PiRpcError
 PiEvent = _rpc.PiEvent
-LEVEL_L1, LEVEL_L2, LEVEL_L3 = _rpc.LEVEL_L1, _rpc.LEVEL_L2, _rpc.LEVEL_L3
+LEVEL_L0, LEVEL_L1, LEVEL_L2, LEVEL_L3 = (
+    _rpc.LEVEL_L0, _rpc.LEVEL_L1, _rpc.LEVEL_L2, _rpc.LEVEL_L3,
+)
 
 log = logging.getLogger("plugin.pi-agent.process")
 
@@ -81,15 +83,28 @@ class PiProcessManager:
         self._circuit_open = False
         self._circuit_opened_at = 0.0
         self._last_error: str | None = None
+        # ★ 2026-09-28（方案 A）：是否**尝试过**启动。
+        #   False = 从未被叫醒（懒启动正常态 → L0「待命」，不是故障）
+        #   True  = 尝试过但没进程（启动失败/重启中 → L2，真·异常）
+        self._ever_started = False
 
     # ── 状态 ────────────────────────────────────────────────
     @property
     def level(self) -> str:
-        """当前降级层级（给 UI 顶栏状态点用）。"""
+        """当前降级层级（给 UI 顶栏状态点用）。
+
+        ★ 2026-09-28 方案 A 语义修正（主人候办③「状态点恒显启动中」）：
+            L3 = 熔断
+            L1 = 有活进程（正常）
+            L0 = **从未启动过**（懒启动待命 —— 正常态，别报"启动中"吓人）
+            L2 = 尝试过启动但没进程（真·启动失败/重启中）
+        """
         if self._circuit_open:
             return LEVEL_L3
         if self._client is not None and self._client.is_alive():
             return LEVEL_L1
+        if not self._ever_started:
+            return LEVEL_L0
         return LEVEL_L2
 
     def status(self) -> dict[str, Any]:
@@ -99,6 +114,7 @@ class PiProcessManager:
             "consecutive_fails": self._consecutive_fails,
             "last_error": self._last_error,
             "alive": bool(self._client and self._client.is_alive()),
+            "ever_started": self._ever_started,
             "model": self._model,
             "provider": self._provider,
         }
@@ -145,6 +161,8 @@ class PiProcessManager:
                 return False
             if self._client is not None and self._client.is_alive():
                 return True
+            # ★ 2026-09-28（方案 A）：走到这里 = 真尝试过启动（此后 level 不再报 L0 待命）
+            self._ever_started = True
             # 崩溃 or 未起：按退避重启
             if self._consecutive_fails > 0:
                 wait = self._backoff_seconds()

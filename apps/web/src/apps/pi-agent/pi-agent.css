@@ -28,6 +28,12 @@
   border-color: var(--ok, #3fb950);
   color: var(--ok, #3fb950);
 }
+/* ★ 2026-09-28（方案 A）：L0「待命」= 懒启动正常态（从未启动，不是故障）——
+   用中性灰，与 L2 的警告黄明确区分开。 */
+.pi-agent__level.is-L0 {
+  border-color: var(--txt-dim);
+  color: var(--txt-dim);
+}
 .pi-agent__level.is-L2 {
   border-color: var(--warn);
   color: var(--warn);
