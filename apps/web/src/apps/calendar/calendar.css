@@ -34,6 +34,14 @@
   color: var(--muted-fg);
   margin-right: 2px;
 }
+/* 工具栏日期标题：一眼看清当前在哪个时间窗（月视图= 2026年10月）。 */
+.cal-toolbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-right: auto;
+  white-space: nowrap;
+}
 .cal-toolbar button {
   background: var(--bg-elev-2, var(--bg));
   color: var(--fg);

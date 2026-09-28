@@ -52,6 +52,12 @@ describe("CalendarApp 冒烟", () => {
     expect(screen.getByText("周")).toBeTruthy();
     expect(screen.getByText("月")).toBeTruthy();
   });
+
+  it("工具栏显示日期标题（默认周视图 → 含年月日）", () => {
+    render(<CalendarApp />);
+    const title = screen.getByTestId("cal-title");
+    expect(title.textContent).toMatch(/\d{4}年\d{1,2}月/);
+  });
 });
 
 describe("TimeGrid 冒烟", () => {

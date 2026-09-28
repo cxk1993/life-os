@@ -36,6 +36,28 @@ function useElementWidth<T extends HTMLElement>(): [React.RefObject<T>, number] 
 
 const DEFAULT_COLOR = "var(--accent)";
 
+/** 星期中文名（wd：0=周日…6=周六，与 time.ts 的 shWallParts 口径一致）。 */
+const WEEKDAY_CN = ["日", "一", "二", "三", "四", "五", "六"];
+
+/** 工具栏日期标题：随视图与 anchor 变化，让主人一眼知道当前在哪个时间窗。 */
+function anchorLabel(view: ViewMode, anchor: Date): string {
+  const p = shWallParts(anchor);
+  if (view === "day") {
+    return `${p.y}年${p.mo}月${p.d}日 周${WEEKDAY_CN[p.wd]}`;
+  }
+  if (view === "month") {
+    return `${p.y}年${p.mo}月`;
+  }
+  const mon = shMonday(anchor);
+  const mp = shWallParts(mon);
+  const sun = new Date(mon.getTime() + 6 * DAY_MS);
+  const sp = shWallParts(sun);
+  if (mp.y === sp.y && mp.mo === sp.mo) {
+    return `${mp.y}年${mp.mo}月${mp.d}日 – ${sp.d}日`;
+  }
+  return `${mp.y}年${mp.mo}月${mp.d}日 – ${sp.y}年${sp.mo}月${sp.d}日`;
+}
+
 export function CalendarApp() {
   const {
     view,
@@ -179,6 +201,10 @@ export function CalendarApp() {
           <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>
             月
           </button>
+        </div>
+
+        <div className="cal-toolbar-group cal-toolbar-title" data-testid="cal-title">
+          {anchorLabel(view, anchor)}
         </div>
 
         <div className="cal-toolbar-group">
