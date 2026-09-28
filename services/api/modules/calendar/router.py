@@ -63,13 +63,30 @@ def manifest() -> dict:
 
 @router.get("/events", response_model=list[EventOut])
 def list_events(
-    frm: str = Query(..., alias="from"),
-    to: str = Query(...),
-    include_children: bool = Query(True),
-    flat: bool = Query(False),
+    frm: str = Query(
+        ...,
+        alias="from",
+        description="时间窗**起点**，带时区 ISO8601（如 2026-09-28T00:00:00+08:00）。必填",
+    ),
+    to: str = Query(
+        ...,
+        description="时间窗**终点**，带时区 ISO8601。必填；与 from 一起圈出要查的区间",
+    ),
+    include_children: bool = Query(
+        True, description="是否把子块一起返回（true=树形嵌套；false=只要顶层块）"
+    ),
+    flat: bool = Query(
+        False, description="是否拍平成一维数组（true=父子同层平铺，便于一次遍历全部块）"
+    ),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict]:
+    """按**时间窗**列出日程事件（日历视图的数据源）。
+
+    - `from`/`to` 必填：只返回与该区间有交集的事件
+    - 默认返回**树形**（父块 children 里挂子块，最多钻一层）；
+      只想要扁平列表就 `flat=true`；只想要顶层块就 `include_children=false`
+    """
     return CalendarService(db).list_range(frm, to, include_children, flat)
 
 
@@ -114,6 +131,10 @@ def create_event(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
+    """新建一条日程事件（可**一次带子块**：`children[]` 里每项的 parent_id 会被自动覆盖）。
+
+    `start_at`/`end_at` 必须带时区；**提醒以 start_at 为准**。
+    """
     out = CalendarService(db).create(body)
     _emit("calendar.event.created", out)
     return out
@@ -125,6 +146,7 @@ def get_event(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
+    """读单条事件（**含子块树**）。"""
     return CalendarService(db).get_tree(event_id)
 
 
@@ -135,6 +157,10 @@ def update_event(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
+    """改一条事件（标题/颜色/时间/跨天/地点/备注）。
+
+    ⚠️ 挪时间时，**其子块会被自动钳制**到父块范围内 —— 响应树里返回钳制后的坐标。
+    """
     out = CalendarService(db).update(event_id, body)
     _emit("calendar.event.updated", out)
     return out
@@ -146,6 +172,7 @@ def delete_event(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一条事件（**其子块一并删除**，不可恢复）。"""
     CalendarService(db).delete(event_id)
     _emit("calendar.event.deleted", {"id": event_id})
 
@@ -161,6 +188,7 @@ def add_child(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
+    """在指定父事件下**加一个子块**（子块嵌在父色块内显示；body 的 parent_id 会被覆盖）。"""
     out = CalendarService(db).add_child(event_id, body)
     _emit("calendar.event.created", out)
     return out
@@ -174,6 +202,7 @@ def update_child(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
+    """改某个子块（与改父块同构；两 id 都要传，且必须确实是父子关系）。"""
     out = CalendarService(db).update_child(event_id, child_id, body)
     _emit("calendar.event.updated", out)
     return out
@@ -189,6 +218,7 @@ def delete_child(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删某个子块（只删这一个，父块保留）。"""
     CalendarService(db).delete_child(event_id, child_id)
     _emit("calendar.event.deleted", {"id": child_id, "parent_id": event_id})
 
@@ -199,10 +229,16 @@ def free_slots(
         ...,
         description="YYYY-MM-DD，按主人本地时区（settings.tz，默认 Asia/Shanghai）的自然日计算",
     ),
-    min_hours: float = Query(1.0, ge=0.5),
+    min_hours: float = Query(
+        1.0, ge=0.5, description="只返回**时长 ≥ 此值**的空档（小时）。默认 1.0，最小 0.5"
+    ),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[FreeSlotOut]:
+    """某一天的**空闲时段**（AI 编排日程时先问它"这天什么时候有空"）。
+
+    按**主人本地时区**的自然日切天（不是 UTC）—— 所以传 `2026-10-01` 就是本地那一天。
+    """
     # ★ 不能按 UTC 切天：主人说"10 月 1 日"指的是**本地**那一天。
     #   按 UTC 切会把本地 01:00-03:00 的事件（= UTC 前一天 17:00）漏掉，
     #   于是 free_slots 返回"全天空闲 24h"（实测踩过，2 条验收因此挂掉）。
@@ -230,7 +266,9 @@ def get_reminder_scheduler_status(
 
 @router.post("/reminders/tick")
 def post_reminder_tick(
-    lead_minutes: int = Query(default=None, ge=0, le=1440),
+    lead_minutes: int = Query(
+        default=None, ge=0, le=1440, description="临时覆盖提前量（分钟，0–1440）；不传则用配置里的值"
+    ),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
@@ -241,11 +279,11 @@ def post_reminder_tick(
 
 @router.get("/reminders/logs")
 def get_reminder_logs(
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=200, description="返回条数上限（1–200，默认 50）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict]:
-    """T25：最近提醒投递日志（持久化去重证据）。"""
+    """T25：最近提醒投递日志（持久化去重证据 —— 想确认"某条提醒到底推没推"看这里）。"""
     return list_reminder_logs(db, limit=limit)
 
 

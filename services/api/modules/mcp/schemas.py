@@ -29,7 +29,7 @@ class PatCreateIn(BaseModel):
     scopes: list[str] = Field(
         default_factory=list,
         max_length=1024,
-        description="能力清单，形如 域:动词（如 todo:read / docs:write / push:write）。**空列表 = 这枚令牌什么都调不了**（安全默认）",
+        description="能力清单，每条形如「域:动词」（首段为能力域、末段为动词）。具体有哪些，看 tools/list 里每个工具名的前两段。**空列表 = 这枚令牌什么都调不了**（安全默认）",
     )
 
     @field_validator("name")

@@ -224,6 +224,16 @@ def _handle_tools_call(msg: dict[str, Any], msg_id: Any, pat: PatContext) -> dic
     payload = arguments.get("payload") if isinstance(arguments, dict) else None
     if not isinstance(payload, dict):
         payload = None
+    # ★ 2026-09-28（主人令「每一个工具都实际测验过」，实测抓到的真 bug）：
+    #   工具 schema 里声明的是**具名参数**（from / to / tag / limit …），但本函数历史上
+    #   **只读 `payload`** ⇒ AI 照 schema 把字段传在顶层时，会被**静默丢弃**：
+    #   实测 `calendar_event_read` 传 {"from":…, "to":…} → 422「query from Field required」。
+    #   **描述说能传、传了没用**，比没描述更害 AI。这里把顶层具名参数**并进 payload**，
+    #   于是「具名直传」与「payload 包裹」两种写法都成立（旧写法零影响）。
+    if isinstance(arguments, dict):
+        extra = {k: v for k, v in arguments.items() if k != "payload"}
+        if extra:
+            payload = {**(payload or {}), **extra}
 
     status, body = forward(tool.method, tool.path, payload)
     ok = 200 <= status < 300
