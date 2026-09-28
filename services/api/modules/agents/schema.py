@@ -25,20 +25,31 @@ class AgentOut(BaseModel):
 
 
 class AgentCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
-    description: str = Field(default="", max_length=2000)
-    capabilities: list[str] = Field(default_factory=list)
-    callback_url: str | None = Field(default=None, max_length=300)
-    enabled: bool = True
+    name: str = Field(
+        min_length=1, max_length=120,
+        description="agent 的名字 —— **任务的 assignee 存的就是它**，故应唯一且简短",
+    )
+    description: str = Field(default="", max_length=2000, description="这个 agent 是干什么的（人话描述）")
+    capabilities: list[str] = Field(
+        default_factory=list,
+        description="能力清单（字符串数组，如 pi.chat.write）；派发时按它匹配",
+    )
+    callback_url: str | None = Field(
+        default=None, max_length=300, description="webhook 回调地址（mode=webhook 时用）；留空=不回调"
+    )
+    enabled: bool = Field(default=True, description="是否启用：停用的 agent 不接新活（历史任务不受影响）")
 
 
 class AgentUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=120)
-    description: str | None = Field(default=None, max_length=2000)
-    capabilities: list[str] | None = None
-    enabled: bool | None = None
-    callback_url: str | None = Field(default=None, max_length=300)
-    load: int | None = Field(default=None, ge=0)
+    name: str | None = Field(default=None, min_length=1, max_length=120, description="改名字（不传=不改）")
+    description: str | None = Field(default=None, max_length=2000, description="改描述")
+    capabilities: list[str] | None = Field(
+        default=None,
+        description="**整组替换**能力清单（不是追加）——要保留原来的，请连原来的一起传",
+    )
+    enabled: bool | None = Field(default=None, description="启用 / 停用")
+    callback_url: str | None = Field(default=None, max_length=300, description="改 webhook 回调地址")
+    load: int | None = Field(default=None, ge=0, description="当前负载（供编排参考；一般由调度方自报）")
 
 
 class TaskOut(BaseModel):
@@ -68,33 +79,44 @@ class TaskOut(BaseModel):
 
 
 class TaskCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    description: str = Field(default="", max_length=5000)
-    assignee: str | None = Field(default=None, max_length=64)
-    priority: int = Field(default=3, ge=1, le=5)
-    inputs: list[Any] = Field(default_factory=list)
-    outputs: list[Any] = Field(default_factory=list)
-    acceptance: list[Any] = Field(default_factory=list)
-    constraints: list[Any] = Field(default_factory=list)
-    payload: dict[str, Any] = Field(default_factory=dict)
-    mode: str | None = Field(default=None, max_length=16)
-    callback_url: str | None = Field(default=None, max_length=300)
-    source: str = Field(default="manual", max_length=16)
+    title: str = Field(min_length=1, max_length=200, description="任务标题（一句话说清要做什么）")
+    description: str = Field(default="", max_length=5000, description="任务详述（交付说明 / 背景 / 边界）")
+    assignee: str | None = Field(
+        default=None, max_length=64,
+        description="指定承接者：填 **agent 的 name**（不是 id）；留空=先入队不指派",
+    )
+    priority: int = Field(
+        default=3, ge=1, le=5, description="优先级 **1 最高、5 最低**（默认 3）；列表按它升序排"
+    )
+    inputs: list[Any] = Field(default_factory=list, description="输入材料清单（任务块契约槽之一，结构自由）")
+    outputs: list[Any] = Field(default_factory=list, description="期望产出清单（交付物定义）")
+    acceptance: list[Any] = Field(default_factory=list, description="验收标准清单（怎样算干完）")
+    constraints: list[Any] = Field(default_factory=list, description="约束条件清单（不许做什么 / 硬性边界）")
+    payload: dict[str, Any] = Field(default_factory=dict, description="给执行体的原始参数（任意 JSON 对象）")
+    mode: str | None = Field(
+        default=None, max_length=16,
+        description="执行方式：pi=**真执行**（调内嵌 Pi）· webhook · poll · mcp（后三者只记账，不真调外网）",
+    )
+    callback_url: str | None = Field(default=None, max_length=300, description="本条任务的回调地址（覆盖 agent 级设置）")
+    source: str = Field(default="manual", max_length=16, description="来源标记（manual=人工建的；其它模块代建请填模块名）")
 
 
 class TaskUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = Field(default=None, max_length=5000)
-    assignee: str | None = Field(default=None, max_length=64)
-    priority: int | None = Field(default=None, ge=1, le=5)
-    status: str | None = Field(default=None, max_length=16)
-    inputs: list[Any] | None = None
-    outputs: list[Any] | None = None
-    acceptance: list[Any] | None = None
-    constraints: list[Any] | None = None
-    payload: dict[str, Any] | None = None
-    mode: str | None = Field(default=None, max_length=16)
-    callback_url: str | None = Field(default=None, max_length=300)
+    title: str | None = Field(default=None, min_length=1, max_length=200, description="改标题")
+    description: str | None = Field(default=None, max_length=5000, description="改详述")
+    assignee: str | None = Field(default=None, max_length=64, description="改承接者（填 agent 的 name）")
+    priority: int | None = Field(default=None, ge=1, le=5, description="改优先级（1 最高、5 最低）")
+    status: str | None = Field(
+        default=None, max_length=16,
+        description="手工推进状态：draft | queued | running | done | failed | cancelled。⚠️ 受状态机约束，非法迁移会被拒",
+    )
+    inputs: list[Any] | None = Field(default=None, description="**整组替换**输入材料清单")
+    outputs: list[Any] | None = Field(default=None, description="**整组替换**期望产出清单")
+    acceptance: list[Any] | None = Field(default=None, description="**整组替换**验收标准清单")
+    constraints: list[Any] | None = Field(default=None, description="**整组替换**约束条件清单")
+    payload: dict[str, Any] | None = Field(default=None, description="**整组替换**执行参数（不是合并）")
+    mode: str | None = Field(default=None, max_length=16, description="改执行方式：pi | webhook | poll | mcp")
+    callback_url: str | None = Field(default=None, max_length=300, description="改回调地址")
 
 
 class DispatchIn(BaseModel):

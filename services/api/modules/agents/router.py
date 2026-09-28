@@ -47,6 +47,7 @@ UserDep = User
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件健康探针（恒 200）。"""
     """每个插件都必须有 health —— 内核据此判断"该能力是否可用"。"""
     return {"ok": True}
 
@@ -54,16 +55,20 @@ def health() -> dict[str, bool]:
 @router.get("/manifest")
 def manifest() -> dict:
     """模块清单（前端 / AI 发现能力用）。"""
+    """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
 
 # ───────────────────────── agents ─────────────────────────
 @router.get("/agents", response_model=list[AgentOut])
 def list_agents(
-    enabled_only: bool = Query(False),
+    enabled_only: bool = Query(
+        False, description="true=只列**已启用**的 agent（默认列出全部，含停用的）"
+    ),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
+    """列出已登记的 agent —— 就是「能接活的执行体」清单（名字 / 能力 / 负载 / 是否启用）。"""
     return AgentsService(db).list_agents(enabled_only)
 
 
@@ -73,6 +78,7 @@ def create_agent(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """登记一个 agent（能力清单写进 `capabilities`，派发时按它匹配）。"""
     return AgentsService(db).create_agent(body)
 
 
@@ -82,6 +88,7 @@ def get_agent(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单个 agent 详情。"""
     return AgentsService(db).get_agent(agent_id)
 
 
@@ -92,6 +99,8 @@ def update_agent(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改 agent（名字 / 描述 / 能力 / 回调地址 / 启用 / 负载）。
+    ⚠️ `capabilities` 是**整组替换**，不是追加。"""
     return AgentsService(db).update_agent(agent_id, body)
 
 
@@ -101,17 +110,25 @@ def delete_agent(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """注销一个 agent（**不影响它已承接的历史任务**）。"""
     AgentsService(db).delete_agent(agent_id)
 
 
 # ───────────────────────── tasks ─────────────────────────
 @router.get("/tasks", response_model=list[TaskOut])
 def list_tasks(
-    status_filter: str | None = Query(None, alias="status"),
-    assignee: str | None = Query(None),
+    status_filter: str | None = Query(
+        None,
+        alias="status",
+        description="按状态过滤：draft | queued | running | done | failed | cancelled；不传=全部",
+    ),
+    assignee: str | None = Query(
+        None, description="按**承接者名字**过滤（存的是 agent 的 name，不是 id）"
+    ),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
+    """列出任务块（编排的核心读口）。`assignee` 存的是 agent **名字**，不是 id。"""
     return AgentsService(db).list_tasks(status=status_filter, assignee=assignee)
 
 
@@ -121,6 +138,7 @@ def create_task(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """新建一个任务块（默认落在 `draft`）。要立刻派发，请再调 `POST /tasks/{id}/execute`。"""
     return AgentsService(db).create_task(body)
 
 
@@ -130,6 +148,7 @@ def get_task(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单个任务块（含 `result` / 派发记录 / 当前状态）。"""
     return AgentsService(db).get_task(task_id)
 
 
@@ -140,6 +159,9 @@ def update_task(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改任务块（含**手工推进 `status`**）。
+    ⚠️ 迁移受状态机约束：draft→queued/cancelled · queued→running/done/failed/cancelled ·
+    running→done/failed/cancelled · failed→queued。"""
     return AgentsService(db).update_task(task_id, body)
 
 
@@ -149,6 +171,7 @@ def delete_task(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一个任务块（**连带其派发记录**，不可恢复）。"""
     AgentsService(db).delete_task(task_id)
 
 
@@ -192,4 +215,5 @@ def summary(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> SummaryOut:
+    """编排概览：任务各状态计数 + agent 总数/启用数（dashboard 卡片用）。"""
     return AgentsService(db).summary()
