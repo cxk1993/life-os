@@ -10,6 +10,7 @@ import TodoApp from "./TodoApp";
 import ItemRow from "./ItemRow";
 import QuickAdd from "./QuickAdd";
 import type { TodoItem } from "./api";
+import { useTodoUI } from "./state";
 
 const sample: TodoItem = {
   id: "t1",
@@ -44,6 +45,7 @@ vi.mock("./api", () => ({
     importMarkdown: vi.fn(),
     exportMarkdown: vi.fn(),
     summary: vi.fn().mockResolvedValue({ today: 0, overdue: 0, week_done: 0 }),
+    tags: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -58,6 +60,8 @@ function makeWrapper() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // ★ 2026-09-28：zustand store 是模块级的，筛选/视图会在用例之间串味 → 每例复位
+  useTodoUI.setState({ filterTag: null, view: "today" });
 });
 
 describe("TodoApp 冒烟", () => {
@@ -154,3 +158,43 @@ describe("QuickAdd", () => {
     expect((input as HTMLInputElement).value).toBe("断网也要记的待办");
   });
 });
+
+  it("★ 动态标签条：数据来自 /tags，点一下筛上并切「全部」，再点取消", async () => {
+    const { todoApi } = await import("./api");
+    vi.mocked(todoApi.tags).mockResolvedValue([
+      { tag: "学业", todo: 2, done: 1, total: 3 },
+      { tag: "副业", todo: 3, done: 0, total: 3 },
+    ]);
+    render(<TodoApp />, { wrapper: makeWrapper() });
+    // 学业由固定按钮承担 → 不进动态条（同一个筛选不给两个入口）
+    await waitFor(() => expect(screen.queryByTestId("todo-tagchip-副业")).toBeTruthy());
+    expect(screen.queryByTestId("todo-tagchip-学业")).toBeNull();
+
+    // 点一下 → 筛上「副业」，并切到「全部」视图（一键查看）
+    fireEvent.click(screen.getByTestId("todo-tagchip-副业"));
+    await waitFor(() =>
+      expect(screen.getByTestId("todo-tagchip-副业").getAttribute("aria-pressed")).toBe("true"),
+    );
+    expect(useTodoUI.getState().view).toBe("all");
+
+    // 再点一下 → 取消筛选
+    fireEvent.click(screen.getByTestId("todo-tagchip-副业"));
+    await waitFor(() =>
+      expect(screen.getByTestId("todo-tagchip-副业").getAttribute("aria-pressed")).toBe("false"),
+    );
+    expect(useTodoUI.getState().filterTag).toBeNull();
+  });
+
+  it("★ 行内改标签：点「＋标签」输入 `学业/高数 副业` → PATCH tags（去重保序）", async () => {
+    const { todoApi } = await import("./api");
+    render(<ItemRow item={sample} />, { wrapper: makeWrapper() });
+    fireEvent.click(screen.getByTestId("todo-tag-add"));
+    const input = screen.getByTestId("todo-tag-edit");
+    fireEvent.change(input, { target: { value: "学业/高数 副业 学业/高数" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() =>
+      expect(todoApi.update).toHaveBeenCalledWith("t1", {
+        tags: ["学业/高数", "副业"],
+      }),
+    );
+  });

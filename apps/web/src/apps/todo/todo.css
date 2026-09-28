@@ -305,3 +305,61 @@
   border-color: transparent;
   font-weight: 600;
 }
+
+/* —— ★ 2026-09-28：动态标签条（数据源 GET /api/v1/todo/tags）—— */
+.todo-tagbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.todo-tagchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 22px;
+  padding: 0 10px;
+  border-radius: 11px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.todo-tagchip--on {
+  background: var(--accent-soft, rgba(127, 127, 127, 0.16));
+  color: var(--accent, inherit);
+  border-color: transparent;
+  font-weight: 600;
+}
+.todo-tagchip__n {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+/* —— 行内标签编辑（已存在的事项也能改标签）—— */
+.todo-tag-edit {
+  font-size: 12px;
+  height: 22px;
+  min-width: 14ch;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+  background: transparent;
+  color: inherit;
+}
+.todo-tag-add {
+  font-size: 11px;
+  line-height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  border: 1px dashed var(--border, rgba(127, 127, 127, 0.35));
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.7;
+}
+.todo-tag-add:hover {
+  opacity: 1;
+}

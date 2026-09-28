@@ -31,6 +31,11 @@ export default function ItemRow({ item }: Props) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.text);
+  // ★ 2026-09-28（主人令「最好能给每个事项加标签 tag」）：
+  //   此前 `#标签` 语法糖只在**新建**时生效 —— 已存在的事项改不了标签。
+  //   这里补一个行内标签编辑（点「＋标签」），空格/逗号分隔，可删可加。
+  const [tagEditing, setTagEditing] = useState(false);
+  const [tagDraft, setTagDraft] = useState(item.tags.join(" "));
 
   const toggleMut = useMutation({
     mutationFn: () => todoApi.toggle(item.id),
@@ -94,6 +99,19 @@ export default function ItemRow({ item }: Props) {
     setEditing(false);
   };
 
+  const saveTags = () => {
+    const next = tagDraft
+      .split(/[\s,，]+/)
+      .map((s) => s.replace(/^#/, "").trim())
+      .filter(Boolean);
+    // 去重保序（与后端 tags_to_json 口径一致）
+    const uniq = Array.from(new Set(next));
+    const same =
+      uniq.length === item.tags.length && uniq.every((t, i) => t === item.tags[i]);
+    if (!same) updateMut.mutate({ tags: uniq });
+    setTagEditing(false);
+  };
+
   return (
     <div className={`todo-row${item.done ? " todo-row--done" : ""}`}>
       <button
@@ -137,11 +155,44 @@ export default function ItemRow({ item }: Props) {
               {PRIORITY_LABEL[item.priority]}
             </span>
           ) : null}
-          {item.tags.map((t) => (
-            <span key={t} className="todo-pill todo-pill--tag">
-              #{t}
-            </span>
-          ))}
+          {tagEditing ? (
+            <input
+              className="todo-tag-edit"
+              autoFocus
+              value={tagDraft}
+              data-testid="todo-tag-edit"
+              placeholder="标签，空格分隔（如 学业/高数 副业）"
+              onChange={(e) => setTagDraft(e.target.value)}
+              onBlur={saveTags}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveTags();
+                if (e.key === "Escape") {
+                  setTagDraft(item.tags.join(" "));
+                  setTagEditing(false);
+                }
+              }}
+            />
+          ) : (
+            <>
+              {item.tags.map((t) => (
+                <span key={t} className="todo-pill todo-pill--tag">
+                  #{t}
+                </span>
+              ))}
+              <button
+                type="button"
+                className="todo-tag-add"
+                data-testid="todo-tag-add"
+                title="编辑标签"
+                onClick={() => {
+                  setTagDraft(item.tags.join(" "));
+                  setTagEditing(true);
+                }}
+              >
+                ＋标签
+              </button>
+            </>
+          )}
           {due ? (
             <span className={`todo-pill${overdue ? " todo-pill--overdue" : ""}`}>🕘 {due}</span>
           ) : null}

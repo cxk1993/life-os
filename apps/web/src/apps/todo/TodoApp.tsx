@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs } from "@/shared/components/Tabs";
 import { usePluginEvent } from "@/shared/api/events";
 import { useTodoUI, type TodoView } from "./state";
@@ -6,6 +6,7 @@ import QuickAdd from "./QuickAdd";
 import TodayView from "./views/TodayView";
 import AllView from "./views/AllView";
 import RecurringView from "./views/RecurringView";
+import { todoApi } from "./api";
 
 const STUDY_TAG = "学业";
 
@@ -32,6 +33,16 @@ export default function TodoApp() {
   const setFilterTag = useTodoUI((s) => s.setFilterTag);
   const studyOnly = filterTag === STUDY_TAG;
 
+  // ★ 2026-09-28（主人令「通过 tag 的筛选，动态的一键查看与分类」）：
+  //   标签条由**硬编码**改为**数据驱动** —— 数据源 = GET /api/v1/todo/tags
+  //   （同一端点也是 AI 的 MCP 工具 todo_tag_read：**一份数据喂两边**）
+  const { data: tagCounts } = useQuery({
+    queryKey: ["todo", "tags"],
+    queryFn: () => todoApi.tags(),
+  });
+  // 学业已由左侧固定按钮承担，这里不重复列，免得同一个筛选出现两个入口
+  const tagChips = (tagCounts ?? []).filter((c) => c.tag !== STUDY_TAG);
+
   // 后端写入会推 todo.item.* 事件，收到即失效本地缓存（SSE 自动重连）。
   usePluginEvent("todo.item.created", () => qc.invalidateQueries({ queryKey: ["todo"] }));
   usePluginEvent("todo.item.updated", () => qc.invalidateQueries({ queryKey: ["todo"] }));
@@ -52,6 +63,31 @@ export default function TodoApp() {
           只看学业
         </button>
       </div>
+      {tagChips.length > 0 && (
+        <div className="todo-tagbar" data-testid="todo-tagbar">
+          {tagChips.map((c) => {
+            const on = filterTag === c.tag;
+            return (
+              <button
+                key={c.tag}
+                type="button"
+                className={on ? "todo-tagchip todo-tagchip--on" : "todo-tagchip"}
+                aria-pressed={on}
+                data-testid={`todo-tagchip-${c.tag}`}
+                title={`#${c.tag} 未完成 ${c.todo} · 已完成 ${c.done}`}
+                onClick={() => {
+                  setFilterTag(on ? null : c.tag);
+                  // 一键查看：点标签就直接切到「全部」并把筛子筛上
+                  if (!on) setView("all");
+                }}
+              >
+                #{c.tag}
+                {c.todo > 0 ? <span className="todo-tagchip__n">{c.todo}</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {view === "today" && <TodayView />}
       {view === "all" && <AllView />}
       {view === "recurring" && <RecurringView />}

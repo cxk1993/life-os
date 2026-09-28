@@ -30,6 +30,14 @@ export interface TodoList {
   next_cursor: string | null;
 }
 
+/** ★ 2026-09-28：标签汇总的一项（GET /tags；AI 工具 todo_tag_read 同一个端点）。 */
+export interface TodoTagCount {
+  tag: string;
+  todo: number;
+  done: number;
+  total: number;
+}
+
 export interface Summary {
   today: number;
   overdue: number;
@@ -115,6 +123,9 @@ export const todoApi = {
     api.post<ExportResult>(`${BASE}/export`, { status: status ?? "all" }),
 
   summary: () => api.get<Summary>(`${BASE}/summary`),
+
+  /** ★ 2026-09-28：标签汇总 —— 动态标签条的数据源（一份数据同时喂 AI 与前端）。 */
+  tags: () => api.get<TodoTagCount[]>(`${BASE}/tags`),
 
   /** U2 today-summary（派工令 62 · todo 源）。 */
   todaySummary: () => api.get<TodaySummary>(`${BASE}/today-summary`),
