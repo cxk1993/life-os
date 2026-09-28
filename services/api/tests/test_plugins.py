@@ -353,6 +353,108 @@ def test_third_party_without_state_row_is_not_enabled(
     assert not any(d["id"] == DEMO_ID for d in reload_body["reload_required"])
 
 
+# ───────────── 回归：enable() 必须补跑迁移（countdown 500 根因）─────────────
+def test_enable_runs_migrations_when_table_missing(
+    client: TestClient, demo_plugin_dir: Path
+) -> None:
+    """★ 回归（2026-09-26 修 · 2026-09-28 补钉子）：enable() 会补跑迁移。
+
+    背景（countdown 500 的完整成因）：
+      插件**直接放进 plugins/ + 手工建 plugin_state 行启用**（从未走 install）时，
+      旧版 enable() 只挂载、**不跑迁移** ⇒ 表永远不建 ⇒ 接口恒 500（no such table）。
+      而 core/app.py 的「启动恢复」走的正是 enable()，故这是唯一的自动触发点。
+
+    本测试钉住的契约：
+      1. enable() 后，插件声明的迁移**确实执行**（表被建出来）
+      2. 台账 app_setting 里**留下 migration.<id>.<ver> 记录**
+      3. 重复 enable() **幂等**（台账只增不改，不重复建表、不报错）
+    """
+    from sqlalchemy import text
+
+    base = f"/api/v1/{DEMO_ID}"
+    engine = get_engine()
+
+    # ── ① 装一个"从未安装过"的第三方插件：只建状态行 + 建目录，不调 install ──
+    #     （模拟 countdown 场景：插件在 plugins/ 里，plugin_state 有行且 enabled=1）
+    from db.models.system import PluginState
+    from core.plugins import discover as discover_mod
+    from core.deps import db_session
+
+    _res = discover_mod.discover_plugins()
+    info = next((p for p in _res.plugins if p.id == DEMO_ID), None)
+    assert info is not None, "测试插件应被发现"
+
+    # ★ 前置：确保"未跑迁移"的状态 —— 主动 DROP 表 + 清台账
+    #   （不能假设表不存在：同模块别的用例可能已装过同 id 插件，表会残留）
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS demo3p_thing"))
+        conn.execute(text("DELETE FROM app_setting WHERE key LIKE :p"), {"p": f"migration.{DEMO_ID}.%"})
+
+    with engine.connect() as conn:
+        before = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='demo3p_thing'")
+        ).fetchone()
+    assert before is None, "前置条件：此刻 demo3p_thing 表不应存在（已 DROP）"
+
+    # 手工写 plugin_state 行（enabled=1）—— 等价于"直接放进 plugins/ 后启用"
+    with db_session() as db:
+        row = db.get(PluginState, DEMO_ID)
+        if row is None:
+            db.add(
+                PluginState(
+                    id=DEMO_ID,
+                    version="0.1.0",
+                    kind="third-party",
+                    enabled=True,
+                    granted_permissions='["db:own"]',
+                )
+            )
+        else:
+            row.enabled = True
+
+    # ── ② 调 enable()（走 manager，与启动恢复同一条路）──
+    from core.plugins.manager import PluginManager
+
+    mgr = PluginManager()
+    mgr.enable(DEMO_ID, client.app.state.registry)
+
+    # ── ③ 断言：表被建出来了（迁移真跑了）──
+    with engine.connect() as conn:
+        after = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='demo3p_thing'")
+        ).fetchone()
+    assert after is not None, "★ enable() 应补跑迁移建表（回归：countdown 500 根因）"
+
+    # ── ④ 断言：台账留痕 migration.<id>.0001_init ──
+    with engine.connect() as conn:
+        led = conn.execute(
+            text("SELECT key FROM app_setting WHERE key LIKE :p"),
+            {"p": f"migration.{DEMO_ID}.%"},
+        ).fetchall()
+    assert led, f"★ 迁移台账应记 migration.{DEMO_ID}.0001_init"
+    assert any(f"migration.{DEMO_ID}.0001_init" == r[0] for r in led), [r[0] for r in led]
+
+    # ── ⑤ 幂等：再 enable 一次不报错、表还在 ──
+    mgr.enable(DEMO_ID, client.app.state.registry)
+    with engine.connect() as conn:
+        still = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='demo3p_thing'")
+        ).fetchone()
+    assert still is not None, "重复 enable 后表应仍存在（迁移幂等）"
+
+    # ── ⑥ 路由可达（表在 + 路由挂上 = 端点不再 500）──
+    r = client.get(f"{base}/things", headers=AUTH)
+    assert r.status_code == 200, f"表建好后端点应 200（原病灶是 500）：{r.text}"
+
+    # 清理状态行（表由 fixture 兜底删目录，这里顺手清 plugin_state）
+    from db.models.system import PluginState as _PS
+
+    with db_session() as db:
+        row = db.get(_PS, DEMO_ID)
+        if row is not None:
+            db.delete(row)
+
+
 # ───────────────────── 硬规则：core 不可禁用 / builtin 不可卸载 ─────────────────────
 def test_disable_core_rejected(client: TestClient) -> None:
     # 管理模块本身是 core
