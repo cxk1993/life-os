@@ -49,20 +49,24 @@ class SyncResult(BaseModel):
 
 
 class LibCreate(BaseModel):
-    key: str = Field(min_length=1, max_length=64)
-    name: str = Field(default="", max_length=120)
-    enabled: bool = True
+    key: str = Field(
+        min_length=1, max_length=64, description="库的短标识（如 main / work），**唯一**，后续路径里用它"
+    )
+    name: str = Field(default="", max_length=120, description="库的显示名（留空则用 key）")
+    enabled: bool = Field(default=True, description="是否纳入同步与搜索")
 
 class NoteCreate(BaseModel):
-    lib_id: str
-    title: str = Field(default="", max_length=200)
-    rel_path: str = Field(min_length=1, max_length=512)
-    content: str = ""
+    lib_id: str = Field(description="所属库的 id")
+    title: str = Field(default="", max_length=200, description="笔记标题")
+    rel_path: str = Field(
+        min_length=1, max_length=512, description="库内相对路径（如 课程/高数.md）—— 与库共同决定唯一性"
+    )
+    content: str = Field(default="", description="正文。⚠️ **经本机桥写入磁盘**，服务器库里只存索引")
 
 
 class NoteUpdate(BaseModel):
-    title: str | None = None
-    content: str | None = None
+    title: str | None = Field(default=None, description="改标题")
+    content: str | None = Field(default=None, description="改正文（经本机桥落盘）")
 
 class TreeNode(BaseModel):
     id: str

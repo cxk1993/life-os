@@ -30,11 +30,13 @@ UserDep = User
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
+    """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
 
@@ -78,6 +80,7 @@ def sync_all(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
+    """**全库**增量同步（索引入库；正文仍留在本机磁盘）。"""
     return NotesService(db).sync_all()
 
 
@@ -89,6 +92,11 @@ def search(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """全文检索笔记（`q` 必填）。
+
+    命中项带 `score`（相关度）与 `highlight`（命中文段）；
+    **highlight 需要本机桥在线**，否则只返回索引信息。
+    """
     return NotesService(db).search(q=q, lib_id=lib_id, limit=limit)
 
 
@@ -98,6 +106,10 @@ def get_note(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读一篇笔记的**全文**。
+
+    ⚠️ 正文**不在服务器库** —— 经**本机桥按需拉取**，桥不在线会失败（索引信息仍可读）。
+    """
     return NotesService(db).get_note(note_id)
 
 @router.get("/attachment")

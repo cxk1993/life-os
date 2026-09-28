@@ -142,13 +142,15 @@ class WebEntryListOut(BaseModel):
 
 
 class WebEntryCreate(BaseModel):
-    slug: str = Field(description="人类可读 id，如 example-portal")
-    title: str = Field(max_length=120)
-    url: str = Field(description="http / https")
-    icon: str | None = Field(default=None, max_length=40)
-    order: int = 0
-    enabled: bool = True
-    kind: str = "web"
+    slug: str = Field(
+        description="人类可读 id，如 example-portal。**建议唯一** —— 它会出现在 URL 里"
+    )
+    title: str = Field(max_length=120, description="入口显示名（≤120 字）")
+    url: str = Field(description="要打开的网页地址，http / https")
+    icon: str | None = Field(default=None, max_length=40, description="图标（可选）")
+    order: int = Field(default=0, description="排序权重（越小越靠前）")
+    enabled: bool = Field(default=True, description="是否启用")
+    kind: str = Field(default="web", description="入口类型：web=普通网页 · capability=能力条目")
     endpoint: str | None = None
     auth_ref: str | None = Field(default=None, description="'none' 或 'pat:env:VAR'")
     capabilities: list[str] = []
@@ -158,12 +160,12 @@ class WebEntryCreate(BaseModel):
 class WebEntryUpdate(BaseModel):
     """全部可选：只改传了的字段（None 表示"不改"，不是"清空"）。"""
 
-    title: str | None = Field(default=None, max_length=120)
-    url: str | None = None
-    icon: str | None = Field(default=None, max_length=40)
-    order: int | None = None
-    enabled: bool | None = None
-    kind: str | None = None
+    title: str | None = Field(default=None, max_length=120, description="改显示名")
+    url: str | None = Field(default=None, description="改网页地址（http/https）")
+    icon: str | None = Field(default=None, max_length=40, description="改图标")
+    order: int | None = Field(default=None, description="改排序权重")
+    enabled: bool | None = Field(default=None, description="启用 / 停用")
+    kind: str | None = Field(default=None, description="改入口类型：web | capability")
     endpoint: str | None = None
     auth_ref: str | None = None
     capabilities: list[str] | None = None

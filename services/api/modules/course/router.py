@@ -42,11 +42,13 @@ _SH_TZ = ZoneInfo("Asia/Shanghai")
 @router.get("/health")
 def health() -> dict[str, bool]:
     """每个插件都必须有 health —— 内核据此判断「该能力是否可用」。"""
+    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
+    """模块清单（前端 / AI 发现能力用）。"""
     """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
@@ -58,6 +60,7 @@ def list_items(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
+    """列出课程（可按 `weekday` 0=周日…6=周六 过滤）。"""
     return CourseService(db).list_items(weekday=weekday, enabled_only=enabled_only)
 
 
@@ -114,6 +117,10 @@ def week_grid(
             raise ValidationError(f"date 需为 YYYY-MM-DD：{date}") from exc
     else:
         day = datetime.now(_SH_TZ).date()
+    """一周课表网格（**周视图的数据源**）。
+
+    `day` 为该周任意一天；`term_start` 省略则用系统里设置的开学日。
+    """
     return CourseService(db).week_grid(day=day, term_start=term_start)
 
 
@@ -146,6 +153,10 @@ def post_due_tick(
     """手动触发一轮「上课前提醒」扫描（验收/排障用）。"""
     from .remind_scheduler import run_course_tick
 
+    """手动跑一轮「快到上课时间」扫描并推送提醒（验收 / 排障用）。
+
+    定时推送默认**上课前 30 分钟**（COURSE_REMIND_ENABLED 控制开关）。
+    """
     return {"ok": True, "count": run_course_tick(db)}
 
 

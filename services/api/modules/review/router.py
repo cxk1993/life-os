@@ -48,11 +48,13 @@ def health(
     db: DbDep = Depends(get_db),
 ) -> HealthOut:
     """探活：透传 Work-Review GET /health（mock 返回内置版本）。不强制鉴权，便于运维。"""
+    """上游（Work-Review）连通性自检：模式 / 路径 / 桥是否在线。"""
     return ReviewService(db).health()
 
 
 @router.get("/manifest")
 def manifest() -> dict:
+    """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
 
@@ -73,6 +75,7 @@ def list_days(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> DaysOut:
+    """按日期区间分页列日报（`frm`/`to` 是 YYYY-MM-DD 的**日历日**）。"""
     return ReviewService(db).list_days(frm=frm, to=to, page=page, size=size)
 
 
@@ -82,6 +85,7 @@ def get_day(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> DayDetail:
+    """读某一天复盘明细（分类 / 应用耗时等）。"""
     return ReviewService(db).get_day(date)
 
 

@@ -42,19 +42,28 @@ class ItemOut(BaseModel):
 
 
 class ItemCreate(BaseModel):
-    type: str = Field(default="link")
-    label: str = Field(min_length=1, max_length=40)
-    icon: str = Field(default="", max_length=80)
-    abbr: str = Field(default="", max_length=4)
-    href: str = Field(default="", max_length=500)
-    target: str = Field(default="_blank", max_length=10)
-    body: str = Field(default="", max_length=2000)
-    node_ref: str = Field(default="", max_length=300)
-    description: str = Field(default="", max_length=120)
-    group: str = Field(default="", max_length=40)
-    order: int = 0
-    enabled: bool = True
-    pinned: bool = False
+    type: str = Field(
+        default="link",
+        description="项的类型：link=外链 · note=笔记 · announcement=公告 · friend-link=友情链接",
+    )
+    label: str = Field(min_length=1, max_length=40, description="侧栏显示的文字（≤40 字）")
+    icon: str = Field(default="", max_length=80, description="图标（名或 URL，≤80 字）")
+    abbr: str = Field(default="", max_length=4, description="图标下方的缩写小字（≤4 字）")
+    href: str = Field(
+        default="", max_length=500,
+        description="跳转地址。**必须是绝对 http(s) URL**（白名单，拒 // 与非 http(s) 前缀）；仅 link / friend-link 必填",
+    )
+    target: str = Field(default="_blank", max_length=10, description="打开方式：_blank=新标签页 · _self=当前页")
+    body: str = Field(
+        default="", max_length=2000,
+        description="⚠️ **本字段一律不收** —— 正文请改用 `node_ref` 指向笔记/日记节点",
+    )
+    node_ref: str = Field(default="", max_length=300, description="正文入口：指向 notes/diary 的节点引用")
+    description: str = Field(default="", max_length=120, description="一句话说明（鼠标悬停/无障碍用）")
+    group: str = Field(default="", max_length=40, description="分组名（同组项在侧栏里聚在一起）")
+    order: int = Field(default=0, description="排序权重（越小越靠前）")
+    enabled: bool = Field(default=True, description="是否启用")
+    pinned: bool = Field(default=False, description="是否置顶（置顶项排在分组之前）")
 
     @field_validator("type")
     @classmethod
@@ -84,18 +93,20 @@ class ItemCreate(BaseModel):
 
 
 class ItemUpdate(BaseModel):
-    label: str | None = Field(default=None, min_length=1, max_length=40)
-    icon: str | None = None
-    abbr: str | None = None
-    href: str | None = None
-    target: str | None = None
-    body: str | None = None
-    node_ref: str | None = None
-    description: str | None = None
-    group: str | None = None
-    order: int | None = None
-    enabled: bool | None = None
-    pinned: bool | None = None
+    label: str | None = Field(default=None, min_length=1, max_length=40, description="改显示文字")
+    icon: str | None = Field(default=None, description="改图标")
+    abbr: str | None = Field(default=None, description="改缩写小字")
+    href: str | None = Field(
+        default=None, description="改跳转地址；仍必须是**绝对 http(s) URL**"
+    )
+    target: str | None = Field(default=None, description="改打开方式")
+    body: str | None = Field(default=None, description="⚠️ 不收（用 node_ref）")
+    node_ref: str | None = Field(default=None, description="改正文入口")
+    description: str | None = Field(default=None, description="改说明")
+    group: str | None = Field(default=None, description="改分组")
+    order: int | None = Field(default=None, description="改排序权重")
+    enabled: bool | None = Field(default=None, description="启用 / 停用")
+    pinned: bool | None = Field(default=None, description="置顶 / 取消置顶")
 
     @field_validator("href")
     @classmethod

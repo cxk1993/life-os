@@ -47,11 +47,13 @@ UserDep = User
 @router.get("/health")
 def health() -> dict[str, bool]:
     """每个插件都必须有 health —— 内核据此判断"该能力是否可用"。"""
+    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
+    """模块清单（前端 / AI 发现能力用）。"""
     """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
@@ -113,6 +115,8 @@ def touch_entry(
     _user: UserDep = Depends(get_current_user),
 ) -> TouchOut:
     """记一次「打开」。v0.1 只回时间戳（端点先在，便于以后加使用统计）。"""
+    """记录「最近访问」时间（前端打开该入口时调，驱动"最近用过"排序）。
+    """
     return TouchOut(**WebEntryService(db).touch(entry_id))
 
 @router.get("/entries/{entry_id}/frame-url", response_model=FrameUrlOut)
@@ -126,5 +130,9 @@ def frame_url(
     ★ 条目表永不明文凭据：auth_ref 形如 "pat:env:PI_TOKEN"，运行时从 os.environ 取。
     ★ 解析失败（env 变量缺失）→ 422 + 错误详情，不吞异常。
     ★ 无 auth_ref 或 "none" → 直接返回原 url。
+    """
+    """取**可嵌 iframe** 的 URL。
+
+    对方站点若禁嵌（X-Frame-Options / CSP），会退回外链地址 —— 返回值里的 `embeddable` 告知能否内嵌。
     """
     return WebEntryService(db).frame_url(entry_id)

@@ -42,11 +42,13 @@ UserDep = User
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
+    """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
 
@@ -79,6 +81,12 @@ def create_record(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """记一条健康记录（症状 / 用药 / 复诊 / 体检）。
+
+    ⚠️ `kind` 只认四个值，乱填直接 422；`occurred_at` 必须带时区；
+    ⚠️ `followup_due` 是**日历日**（YYYY-MM-DD），不是时刻。
+    ⚠️ `followup_needed=true` 会**经事件总线自动联动待办**。
+    """
     return HealthService(db).create(body)
 
 
@@ -111,6 +119,7 @@ def request_followup(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
     """手动再触发跟进事件（只 publish，不 import todo）。"""
+    """为一条已有记录**补建跟进待办**（记录当时没勾 followup，事后想补就用它）。"""
     return HealthService(db).request_followup(record_id)
 
 
@@ -123,6 +132,7 @@ def post_reconcile_followups(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
     """广播期望态：所有 followup_needed 记录重发 care.requested（消费方幂等收敛）。"""
+    """核对「应有跟进」与「已有待办」的差集并补齐（**幂等**，可反复跑）。"""
     return reconcile_followups(db)
 
 

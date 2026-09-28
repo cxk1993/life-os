@@ -53,13 +53,19 @@ class FinanceEntryCreate(BaseModel):
 class FinanceEntryUpdate(BaseModel):
     """部分更新：字段省略则不动；金额同样二选一。"""
 
-    direction: Literal["expense", "income"] | None = None
-    amount_cents: int | None = Field(default=None, ge=1)
-    amount: str | None = Field(default=None, max_length=32)
-    category: str | None = Field(default=None, max_length=64)
-    account: str | None = Field(default=None, max_length=64)
-    occurred_at: datetime | None = None
-    note: str | None = Field(default=None, max_length=2000)
+    direction: Literal["expense", "income"] | None = Field(
+        default=None, description="expense=支出 · income=收入"
+    )
+    amount_cents: int | None = Field(
+        default=None, ge=1, description="金额，**单位是分**（1 元 = 100 分）；与 `amount` 二选一，都填以它为准"
+    )
+    amount: str | None = Field(
+        default=None, max_length=32, description="Decimal 字符串金额（如 12.34）；与 `amount_cents` 二选一"
+    )
+    category: str | None = Field(default=None, max_length=64, description="改分类")
+    account: str | None = Field(default=None, max_length=64, description="改账户")
+    occurred_at: datetime | None = Field(default=None, description="改发生时间（必须带时区）")
+    note: str | None = Field(default=None, max_length=2000, description="改备注")
 
 
 class CategoryTotal(BaseModel):
