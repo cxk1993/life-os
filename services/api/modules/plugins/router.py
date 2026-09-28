@@ -42,17 +42,20 @@ def _registry(request: Request) -> Any:
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件子系统健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("")
 def list_plugins(_user: User = Depends(get_current_user)) -> dict[str, Any]:  # noqa: B008
     plugins = MGR.list_plugins()
+    """列出所有插件（含内核内置 / 第三方），带 `count`。"""
     return {"plugins": plugins, "count": len(plugins)}
 
 
 @router.get("/{plugin_id}")
 def get_plugin(plugin_id: str, _user: User = Depends(get_current_user)) -> dict[str, Any]:  # noqa: B008
+    """读单个插件的完整清单与运行态（启用状态 / 权限 / 设置 schema）。"""
     return MGR.get_plugin(plugin_id)
 
 
@@ -89,6 +92,7 @@ def install_plugin(
     plugin_id = body.get("id")
     if not plugin_id:
         raise ValidationError("install 需要 body: {\"id\": \"<插件id>\"}")
+    """安装插件（`plugin_id` 取自上传包解析出的标识）。⚠️ 安装 ≠ 启用。"""
     return MGR.install(plugin_id, _registry(request))
 
 
@@ -98,6 +102,7 @@ def uninstall_plugin(
     request: Request,
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
+    """卸载插件（**先停用再卸载**；插件数据保留，不会被删）。"""
     return MGR.uninstall(plugin_id, _registry(request))
 
 
@@ -105,6 +110,7 @@ def uninstall_plugin(
 def get_settings(
     plugin_id: str, _user: User = Depends(get_current_user)
 ) -> dict[str, Any]:
+    """读某个插件的设置（结构按它的 `settings.schema.json`）。"""
     return {"plugin_id": plugin_id, "settings": MGR.get_settings(plugin_id)}
 
 
