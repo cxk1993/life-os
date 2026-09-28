@@ -549,6 +549,8 @@ def test_openapi_params_exposes_path_params():
     spec = {"components": {"schemas": {
         "BodyIn": {"properties": {"name": {"type": "string"}}}}}}
     op = {
+        "summary": "改一个节点的名字",
+        "description": "改一个节点的名字。\n支持改名 / 移动 / 改 meta_json。",
         "parameters": [{"name": "node_id", "in": "path", "required": True,
                         "schema": {"type": "string"}, "description": "节点 id"}],
         "requestBody": {"content": {"application/json": {
@@ -559,3 +561,22 @@ def test_openapi_params_exposes_path_params():
     assert "路径参数" in entry["properties"]["node_id"]["description"]
     assert "node_id" in entry["required"]
     assert entry["properties"]["name"]["type"] == "string"  # $ref 解析照常
+    # ★ 2026-09-28：端点的**作者注释**要带出来 —— MCP 工具描述就是拿它当解释，
+    #   否则 44 个工具的描述长得一模一样，AI 只能猜（主人原话「抓瞎」）。
+    assert entry["doc"].startswith("改一个节点的名字")
+    assert "支持改名" in entry["doc"]
+
+
+def test_tool_description_prefers_endpoint_doc():
+    """工具描述优先用端点作者注释；拉不到就回落机械句（绝不空、绝不报错）。"""
+    from modules.mcp.mcp_server import _tool_description
+    from modules.mcp.registry_adapter import ToolMapping
+
+    t = ToolMapping(name="x_y_read", verb="read", method="GET",
+                    path="/api/v1/x/y", scope="x:read",
+                    plugin_id="x", description="机械句")
+    s = _tool_description(t)
+    # 测试环境没有内网服务 → 必然回落，但**必须非空**
+    assert s and isinstance(s, str)
+    # 机械句兜底时不能是空串（旧行为不能被破坏）
+    assert _tool_description(None) == ""

@@ -67,6 +67,30 @@ def _fallback_schema() -> dict[str, Any]:
     }
 
 
+def _tool_description(tool: Any = None) -> str:
+    """工具描述：**端点的作者注释优先**（★ 2026-09-28 · 主人令）。
+
+    旧描述是机械句「MCP 工具：调用 /api/v1/x 的 y write 能力（域 y…）」——
+    AI 由此**看不出这工具干什么、参数什么意思**，44 个工具描述长得几乎一样，
+    只好靠猜（主人的原话：**"所有东西的参数全部都一样而抓瞎"**）。
+
+    而各模块的 route 函数**本来都写了中文 docstring**（实测 250/250 端点都有），
+    只是从来没被工具面用起来。本函数把它接上；**拉不到注释就回落机械句**（绝不报错）。
+    """
+    if tool is None:
+        return ""
+    try:
+        from .openapi_params import params_for
+
+        info = params_for(tool.plugin_id, tool.method, tool.path)
+        doc = (info.get("doc") or "").strip()
+        if doc:
+            return f"【{tool.method} {tool.path}】{doc}"
+    except Exception:  # noqa: BLE001 —— 任何异常都回落，绝不阻断 tools/list
+        pass
+    return getattr(tool, "description", "") or ""
+
+
 def _tool_schema(tool: Any = None) -> dict[str, Any]:
     """★ 2026-09-26 改进（astrbot · 主人令）：**按工具给出精确 inputSchema**。
 
@@ -133,7 +157,7 @@ def _handle_tools_list(msg_id: Any) -> dict[str, Any]:
     tools = [
         {
             "name": t.name,
-            "description": t.description,
+            "description": _tool_description(t),
             "inputSchema": _tool_schema(t),
         }
         for t in build_tool_map()

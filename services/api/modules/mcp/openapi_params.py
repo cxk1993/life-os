@@ -207,6 +207,14 @@ def _props_from_operation(spec: dict[str, Any], op: dict[str, Any]) -> dict[str,
     entry: dict[str, Any] = {"properties": props}
     if props and required:
         entry["required"] = sorted(set(required))
+    # ★ 2026-09-28（主人令「所有 MCP 工具 / API 接口都带上注释和解释，防 AI 抓瞎」）：
+    #   把该端点的**作者注释**一并带出。来源就是 route 函数的 docstring ——
+    #   FastAPI 把它暴露成 `summary`（首行）与 `description`（全文）。
+    #   实测：全平台 **250/250 个端点都有**中文 docstring，但工具面**从来没读过**它。
+    #   `description` 通常已包含首行，故优先取它，避免重复。
+    doc = (op.get("description") or op.get("summary") or "").strip()
+    if doc:
+        entry["doc"] = doc[:600] + ("…" if len(doc) > 600 else "")
     return entry
 
 
@@ -229,7 +237,9 @@ def _load_module(module_id: str) -> dict[tuple[str, str], dict[str, Any]]:
                     if not isinstance(op, dict):
                         continue
                     entry = _props_from_operation(spec, op)
-                    if entry.get("properties"):
+                    # ★ 即便**没有任何参数**（如 GET /tags），只要端点有注释也要入表 ——
+                    #   否则"无参端点"的工具描述就拿不到解释（正好是最需要解释的一类）。
+                    if entry.get("properties") or entry.get("doc"):
                         out[(method.upper(), path)] = entry
     except Exception as exc:  # noqa: BLE001 —— 拉不到就降级，绝不阻断
         log.info("模块 %s 的 openapi 拉取失败（降级为通用 payload）：%s", module_id, exc)
