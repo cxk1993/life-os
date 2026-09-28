@@ -68,6 +68,7 @@ describe("StudyApp（学业页）", () => {
 
   beforeEach(() => {
     serverDone = false;
+    vi.mocked(todoApi.toggle).mockClear();
     vi.mocked(todoApi.list).mockImplementation(async () => ({
       items: [{ ...sample, done: serverDone, done_at: serverDone ? "2026-09-28T16:00:00+08:00" : null }],
       next_cursor: null,
@@ -106,6 +107,46 @@ describe("StudyApp（学业页）", () => {
         "list",
       ]);
       // 修前：这个 key 下**根本取不到数据**（学业页当年用的是另一个根），断言必红。
+      expect(cached?.items?.[0]?.done).toBe(true);
+    });
+  });
+
+
+  it("★ 缓存里存在**非列表形状**的 todo 域缓存时，点勾仍必须发出请求", async () => {
+    // ── 事故复现（2026-09-28，主人报"点勾没反应"的真正根因）──────────
+    // ["todo"] 命名空间下不只住列表：
+    //   · ["todo","tags"]           → TodoTag[]（**数组**）
+    //   · ["todo","summary"]        → { today, overdue, week_done }（**没有 items**）
+    // 而 ItemRow 的乐观更新曾直接 `old.items.map(...)` ⇒ 撞上就抛 TypeError ✗
+    // 更要命的是 onMutate **先于** mutationFn 执行 ⇒ 请求**根本没发出去**
+    // ⇒ 服务端只见 GET（onSettled 的刷新）、不见 POST ⇒ 界面纹丝不动。
+    // 修前：本用例必红（toggle 从未被调用）。
+    const client = makeClient();
+    client.setQueryData(["todo", "tags"], [{ tag: "学业", todo: 1, done: 0, total: 1 }]);
+    client.setQueryData(["todo", "summary"], { today: 0, overdue: 0, week_done: 0 });
+    client.setQueryData(["todo", "today-summary"], { title: "今日日程", items: [], count: 0 });
+
+    render(
+      <QueryClientProvider client={client}>
+        <StudyApp />
+      </QueryClientProvider>,
+    );
+    const box = await screen.findByRole("button", { name: "标记为完成" });
+    fireEvent.click(box);
+
+    // ① 请求必须真的发出去（修前这一步就断了）
+    await waitFor(() => expect(vi.mocked(todoApi.toggle)).toHaveBeenCalledWith("t1"));
+    // ② 非列表缓存不能被破坏
+    expect(client.getQueryData(["todo", "tags"])).toEqual([
+      { tag: "学业", todo: 1, done: 0, total: 1 },
+    ]);
+    // ③ 列表缓存要真的翻转
+    await waitFor(() => {
+      const cached = client.getQueryData<{ items: TodoItem[] }>([
+        TODO_KEY_ROOT,
+        "study",
+        "list",
+      ]);
       expect(cached?.items?.[0]?.done).toBe(true);
     });
   });

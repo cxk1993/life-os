@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { todoApi, type TodoItem, type Priority } from "./api";
+import { updateTodoListCaches } from "./cache";
 import { TODO_KEY_ROOT } from "./keys";
 
 const PRIORITY_LABEL: Record<Priority, string> = {
@@ -43,21 +44,15 @@ export default function ItemRow({ item }: Props) {
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: [TODO_KEY_ROOT] });
       const prev = qc.getQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] });
-      qc.setQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] }, (old) =>
-        old
-          ? {
-              ...old,
-              items: old.items.map((i) =>
-                i.id === item.id
-                  ? {
-                      ...i,
-                      done: !i.done,
-                      done_at: !i.done ? new Date().toISOString() : null,
-                    }
-                  : i,
-              ),
-            }
-          : old,
+      // ★ 2026-09-28：改用**安全**写入 —— 只碰真正的列表缓存。
+      //   曾直接写 `old.items.map(...)` ⇒ 撞上 ["todo","tags"]（数组）或概览缓存就抛错，
+      //   而 onMutate 在 mutationFn **之前**跑 ⇒ 请求根本发不出去 ⇒ 点勾"没反应"。
+      updateTodoListCaches(qc, (items) =>
+        items.map((i) =>
+          i.id === item.id
+            ? { ...i, done: !i.done, done_at: !i.done ? new Date().toISOString() : null }
+            : i,
+        ),
       );
       return { prev };
     },
@@ -72,10 +67,8 @@ export default function ItemRow({ item }: Props) {
     onMutate: async (body) => {
       await qc.cancelQueries({ queryKey: [TODO_KEY_ROOT] });
       const prev = qc.getQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] });
-      qc.setQueriesData<{ items: TodoItem[] }>({ queryKey: [TODO_KEY_ROOT] }, (old) =>
-        old
-          ? { ...old, items: old.items.map((i) => (i.id === item.id ? { ...i, ...body } : i)) }
-          : old,
+      updateTodoListCaches(qc, (items) =>   // ★ 同上：安全写入
+        items.map((i) => (i.id === item.id ? { ...i, ...body } : i)),
       );
       return { prev };
     },

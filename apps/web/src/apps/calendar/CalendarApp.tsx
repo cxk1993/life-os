@@ -13,7 +13,7 @@ import { useCalendarEvents } from "./hooks/useCalendarEvents";
 import "./calendar.css";
 import { Inspector } from "./inspector/Inspector";
 import FullCalView from "./fullcal/FullCalView"; // V8 原型：FullCalendar 6.1.21 渲染层（自研网格保留可回退）
-import { useCalendarUI, SCALE_PRESETS, useToast } from "./state";
+import { useCalendarUI, SCALE_PRESETS, useToast, type ViewMode } from "./state";
 import { DAY_MS, formatSH, shMonday, shWallClock, shWallParts } from "./lib/time";
 
 /** 测量元素宽度（用于让网格列宽自适应容器）。 */
