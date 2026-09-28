@@ -106,7 +106,7 @@ def search(
 
 @router.get("/notes/{note_id}", response_model=NoteDetail)
 def get_note(
-    note_id: Annotated[str, FPath()],
+    note_id: Annotated[str, FPath(description="笔记 id —— 从搜索结果或目录树里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -145,7 +145,7 @@ def create_note(
 
 @router.put("/notes/{note_id}", response_model=NoteDetail)
 def update_note(
-    note_id: Annotated[str, FPath()],
+    note_id: Annotated[str, FPath(description="笔记 id —— 从搜索结果或目录树里取")],
     body: NoteUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -156,7 +156,7 @@ def update_note(
 
 @router.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_note(
-    note_id: Annotated[str, FPath()],
+    note_id: Annotated[str, FPath(description="笔记 id —— 从搜索结果或目录树里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:

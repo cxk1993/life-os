@@ -41,6 +41,7 @@ def list_items(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """列出侧栏项（`enabled_only=true` 只看启用的项）；返回含 `count`。"""
     items = SidebarService(db).list_items(enabled_only)
     return {"items": items, "count": len(items)}
 
@@ -61,7 +62,7 @@ def create_item(
 
 @router.get("/items/{item_id}", response_model=ItemOut)
 def get_item(
-    item_id: Annotated[str, FPath()],
+    item_id: Annotated[str, FPath(description="侧栏项 id —— 从 GET /items 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -71,7 +72,7 @@ def get_item(
 
 @router.patch("/items/{item_id}", response_model=ItemOut)
 def update_item(
-    item_id: Annotated[str, FPath()],
+    item_id: Annotated[str, FPath(description="侧栏项 id —— 从 GET /items 的结果里取")],
     body: ItemUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -82,7 +83,7 @@ def update_item(
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(
-    item_id: Annotated[str, FPath()],
+    item_id: Annotated[str, FPath(description="侧栏项 id —— 从 GET /items 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:

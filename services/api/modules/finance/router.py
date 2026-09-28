@@ -65,8 +65,8 @@ def list_entries(
     direction: str | None = Query(None, description="expense | income"),
     date_from: str | None = Query(None, description="发生时间下界，带时区 ISO8601"),
     date_to: str | None = Query(None, description="发生时间上界，带时区 ISO8601"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200, description="返回条数上限（1–200，默认 50）"),
+    offset: int = Query(0, ge=0, description="偏移量（从 0 起，用于翻页）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -116,6 +116,7 @@ def update_entry(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改一条流水（部分更新；金额同样二选一）。"""
     return FinanceService(db).update(entry_id, body)
 
 
@@ -125,6 +126,7 @@ def delete_entry(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一条流水（不可恢复）。"""
     FinanceService(db).delete(entry_id)
 
 
@@ -148,8 +150,8 @@ def summary(
 def list_finance_snapshots(
     date_from: str | None = Query(None, description="快照日下界 YYYY-MM-DD"),
     date_to: str | None = Query(None, description="快照日上界 YYYY-MM-DD"),
-    limit: int = Query(30, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(30, ge=1, le=200, description="返回条数上限（1–200，默认 30）"),
+    offset: int = Query(0, ge=0, description="偏移量（从 0 起）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:

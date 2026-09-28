@@ -151,10 +151,12 @@ class WebEntryCreate(BaseModel):
     order: int = Field(default=0, description="排序权重（越小越靠前）")
     enabled: bool = Field(default=True, description="是否启用")
     kind: str = Field(default="web", description="入口类型：web=普通网页 · capability=能力条目")
-    endpoint: str | None = None
-    auth_ref: str | None = Field(default=None, description="'none' 或 'pat:env:VAR'")
-    capabilities: list[str] = []
-    note: str | None = Field(default=None, max_length=1000)
+    endpoint: str | None = Field(default=None, description="接口地址（若这个入口其实是 API/MCP 能力）")
+    auth_ref: str | None = Field(
+        default=None, description="凭据引用：'none' 或 'pat:env:VAR' —— **只存引用名，不存明文**"
+    )
+    capabilities: list[str] = Field(default_factory=list, description="该入口声明提供的能力清单")
+    note: str | None = Field(default=None, max_length=1000, description="备注（人话说明）")
 
 
 class WebEntryUpdate(BaseModel):
@@ -166,10 +168,12 @@ class WebEntryUpdate(BaseModel):
     order: int | None = Field(default=None, description="改排序权重")
     enabled: bool | None = Field(default=None, description="启用 / 停用")
     kind: str | None = Field(default=None, description="改入口类型：web | capability")
-    endpoint: str | None = None
-    auth_ref: str | None = None
-    capabilities: list[str] | None = None
-    note: str | None = Field(default=None, max_length=1000)
+    endpoint: str | None = Field(default=None, description="改接口地址")
+    auth_ref: str | None = Field(default=None, description="改凭据引用（**只存引用名，不存明文**）")
+    capabilities: list[str] | None = Field(
+        default=None, description="**整组替换**能力清单（不是追加）——要保留原来的请连原来的一起传"
+    )
+    note: str | None = Field(default=None, max_length=1000, description="改备注")
 
 
 class TouchOut(BaseModel):

@@ -59,8 +59,8 @@ class ReviewNoteOut(BaseModel):
 
 
 class ReviewNoteCreate(BaseModel):
-    date: DateType
-    content_md: str = Field(min_length=1, max_length=20000)
+    date: DateType = Field(description="批注归属的日期（YYYY-MM-DD 日历日）")
+    content_md: str = Field(min_length=1, max_length=20000, description="批注正文（Markdown）")
 
 
 class DayListItem(BaseModel):

@@ -118,16 +118,21 @@ def _level() -> str:
 
 
 class ChatIn(BaseModel):
-    message: str = Field(min_length=1, max_length=8000)
+    message: str = Field(
+        min_length=1, max_length=8000, description="发给 Pi 的消息（纯文本，≤8000 字）"
+    )
     # ★ 第④刀：session 名 = 会话锁（同名同进程，异名异进程）
-    session_id: str = Field(default="default", max_length=64)
+    session_id: str = Field(
+        default="default", max_length=64,
+        description="会话名（一个 session = 一个 Pi 子进程）；不传用 default，可锁定/切换",
+    )
 
 
 class SessionIn(BaseModel):
     """会话操作（★ 走 POST 而非路径参数 —— MCP 桥的路径是固定的）。"""
 
     action: str = Field(description="new | lock | release | stats")
-    session: str = Field(default="default", max_length=64)
+    session: str = Field(default="default", max_length=64, description="目标会话名")
 
 
 class ChatOut(BaseModel):
@@ -238,9 +243,11 @@ def chat(body: ChatIn) -> ChatOut:
 
 @router.get("/sessions/history")
 def get_session_history(
-    session: str | None = None,
-    limit: int = 200,
-    include_tools: bool = False,
+    session: str | None = Field(default=None, description="会话名（不传=默认会话）"),
+    limit: int = Field(default=200, description="最多取多少条历史（默认 200）"),
+    include_tools: bool = Field(
+        default=False, description="是否**含 toolResult 条目**（默认否 —— 前端只展示对话流）"
+    ),
 ) -> dict[str, Any]:
     """★ TX-FRAME-01 补刀（2026-09-27）：**读取会话历史消息**。
 

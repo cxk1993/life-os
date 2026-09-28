@@ -23,8 +23,8 @@ _SESSIONS: dict[str, ChatSession] = {}
 
 
 class MessageIn(BaseModel):
-    text: str = Field(min_length=1, max_length=4000)
-    session_id: str = Field(default="default", max_length=64)
+    text: str = Field(min_length=1, max_length=4000, description="要发给 AI 的这句话（≤4000 字）")
+    session_id: str = Field(default="default", max_length=64, description="会话名（不同会话互不串上下文）")
 
 
 @router.get("/health")

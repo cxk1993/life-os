@@ -124,4 +124,4 @@ class ListOut(BaseModel):
 
 
 class ReorderIn(BaseModel):
-    ids: list[str]
+    ids: list[str] = Field(description="侧栏项的**完整新顺序**（id 列表）—— 是整体重排，不是只挪一个")

@@ -73,7 +73,7 @@ def create_habit(
 
 @router.get("/{habit_id}", response_model=HabitOut)
 def get_habit(
-    habit_id: Annotated[str, FPath()],
+    habit_id: Annotated[str, FPath(description="习惯 id —— 从 GET /habits 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -83,7 +83,7 @@ def get_habit(
 
 @router.patch("/{habit_id}", response_model=HabitOut)
 def update_habit(
-    habit_id: Annotated[str, FPath()],
+    habit_id: Annotated[str, FPath(description="习惯 id —— 从 GET /habits 的结果里取")],
     body: HabitUpdate,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -97,7 +97,7 @@ def update_habit(
 
 @router.delete("/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_habit(
-    habit_id: Annotated[str, FPath()],
+    habit_id: Annotated[str, FPath(description="习惯 id —— 从 GET /habits 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
@@ -107,7 +107,7 @@ def delete_habit(
 
 @router.post("/{habit_id}/checkin", response_model=HabitOut)
 def checkin(
-    habit_id: Annotated[str, FPath()],
+    habit_id: Annotated[str, FPath(description="习惯 id —— 从 GET /habits 的结果里取")],
     body: CheckIn,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -121,7 +121,7 @@ def checkin(
 
 @router.delete("/{habit_id}/checkin/{day}", response_model=HabitOut)
 def uncheck(
-    habit_id: Annotated[str, FPath()],
+    habit_id: Annotated[str, FPath(description="习惯 id —— 从 GET /habits 的结果里取")],
     day: Annotated[DateType, FPath(description="YYYY-MM-DD 本地日历日")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -132,7 +132,7 @@ def uncheck(
 
 @router.get("/{habit_id}/logs", response_model=list[LogOut])
 def list_logs(
-    habit_id: Annotated[str, FPath()],
+    habit_id: Annotated[str, FPath(description="习惯 id —— 从 GET /habits 的结果里取")],
     frm: DateType | None = Query(
         None, alias="from", description="起始日（YYYY-MM-DD，本地日历日）；不传=不限"
     ),

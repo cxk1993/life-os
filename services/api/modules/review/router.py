@@ -69,7 +69,7 @@ def source(
 @router.get("/days", response_model=DaysOut)
 def list_days(
     frm: DateType | None = Query(None, alias="from", description="起始日（YYYY-MM-DD 日历日）"),
-    to: DateType | None = Query(None),
+    to: DateType | None = Query(None, description="结束日（YYYY-MM-DD 日历日）"),
     page: int = Query(1, ge=1, description="页码（从 1 起）"),
     size: int = Query(20, ge=1, le=500, description="每页条数（1–500）"),
     db: DbDep = Depends(get_db),
@@ -120,7 +120,7 @@ def today_summary(
 @router.get("/trend", response_model=TrendOut)
 def get_trend(
     metric: str = Query("total", description="total | category | app"),
-    days: int = Query(7, ge=1, le=90),
+    days: int = Query(7, ge=1, le=90, description="回看多少天（1–90，默认 7）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> TrendOut:
@@ -131,7 +131,7 @@ def get_trend(
 @router.get("/compare", response_model=CompareOut)
 def get_compare(
     date: DateType = Query(...),
-    against: DateType = Query(...),
+    against: DateType = Query(..., description="对比日（YYYY-MM-DD）—— 拿它与 date 比"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> CompareOut:
