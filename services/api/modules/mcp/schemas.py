@@ -19,12 +19,18 @@ _SCOPE_HINT = "scope 形如 域:动词（首段为能力域、末段为动词，
 class PatCreateIn(BaseModel):
     """POST /pats 请求体。"""
 
-    name: str = Field(min_length=1, max_length=64)
+    name: str = Field(
+        min_length=1, max_length=64, description="给这枚 PAT 起个人话名字，便于日后在列表里认出它（如「云昔 (astrbot)」）"
+    )
     # 空列表 = 不给任何 scope（创建了也调不了工具，安全默认）。
     # ★ 2026-09-27（云昔）：32 → 1024。原上限是"防灌爆"的形态守卫，但平台现有
     #   30 个活 scope，再上一个模块就顶格 ——「发一枚全权限令牌」会变成不可能
     #   （实测 32+1 直接 422）。放宽到 1024；真正该收紧的是 scope 语义，不是数字。
-    scopes: list[str] = Field(default_factory=list, max_length=1024)
+    scopes: list[str] = Field(
+        default_factory=list,
+        max_length=1024,
+        description="能力清单，形如 域:动词（如 todo:read / docs:write / push:write）。**空列表 = 这枚令牌什么都调不了**（安全默认）",
+    )
 
     @field_validator("name")
     @classmethod
@@ -47,7 +53,10 @@ class PatCreateIn(BaseModel):
 class PatScopesPatch(BaseModel):
     """PATCH /pats/{id} 请求体：只允许改 scopes（收窄/扩大范围）。"""
 
-    scopes: list[str] = Field(max_length=1024)  # ★ 2026-09-27：32 → 1024（同上）
+    scopes: list[str] = Field(
+        max_length=1024,
+        description="**整组替换**该 PAT 的能力清单（不是追加）——要保留原 scope 请连原 scope 一起传",
+    )  # ★ 2026-09-27：32 → 1024（同上）
 
     @field_validator("scopes")
     @classmethod

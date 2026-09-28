@@ -74,7 +74,7 @@ def list_items(
     due_after: str | None = Query(None, description="截止时间下界，带时区 ISO8601"),
     tag: str | None = Query(None, description="按标签过滤"),
     source: str | None = Query(None, description="按来源文件路径过滤"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=200, description="返回条数上限（1–200，默认 50）"),
     cursor: str | None = Query(None, description="分页游标（opaque）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),

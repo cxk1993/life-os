@@ -45,18 +45,27 @@ class DocsNodeCreate(BaseModel):
 
     parent_id: str | None = Field(default=None, description="父节点 id；NULL = 根")
     kind: str = Field(description="folder | doc")
-    name: str = Field(max_length=200)
-    meta_json: dict[str, Any] | None = None
-    sort: int = 0
+    name: str = Field(
+        max_length=200, description="节点显示名（≤200 字）；同级可重名，但建议唯一"
+    )
+    meta_json: dict[str, Any] | None = Field(
+        default=None,
+        description='扩展属性（JSON 对象，如 {"diary_date":"2026-09-28"}）；内核不解释，归外壳模块用',
+    )
+    sort: int = Field(default=0, description="同层排序权重（越小越靠前，默认 0）")
 
 
 class DocsNodeUpdate(BaseModel):
     """改名 / 移动(parent_id) / 改 meta_json / 改 sort。"""
 
-    parent_id: str | None = None
-    name: str | None = Field(default=None, max_length=200)
-    meta_json: dict[str, Any] | None = None
-    sort: int | None = None
+    parent_id: str | None = Field(
+        default=None, description="移动到新的父节点；传 null = 移到根。不许移到自己或自己的子孙下（防环）"
+    )
+    name: str | None = Field(default=None, max_length=200, description="改名（不传=不改）")
+    meta_json: dict[str, Any] | None = Field(
+        default=None, description="**整体替换**扩展属性（不是合并）——要保留原属性请连原属性一起传"
+    )
+    sort: int | None = Field(default=None, description="同层排序权重")
 
 
 class DocsContentIn(BaseModel):

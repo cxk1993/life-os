@@ -147,7 +147,7 @@ def tools_debug(_user: UserDep = Depends(get_current_user)) -> list[ToolOut]:
 
 @router.get("/audit-logs", response_model=list[AuditOut])
 def audit_logs(
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=500, description="返回条数上限（1–500，默认 100）"),
     _user: UserDep = Depends(get_current_user),
 ) -> list[AuditOut]:
     """经 MCP 的操作流水（actor 以 mcp: 开头的 audit_log 行）。"""
@@ -199,7 +199,7 @@ def list_pats(
 
 @router.patch("/pats/{pat_id}", response_model=PatOut)
 def patch_pat(
-    pat_id: Annotated[str, FPath(min_length=1)],
+    pat_id: Annotated[str, FPath(min_length=1, description="PAT id（从 GET /pats 列表里取）")],
     body: PatScopesPatch,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -217,7 +217,7 @@ def patch_pat(
 
 @router.delete("/pats/{pat_id}")
 def revoke_pat(
-    pat_id: Annotated[str, FPath(min_length=1)],
+    pat_id: Annotated[str, FPath(min_length=1, description="PAT id（从 GET /pats 列表里取）")],
     db: DbDep = Depends(get_db),
     user: UserDep = Depends(get_current_user),
 ) -> Response:

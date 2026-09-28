@@ -73,6 +73,12 @@ def create_node(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """新建节点（folder 或 doc）。
+
+    - `kind`：`folder` 建文件夹 · `doc` 建文稿（文稿另用 PUT 写正文）
+    - `parent_id`：父节点 id，**null = 建在根**；父节点必须是 folder
+    - `meta_json`：留给外壳模块的扩展属性，内核不解释
+    """
     return DocsService(db).create(body)
 
 
@@ -109,7 +115,7 @@ def delete_node(
 
 @router.get("/trash", response_model=dict)
 def list_trash(
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=200, description="分页条数上限（1–200，默认 50）"),
     cursor: str | None = Query(None, description="分页游标（opaque）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -125,6 +131,7 @@ def restore_node(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """把回收站里的节点**恢复回原位置**（软删的反操作）。"""
     return DocsService(db).restore(node_id)
 
 
@@ -168,7 +175,7 @@ def save_content(
 @router.get("/nodes/{node_id}/revisions", response_model=dict)
 def list_revisions(
     node_id: Annotated[str, FPath(description="节点 id")],
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=200, description="分页条数上限（1–200，默认 50）"),
     cursor: str | None = Query(None, description="分页游标（opaque）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -185,6 +192,7 @@ def get_revision(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读**某一版历史的正文**（回退前先看这版长什么样）。"""
     return DocsService(db).get_revision(node_id, rev_id)
 
 
@@ -202,7 +210,7 @@ def restore_revision(
 @router.get("/search", response_model=dict)
 def search(
     q: str = Query(..., description="检索词（标题/正文，中文友好）"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=200, description="分页条数上限（1–200，默认 50）"),
     cursor: str | None = Query(None, description="分页游标（opaque）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
