@@ -20,4 +20,5 @@ router = APIRouter()
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件健康探针（恒 200）。"""
     return {"ok": True}

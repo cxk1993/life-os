@@ -49,13 +49,11 @@ UserDep = User
 @router.get("/health")
 def health() -> dict[str, bool]:
     """每个插件都必须有 health —— 内核据此判断"该能力是否可用"。"""
-    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
-    """模块清单（前端 / AI 发现能力用）。"""
     """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
@@ -166,7 +164,6 @@ def sync_finance_snapshots(
 
     对外签名与任务卡 T08 契约一致；实现走 MCP 读工具（v0.2 替换）。
     """
-    """**手动触发一次** BeeCount 只读快照同步（拉取外部账本镜像）。"""
     return sync_snapshot(db)
 
 
@@ -179,7 +176,6 @@ def get_beecount_source(
 
     **绝不返回 PAT/token 本身**，只返回 token_present 布尔。
     """
-    """BeeCount 数据源当前状态（配没配、连上没、上次同步时间）。"""
     return beecount_source(db)
 
 

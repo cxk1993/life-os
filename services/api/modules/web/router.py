@@ -47,13 +47,11 @@ UserDep = User
 @router.get("/health")
 def health() -> dict[str, bool]:
     """每个插件都必须有 health —— 内核据此判断"该能力是否可用"。"""
-    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
-    """模块清单（前端 / AI 发现能力用）。"""
     """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
@@ -64,6 +62,7 @@ def list_entries(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """列出网页工作台入口（带 total）。"""
     items, total = WebEntryService(db).list_entries(enabled=enabled)
     return {"items": items, "total": total}
 
@@ -76,6 +75,7 @@ def create_entry(
 ) -> dict[str, Any]:
     # 校验（url schema / auth_ref 形状 / kind 枚举）集中在 schema 的 normalize_*
     # 与 service，路由层不散写校验。
+    """登记一个网页入口（slug 建议唯一 —— 它会进 URL）。"""
     return WebEntryService(db).create(body)
 
 
@@ -85,6 +85,7 @@ def get_entry(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单个入口。"""
     svc = WebEntryService(db)
     return svc.dump(svc.get(entry_id))
 
@@ -96,6 +97,7 @@ def update_entry(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改入口（部分更新；只传要改的字段）。"""
     return WebEntryService(db).update(entry_id, body)
 
 
@@ -105,6 +107,7 @@ def delete_entry(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一个入口。"""
     WebEntryService(db).delete(entry_id)
 
 
@@ -115,8 +118,6 @@ def touch_entry(
     _user: UserDep = Depends(get_current_user),
 ) -> TouchOut:
     """记一次「打开」。v0.1 只回时间戳（端点先在，便于以后加使用统计）。"""
-    """记录「最近访问」时间（前端打开该入口时调，驱动"最近用过"排序）。
-    """
     return TouchOut(**WebEntryService(db).touch(entry_id))
 
 @router.get("/entries/{entry_id}/frame-url", response_model=FrameUrlOut)
@@ -130,9 +131,5 @@ def frame_url(
     ★ 条目表永不明文凭据：auth_ref 形如 "pat:env:PI_TOKEN"，运行时从 os.environ 取。
     ★ 解析失败（env 变量缺失）→ 422 + 错误详情，不吞异常。
     ★ 无 auth_ref 或 "none" → 直接返回原 url。
-    """
-    """取**可嵌 iframe** 的 URL。
-
-    对方站点若禁嵌（X-Frame-Options / CSP），会退回外链地址 —— 返回值里的 `embeddable` 告知能否内嵌。
     """
     return WebEntryService(db).frame_url(entry_id)

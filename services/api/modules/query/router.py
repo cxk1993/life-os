@@ -18,16 +18,19 @@ with _MANIFEST_PATH.open(encoding="utf-8") as _f:
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
+    """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
 
 @router.get("/presets")
 def presets() -> dict[str, Any]:
+    """列出内置查询预设（id + 标题），供前端做快捷入口。"""
     return {
         "items": [
             {"id": qid, "title": qid.replace("q_", "").replace("_", " ")}

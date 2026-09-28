@@ -119,7 +119,6 @@ def request_followup(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
     """手动再触发跟进事件（只 publish，不 import todo）。"""
-    """为一条已有记录**补建跟进待办**（记录当时没勾 followup，事后想补就用它）。"""
     return HealthService(db).request_followup(record_id)
 
 
@@ -132,7 +131,6 @@ def post_reconcile_followups(
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
     """广播期望态：所有 followup_needed 记录重发 care.requested（消费方幂等收敛）。"""
-    """核对「应有跟进」与「已有待办」的差集并补齐（**幂等**，可反复跑）。"""
     return reconcile_followups(db)
 
 

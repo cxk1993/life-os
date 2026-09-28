@@ -48,7 +48,6 @@ def health(
     db: DbDep = Depends(get_db),
 ) -> HealthOut:
     """探活：透传 Work-Review GET /health（mock 返回内置版本）。不强制鉴权，便于运维。"""
-    """上游（Work-Review）连通性自检：模式 / 路径 / 桥是否在线。"""
     return ReviewService(db).health()
 
 

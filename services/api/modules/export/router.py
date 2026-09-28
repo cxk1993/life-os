@@ -18,16 +18,19 @@ with _MANIFEST_PATH.open(encoding="utf-8") as _f:
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
+    """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
 
 @router.get("/profiles")
 def profiles() -> dict[str, Any]:
+    """列出可用的导出档案（profile）—— 每一项是一个「搬家包」模板。"""
     return {"items": [{"id": k, "title": v} for k, v in PROFILES.items()]}
 
 
@@ -36,4 +39,5 @@ def preview(
     profile: str,
     _user: Annotated[Any, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
+    """预览某个档案**会导出什么**（只报数量，不真导出）。"""
     return package_preview(profile, {"todo": 0, "calendar": 0, "docs": 0})

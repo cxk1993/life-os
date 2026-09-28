@@ -48,8 +48,8 @@ def health() -> dict[str, bool]:
 
 @router.get("")
 def list_plugins(_user: User = Depends(get_current_user)) -> dict[str, Any]:  # noqa: B008
-    plugins = MGR.list_plugins()
     """列出所有插件（含内核内置 / 第三方），带 `count`。"""
+    plugins = MGR.list_plugins()
     return {"plugins": plugins, "count": len(plugins)}
 
 
@@ -89,10 +89,10 @@ def install_plugin(
     body: dict[str, Any] = Body(...),
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
+    """安装插件（`plugin_id` 取自上传包解析出的标识）。⚠️ 安装 ≠ 启用。"""
     plugin_id = body.get("id")
     if not plugin_id:
         raise ValidationError("install 需要 body: {\"id\": \"<插件id>\"}")
-    """安装插件（`plugin_id` 取自上传包解析出的标识）。⚠️ 安装 ≠ 启用。"""
     return MGR.install(plugin_id, _registry(request))
 
 

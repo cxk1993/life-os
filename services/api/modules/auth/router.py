@@ -52,6 +52,7 @@ def _cookie_secure(request: Request) -> bool:
 
 @router.get("/health")
 def health() -> dict[str, bool]:
+    """插件健康探针（恒 200）。"""
     return {"ok": True}
 
 

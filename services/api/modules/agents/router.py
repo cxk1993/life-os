@@ -47,14 +47,12 @@ UserDep = User
 
 @router.get("/health")
 def health() -> dict[str, bool]:
-    """插件健康探针（恒 200）。"""
-    """每个插件都必须有 health —— 内核据此判断"该能力是否可用"。"""
+    """每个插件都必须有 health —— 内核据此判断「该能力是否可用」。（恒 200）"""
     return {"ok": True}
 
 
 @router.get("/manifest")
 def manifest() -> dict:
-    """模块清单（前端 / AI 发现能力用）。"""
     """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
