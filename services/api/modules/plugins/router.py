@@ -65,6 +65,7 @@ def enable_plugin(
     request: Request,
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
+    """启用一个插件（登记表生效 + 挂载它的路由）。⚠️ 只有**已安装**的插件才能启用。"""
     return MGR.enable(plugin_id, _registry(request))
 
 
@@ -74,6 +75,7 @@ def disable_plugin(
     request: Request,
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
+    """停用插件（摘掉它的路由与能力面；**数据与设置都保留**）。"""
     result = MGR.disable(plugin_id, _registry(request))
     # TX-ACT-01：禁用的插件同时清掉激活器的 pending 登记，
     # 防止事件命中把已禁用插件重新挂回路由（击穿 disable 语义）。
@@ -120,6 +122,7 @@ def patch_settings(
     body: dict[str, Any] = Body(...),
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
+    """改某个插件的设置（按它自己的 `settings.schema.json` 校验；**部分更新**）。"""
     return {"plugin_id": plugin_id, "settings": MGR.set_settings(plugin_id, body)}
 
 
@@ -127,6 +130,7 @@ def patch_settings(
 def plugin_health(
     plugin_id: str, _user: User = Depends(get_current_user)
 ) -> dict[str, Any]:
+    """问某个插件的健康状态 —— 内核据此判断「该能力此刻是否可用」。"""
     return MGR.health(plugin_id)
 
 
@@ -134,6 +138,7 @@ def plugin_health(
 def slot_contributions(
     slot_name: str, _user: User = Depends(get_current_user)
 ) -> dict[str, Any]:
+    """列出挂在某个**插槽（slot）**上的全部贡献 —— 前端据此组装一屏。"""
     return {"slot": slot_name, "contributions": MGR.slots(slot_name)}
 
 

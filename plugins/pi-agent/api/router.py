@@ -158,6 +158,7 @@ def health() -> dict[str, Any]:
 
 @router.get("/manifest")
 def manifest() -> dict[str, Any]:
+    """模块清单（前端 / AI 发现能力用）。"""
     return _MANIFEST
 
 

@@ -58,6 +58,7 @@ def health() -> dict[str, bool]:
 
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginIn, request: Request, response: Response) -> TokenOut:
+    """登录：校验凭据 → 下发 access token；**refresh token 写进 httpOnly Cookie**（前端不接触）。"""
     tokens = AuthService().login(body.password, body.totp, body.username)
     # refresh 走 httpOnly Cookie（不进 JS，防 XSS 窃取）
     response.set_cookie(
@@ -83,6 +84,7 @@ def refresh(
     response: Response,
     refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
 ) -> TokenOut:
+    """用 refresh Cookie 换一枚新的 access token（并轮换 Cookie）。"""
     if not refresh_token:
         raise UnauthorizedError("缺少 refresh token（Cookie）")
     access = AuthService().refresh(refresh_token)
@@ -105,6 +107,7 @@ def refresh(
 
 @router.post("/logout")
 def logout(response: Response) -> dict[str, bool]:
+    """登出：清掉 refresh Cookie（**尽力而为** —— 后端不可达也要把本地退干净）。"""
     response.delete_cookie(REFRESH_COOKIE, path="/api/v1/auth")
     event_bus.publish("auth.logout", {"sub": USER_SUB}, source="auth")
     return {"ok": True}
@@ -112,5 +115,6 @@ def logout(response: Response) -> dict[str, bool]:
 
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)) -> UserOut:  # noqa: B008
+    """读当前登录者（`sub` + `scopes`），前端据此渲染与权限相关的界面。"""
     info = AuthService().user_info(user.sub)
     return UserOut(sub=info["sub"], scopes=info.get("scopes", []))

@@ -244,6 +244,7 @@ def get_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单个纪念日/倒数日（含按**主人本地日**实时算出的 `days_left`）。"""
     today = datetime.now(_LOCAL_TZ).date()
     item = _get_or_404(db, item_id)
     return to_out(item, today)
@@ -256,6 +257,7 @@ def update_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改纪念日（部分更新）。⚠️ 改 `kind` 会走合法性校验；`title` 不许改成空白。"""
     item = _get_or_404(db, item_id)
     patch = body.model_dump(exclude_none=True)
     if "kind" in patch:
@@ -278,6 +280,7 @@ def delete_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一个纪念日（不可恢复）。"""
     item = _get_or_404(db, item_id)
     db.delete(item)
     db.commit()

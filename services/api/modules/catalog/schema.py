@@ -92,25 +92,29 @@ class CatalogOut(BaseModel):
 
 
 class ManualEntryCreate(BaseModel):
-    name: str = Field(max_length=120)
-    kind: str = "web"
-    url: str | None = None
-    endpoint: str | None = None
+    name: str = Field(max_length=120, description="能力条目的显示名（如「BeeCount 账本」）")
+    kind: str = Field(default="web", description="条目类型（如 web / api / mcp）—— 供目录分组用")
+    url: str | None = Field(default=None, description="相关网页地址（http/https，可选）")
+    endpoint: str | None = Field(default=None, description="要调用的接口地址（若是 API/MCP 能力则填）")
     auth_ref: str | None = Field(default=None, description="'none' 或 'pat:env:VAR'")
-    capabilities: list[str] = []
-    note: str | None = Field(default=None, max_length=1000)
+    capabilities: list[str] = Field(default_factory=list, description="这条能力提供哪些能力（字符串清单）")
+    note: str | None = Field(default=None, max_length=1000, description="备注（人话说明，可选）")
     catalog_id: str | None = Field(default=None, max_length=64, description="留空自动生成")
-    enabled: bool = True
+    enabled: bool = Field(default=True, description="是否在目录里对外可见")
 
 
 class ManualEntryUpdate(BaseModel):
     """全部可选：只改传了的字段（None 表示「不改」，不是「清空」）。"""
 
-    name: str | None = Field(default=None, max_length=120)
-    kind: str | None = None
-    url: str | None = None
-    endpoint: str | None = None
-    auth_ref: str | None = None
-    capabilities: list[str] | None = None
-    note: str | None = Field(default=None, max_length=1000)
-    enabled: bool | None = None
+    name: str | None = Field(default=None, max_length=120, description="改显示名（不传=不改）")
+    kind: str | None = Field(default=None, description="改条目类型")
+    url: str | None = Field(default=None, description="改网页地址")
+    endpoint: str | None = Field(default=None, description="改接口地址")
+    auth_ref: str | None = Field(
+        default=None, description="改凭据引用（**只存引用名，绝不存明文**，如 'pat:env:VAR'）"
+    )
+    capabilities: list[str] | None = Field(
+        default=None, description="**整组替换**能力清单（不是追加）——要保留原来的请连原来的一起传"
+    )
+    note: str | None = Field(default=None, max_length=1000, description="改备注")
+    enabled: bool | None = Field(default=None, description="改是否对外可见")
