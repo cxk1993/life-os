@@ -5,7 +5,8 @@
     主人令「确保所有的 MCP 工具、API 接口，都带上注释和解释，**以防 AI 调用的时候
     所有东西的参数全部都一样而抓瞎**」。
     但"有没有注释"不能靠感觉 —— 本脚本把它变成一个**可测量、可追踪**的指标：
-      · 端点解释：route 函数的 docstring（FastAPI 暴露为 summary/description）
+      · 端点解释：route 函数的 docstring（FastAPI 暴露为 description；`summary` 单独
+        不可信 —— 无 docstring 时 FastAPI 会用函数名自动生成英文标题如 "Update Item"）
         —— 它会被 MCP 桥接层用作**工具描述**（见 modules/mcp/mcp_server._tool_description）
       · 参数解释：Pydantic `Field(description=...)` / Query(description=...)
         —— 它会进 MCP 的 inputSchema，AI 靠它认出每个字段是什么意思
@@ -65,7 +66,13 @@ def scan(base: str) -> dict:
                 if not isinstance(op, dict):
                     continue
                 m_ops += 1
-                if not (op.get("summary") or op.get("description")):
+                # 只认 docstring 派生：`description`，或**含中文**的 summary
+                # （FastAPI 无 docstring 时会用函数名生成英文标题，那不是解释）
+                _doc = (op.get("description") or "").strip()
+                if not _doc:
+                    _s = (op.get("summary") or "").strip()
+                    _doc = _s if any("\u4e00" <= c <= "\u9fff" for c in _s) else ""
+                if not _doc:
                     m_nodoc += 1
                     missing.append(f"{method.upper()} {path}（无端点解释）")
                 for prm in op.get("parameters") or []:

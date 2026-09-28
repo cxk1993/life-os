@@ -79,6 +79,14 @@ def list_items(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """列出待办（分页）。
+
+    - `status`：done=只看已完成 · todo=只看未完成 · all/缺省=全部
+    - `tag`：**层级筛选** —— 传 `学业` 会同时命中 `学业/高数`、`学业/化学原理`
+      （不知道该传什么标签时，先调 `GET /tags` 看现有标签与计数）
+    - `due_before` / `due_after`：按截止时间过滤，带时区 ISO8601
+    - `source`：按来源文件路径过滤（从 Obsidian 导入的条目才有）
+    """
     items, next_cursor = TodoService(db).list_items(
         status=status, due_before=due_before, due_after=due_after,
         tag=tag, source=source, limit=limit, cursor=cursor,
@@ -92,6 +100,11 @@ def create_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """新建一条待办。两种用法二选一：
+
+    - `raw`：一行 markdown，服务端解析语法糖（`@明天` / `!高` / `#标签`）
+    - 结构化字段：显式给 `text` / `due_at` / `priority` / `recur_rule` / `tags`
+    """
     # 事件在 service 层发布（todo.item.created）
     return TodoService(db).create(body)
 
@@ -102,6 +115,7 @@ def get_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """读单条待办详情（含标签、截止、周期规则、来源位置）。"""
     return TodoService(db).get(item_id)
 
 
@@ -112,6 +126,11 @@ def update_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """改一条待办：正文 / 完成状态 / 截止 / 优先级 / 周期 / 标签 / 排序。
+
+    ⚠️ 两个易错点：`tags` 是**整组替换**（不是追加，要保留原标签请连原标签一起传）；
+    `done=false` 会**清空** `done_at`（即"取消完成"）。
+    """
     return TodoService(db).update(item_id, body)
 
 
@@ -121,6 +140,7 @@ def delete_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:
+    """删除一条待办（直接删，不进回收站 —— 与 docs 的软删语义不同）。"""
     TodoService(db).delete(item_id)
 
 
@@ -130,6 +150,10 @@ def toggle_item(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> ToggleOut:
+    """勾上 / 勾掉完成状态（无需传参，切换即可）。
+
+    周期任务勾完会**自动生成下一次实例**并保留历史。
+    """
     # 完成 → 写 done_at；若是周期任务 → 生成下一条实例并保留历史。
     # 事件在 service 层发布（todo.item.completed / todo.item.updated / todo.item.created）。
     return TodoService(db).toggle(item_id)

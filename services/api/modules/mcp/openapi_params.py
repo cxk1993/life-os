@@ -212,7 +212,16 @@ def _props_from_operation(spec: dict[str, Any], op: dict[str, Any]) -> dict[str,
     #   FastAPI 把它暴露成 `summary`（首行）与 `description`（全文）。
     #   实测：全平台 **250/250 个端点都有**中文 docstring，但工具面**从来没读过**它。
     #   `description` 通常已包含首行，故优先取它，避免重复。
-    doc = (op.get("description") or op.get("summary") or "").strip()
+    # ⚠️ 别信 `summary`：FastAPI 在**没有 docstring** 时会用函数名自动生成英文标题
+    #   （`def update_item` → "Update Item"）—— 那不是解释，是标题。
+    #   实测踩过：内核首版优先 summary，于是 todo_item_patch 的工具描述变成了
+    #   "Update Item"，比原来的机械句**更误导**。
+    #   故：只认 `description`（docstring 派生）；退一步只认**含中文**的 summary；
+    #   都不满足就留空 → 工具面回落机械句（宁可朴素，不可冒充）。
+    doc = (op.get("description") or "").strip()
+    if not doc:
+        _s = (op.get("summary") or "").strip()
+        doc = _s if any("\u4e00" <= ch <= "\u9fff" for ch in _s) else ""
     if doc:
         entry["doc"] = doc[:600] + ("…" if len(doc) > 600 else "")
     return entry
