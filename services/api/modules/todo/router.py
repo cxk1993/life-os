@@ -41,6 +41,7 @@ from .schema import (
     TodoUpdate,
     ToggleOut,
 )
+from .schema import TodoTagOut  # 2026-09-28 标签汇总出参
 from .service import TodoService
 
 router = APIRouter()
@@ -167,6 +168,19 @@ def export_markdown(
     body = body or ExportIn()
     markdown = TodoService(db).export_markdown(status=body.status, tag=body.tag)
     return ExportOut(markdown=markdown)
+
+
+@router.get("/tags", response_model=list[TodoTagOut])
+def list_tags(
+    db: DbDep = Depends(get_db),
+    _user: UserDep = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """★ 标签汇总（AI 一览分类 / 前端标签条取数）。
+
+    返回库内**实际存在**的标签及计数，按未完成数降序。
+    scope 仍是 `todo:read` —— 纯只读，无需任何新权限。
+    """
+    return TodoService(db).tag_summary()
 
 
 @router.get("/summary", response_model=SummaryOut)

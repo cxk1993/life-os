@@ -23,6 +23,7 @@
     "todo.item.read",
     "todo.item.write",
     "todo.item.patch",
+    "todo.tag.read",
     "x.summary.today"
   ],
   "requires": [],

@@ -177,6 +177,24 @@ class TodoService:
                 r.sort, r.text or "")
 
     # ───────────────────────── 读 ─────────────────────────
+    def tag_summary(self) -> list[dict[str, Any]]:
+        """标签汇总：每个标签的「未完成 / 已完成 / 总数」。
+
+        ★ 2026-09-28（主人令「AI 调用的时候看的更清楚，一目了然的分类」）：
+          此前 AI 想知道"有哪些标签"只能拿 `GET /items?tag=x` 一个个试 —— 等于猜。
+          本方法给出**标签词表 + 计数**，一次调用看清全局分类。
+        ★ 层级标签各记各的：`学业` 与 `学业/高数` 分别成条（与 tag_hit 的匹配语义
+          解耦 —— 汇总要的是"库里实际存了什么"，不是"匹配到什么"）。
+        """
+        agg: dict[str, dict[str, int]] = {}
+        for row in self.db.exec(select(TodoItem)).all():
+            for t in tags_from_json(row.tags):
+                a = agg.setdefault(t, {"tag": t, "todo": 0, "done": 0, "total": 0})
+                a["total"] += 1
+                a["done" if row.done else "todo"] += 1
+        # 未完成多的在前（AI 先看到"手头最重的那一类"）；同数按标签名稳定排序
+        return sorted(agg.values(), key=lambda x: (-x["todo"], x["tag"]))
+
     def list_items(
         self,
         status: str | None = None,

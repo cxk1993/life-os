@@ -94,3 +94,17 @@ class ExportIn(BaseModel):
 
 class ExportOut(BaseModel):
     markdown: str
+
+
+class TodoTagOut(BaseModel):
+    """★ 标签汇总的一项（2026-09-28 · 主人令「AI 要能一目了然地分类」）。
+
+    为什么需要：此前 AI 只能靠 `GET /items?tag=x` **逐个试**标签名 ——
+    等于让 AI 猜"这库里到底有哪些标签"。有了这份汇总，一次调用就能看清
+    "有哪些分类、各压着多少条"，才知道该往哪儿看、该按什么分。
+    """
+
+    tag: str
+    todo: int  # 未完成条数
+    done: int  # 已完成条数
+    total: int

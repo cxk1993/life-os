@@ -179,6 +179,9 @@ def test_tool_map_explicit_routes_end_to_end(client):
     assert tools["docs_node_patch"].path == "/api/v1/docs/nodes/{node_id}"
     assert tools["docs_node_delete"].method == "DELETE"
     assert tools["docs_node_delete"].path == "/api/v1/docs/nodes/{node_id}"
+    # ★ 2026-09-28：标签汇总（AI 一览分类 / 前端动态标签条的数据源）
+    assert tools["todo_tag_read"].method == "GET"
+    assert tools["todo_tag_read"].path == "/api/v1/todo/tags"
     # 工具数量随模块扩展而增长（含 agents 模块新工具）
     assert len(tools) >= 25, f"当前 {len(tools)} 个工具，期望 ≥25"
 

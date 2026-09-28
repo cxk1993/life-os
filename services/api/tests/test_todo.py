@@ -413,3 +413,46 @@ def test_idempotency_key(client, auth):
     assert r2.status_code == 201, r2.text
     assert r2.headers.get("X-Idempotent-Replay") == "true"
     assert r1.json()["id"] == r2.json()["id"]
+
+
+# ─────────── 标签汇总（2026-09-28 主人令：AI 要能一目了然地分类）───────────
+def test_manifest_declares_tag_read(client):
+    r = client.get("/api/v1/todo/manifest")
+    assert r.status_code == 200
+    assert "todo.tag.read" in r.json()["provides"]
+
+
+def test_tag_summary_counts_open_and_done(client, auth):
+    """每个标签的 未完成/已完成/总数；层级标签各记各的。"""
+    _create(client, auth, text="看高数", tags=["学业", "学业/高数"])
+    _create(client, auth, text="看化学", tags=["学业", "学业/化学原理"])
+    a = _create(client, auth, text="已完成的", tags=["学业"])
+    client.post(f"/api/v1/todo/items/{a['id']}/toggle", headers=auth)
+
+    r = client.get("/api/v1/todo/tags", headers=auth)
+    assert r.status_code == 200, r.text
+    got = {x["tag"]: x for x in r.json()}
+    assert got["学业"] == {"tag": "学业", "todo": 2, "done": 1, "total": 3}
+    assert got["学业/高数"] == {"tag": "学业/高数", "todo": 1, "done": 0, "total": 1}
+    assert got["学业/化学原理"]["total"] == 1
+
+
+def test_tag_summary_orders_by_open_count(client, auth):
+    """排序：未完成多的在前（AI 先看到手头最重的分类）。"""
+    for _ in range(2):
+        _create(client, auth, text="轻的", tags=["轻标签"])
+    for _ in range(3):
+        _create(client, auth, text="重的", tags=["重标签"])
+    tags = [x["tag"] for x in client.get("/api/v1/todo/tags", headers=auth).json()]
+    assert tags.index("重标签") < tags.index("轻标签")
+
+
+def test_tag_summary_ignores_untagged_and_is_empty_when_none(client, auth):
+    """无标签事项不进汇总；一条标签都没有时返回空数组（不是 404）。"""
+    _create(client, auth, text="没标签的")
+    r = client.get("/api/v1/todo/tags", headers=auth)
+    assert r.status_code == 200 and r.json() == []
+
+
+def test_tag_summary_requires_auth(client):
+    assert client.get("/api/v1/todo/tags").status_code == 401
