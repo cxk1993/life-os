@@ -12,6 +12,8 @@ from datetime import date as DateType
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi import Path as FPath
+from typing import Annotated
 from sqlmodel import Session
 
 from core.deps import get_current_user, get_db
@@ -130,7 +132,7 @@ def get_trend(
 
 @router.get("/compare", response_model=CompareOut)
 def get_compare(
-    date: DateType = Query(...),
+    date: DateType = Query(..., description="要看的那一天（YYYY-MM-DD 日历日）"),
     against: DateType = Query(..., description="对比日（YYYY-MM-DD）—— 拿它与 date 比"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
@@ -151,7 +153,7 @@ def get_weekly(
 
 @router.get("/raw", response_model=RawOut)
 def get_raw(
-    date: DateType = Query(...),
+    date: DateType = Query(..., description="要看的那一天（YYYY-MM-DD 日历日）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> RawOut:
@@ -161,7 +163,7 @@ def get_raw(
 
 @router.get("/notes", response_model=NotesListOut)
 def list_notes(
-    date: DateType | None = Query(None),
+    date: DateType | None = Query(None, description="批注归属日（YYYY-MM-DD；不传=今天）"),
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> NotesListOut:
@@ -171,7 +173,7 @@ def list_notes(
 
 @router.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_note(
-    note_id: str,
+    note_id: Annotated[str, FPath(description="批注 id —— 从 GET /notes 的结果里取")],
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> None:

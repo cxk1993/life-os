@@ -98,7 +98,13 @@ def api_subscribe(
 
 @router.delete("/subscribe")
 def api_unsubscribe(
-    endpoint: Annotated[str, Query(min_length=20, max_length=500)],
+    endpoint: Annotated[
+        str,
+        Query(
+            min_length=20, max_length=500,
+            description="要注销的订阅地址（就是当初 POST /subscribe 时传的那个 endpoint）",
+        ),
+    ],
     db: Annotated[DbDep, Depends(get_db)],
 ) -> dict:
     """注销一个订阅（同样不鉴权）。"""

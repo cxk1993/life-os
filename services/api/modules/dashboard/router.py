@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi import Path as FPath
 from fastapi import Query
 
@@ -75,7 +75,7 @@ async def today(
 
 @router.get("/day-peek")
 def day_peek_endpoint(
-    date: str | None = None,
+    date: str | None = Query(None, description="要看的日期（YYYY-MM-DD 日历日；不传=今天）"),
     db: Annotated[Any, Depends(get_db)] = None,
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -90,8 +90,8 @@ def day_peek_endpoint(
 
 @router.get("/day-dots")
 def day_dots_endpoint(
-    from_: Annotated[str | None, Query(alias="from")] = None,
-    to: str | None = None,
+    from_: Annotated[str | None, Query(alias="from", description="起始日期（YYYY-MM-DD 日历日）")] = None,
+    to: str | None = Query(None, description="结束日期（YYYY-MM-DD 日历日）"),
     db: Annotated[Any, Depends(get_db)] = None,
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:

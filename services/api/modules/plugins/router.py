@@ -22,6 +22,8 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Request
+from fastapi import Path as FPath
+from typing import Annotated
 
 from core.deps import get_current_user
 from core.errors import ValidationError
@@ -54,14 +56,17 @@ def list_plugins(_user: User = Depends(get_current_user)) -> dict[str, Any]:  # 
 
 
 @router.get("/{plugin_id}")
-def get_plugin(plugin_id: str, _user: User = Depends(get_current_user)) -> dict[str, Any]:  # noqa: B008
+def get_plugin(
+    plugin_id: Annotated[str, FPath(description="插件 id（目录名，如 calendar / pi-agent）—— 从 GET /plugins 列表里取")],
+    _user: User = Depends(get_current_user),
+) -> dict[str, Any]:  # noqa: B008
     """读单个插件的完整清单与运行态（启用状态 / 权限 / 设置 schema）。"""
     return MGR.get_plugin(plugin_id)
 
 
 @router.post("/{plugin_id}/enable")
 def enable_plugin(
-    plugin_id: str,
+    plugin_id: Annotated[str, FPath(description="插件 id（目录名，如 calendar / pi-agent）—— 从 GET /plugins 列表里取")],
     request: Request,
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
@@ -71,7 +76,7 @@ def enable_plugin(
 
 @router.post("/{plugin_id}/disable")
 def disable_plugin(
-    plugin_id: str,
+    plugin_id: Annotated[str, FPath(description="插件 id（目录名，如 calendar / pi-agent）—— 从 GET /plugins 列表里取")],
     request: Request,
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
@@ -100,7 +105,7 @@ def install_plugin(
 
 @router.post("/{plugin_id}/uninstall")
 def uninstall_plugin(
-    plugin_id: str,
+    plugin_id: Annotated[str, FPath(description="插件 id（目录名，如 calendar / pi-agent）—— 从 GET /plugins 列表里取")],
     request: Request,
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
@@ -110,7 +115,8 @@ def uninstall_plugin(
 
 @router.get("/{plugin_id}/settings")
 def get_settings(
-    plugin_id: str, _user: User = Depends(get_current_user)
+    plugin_id: Annotated[str, FPath(description="插件 id（目录名，如 calendar / pi-agent）—— 从 GET /plugins 列表里取")],
+    _user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """读某个插件的设置（结构按它的 `settings.schema.json`）。"""
     return {"plugin_id": plugin_id, "settings": MGR.get_settings(plugin_id)}
@@ -118,7 +124,7 @@ def get_settings(
 
 @router.patch("/{plugin_id}/settings")
 def patch_settings(
-    plugin_id: str,
+    plugin_id: Annotated[str, FPath(description="插件 id（目录名，如 calendar / pi-agent）—— 从 GET /plugins 列表里取")],
     body: dict[str, Any] = Body(...),
     _user: User = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, Any]:
@@ -128,7 +134,8 @@ def patch_settings(
 
 @router.get("/{plugin_id}/health")
 def plugin_health(
-    plugin_id: str, _user: User = Depends(get_current_user)
+    plugin_id: Annotated[str, FPath(description="插件 id（目录名，如 calendar / pi-agent）—— 从 GET /plugins 列表里取")],
+    _user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """问某个插件的健康状态 —— 内核据此判断「该能力此刻是否可用」。"""
     return MGR.health(plugin_id)
@@ -136,7 +143,10 @@ def plugin_health(
 
 @router.get("/slots/{slot_name}")
 def slot_contributions(
-    slot_name: str, _user: User = Depends(get_current_user)
+    slot_name: Annotated[
+        str, FPath(description="插槽名（如 dashboard / sidebar）—— 前端按插槽组装一屏")
+    ],
+    _user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """列出挂在某个**插槽（slot）**上的全部贡献 —— 前端据此组装一屏。"""
     return {"slot": slot_name, "contributions": MGR.slots(slot_name)}

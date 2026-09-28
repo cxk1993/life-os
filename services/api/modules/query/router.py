@@ -3,7 +3,9 @@ import json
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from fastapi import Path as FPath
+from typing import Annotated
 
 from core.deps import get_current_user, get_db
 
@@ -41,8 +43,8 @@ def presets() -> dict[str, Any]:
 
 @router.get("/presets/{qid}")
 def run(
-    qid: str,
-    days: int | None = None,
+    qid: Annotated[str, FPath(description="预置查询 id —— 从 GET /presets 的结果里取")],
+    days: int | None = Query(None, description="近 N 天（不传则用该预置的默认窗口）"),
     db: Annotated[Any, Depends(get_db)] = None,
     _user: Annotated[Any, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:

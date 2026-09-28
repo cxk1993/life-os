@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
+from fastapi import Path as FPath
+from typing import Annotated
 
 from core.deps import get_current_user
 
@@ -36,7 +38,7 @@ def profiles() -> dict[str, Any]:
 
 @router.get("/preview/{profile}")
 def preview(
-    profile: str,
+    profile: Annotated[str, FPath(description="档案 id —— 从 GET /profiles 的结果里取")],
     _user: Annotated[Any, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
     """预览某个档案**会导出什么**（只报数量，不真导出）。"""

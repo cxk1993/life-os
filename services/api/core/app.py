@@ -280,6 +280,11 @@ def create_app(
         request: Request,
         user: Annotated[User, Depends(get_current_user)],  # ★ 聚合的是用户数据，必须鉴权
     ) -> dict[str, Any]:
+        """BFF 聚合：把各模块的 `today-summary` **并行**取回来合成「今日」一屏（第一屏的数据源）。
+
+★ 单家超时 3 秒；失败的那家只标 unavailable，不影响其余。
+★ 自环走 **127.0.0.1** 回环（不绕公网域名）—— 否则会出公网 DNS + nginx 再绕回来，实测必超时。
+★ 聚合的是用户数据，**必须鉴权**。"""
         import httpx
 
         auth = request.headers.get("authorization")

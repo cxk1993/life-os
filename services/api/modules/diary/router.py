@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import Path as FPath
+from typing import Annotated
 from sqlmodel import Session
 
 from core.deps import get_current_user, get_db, get_plugin_client
@@ -200,7 +202,7 @@ def consolidate(
 
 @router.patch("/entry/{node_id}", response_model=DiaryEntryOut)
 def update_entry(
-    node_id: str,
+    node_id: Annotated[str, FPath(description="日记节点 id —— 从日记树里取")],
     request: Request,
     body: DiaryEntryUpdateIn,
     db: DbDep = Depends(get_db),
@@ -222,7 +224,7 @@ def update_entry(
 
 @router.delete("/entry/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_entry(
-    node_id: str,
+    node_id: Annotated[str, FPath(description="日记节点 id —— 从日记树里取")],
     request: Request,
     db: DbDep = Depends(get_db),
     user: UserDep = Depends(get_current_user),

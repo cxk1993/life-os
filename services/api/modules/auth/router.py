@@ -82,7 +82,9 @@ def login(body: LoginIn, request: Request, response: Response) -> TokenOut:
 def refresh(
     request: Request,
     response: Response,
-    refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
+    refresh_token: str | None = Cookie(
+        default=None, alias=REFRESH_COOKIE, description="放在 httpOnly Cookie 里的 refresh token（浏览器自动带上）"
+    ),
 ) -> TokenOut:
     """用 refresh Cookie 换一枚新的 access token（并轮换 Cookie）。"""
     if not refresh_token:
