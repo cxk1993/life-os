@@ -33,7 +33,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -243,9 +243,9 @@ def chat(body: ChatIn) -> ChatOut:
 
 @router.get("/sessions/history")
 def get_session_history(
-    session: str | None = Field(default=None, description="会话名（不传=默认会话）"),
-    limit: int = Field(default=200, description="最多取多少条历史（默认 200）"),
-    include_tools: bool = Field(
+    session: str | None = Query(default=None, description="会话名（不传=默认会话）"),
+    limit: int = Query(default=200, description="最多取多少条历史（默认 200）"),
+    include_tools: bool = Query(
         default=False, description="是否**含 toolResult 条目**（默认否 —— 前端只展示对话流）"
     ),
 ) -> dict[str, Any]:

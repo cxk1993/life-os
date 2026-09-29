@@ -46,9 +46,15 @@ def scan(base: str) -> dict:
     total_ops = ops_nodoc = 0
     total_prm = prm_nodesc = 0
     per_module: list[tuple] = []
+    # ★ 2026-09-29（云昔 · 因 pi-agent 未挂载事件）：
+    #   **读不到 openapi 的模块绝不能静默跳过** —— 否则"死掉的模块从分母里消失"，
+    #   覆盖率反而更好看（pi-agent 全路由 404 时，本脚本曾报它 100% ✗）。
+    #   读不到 = **失败**，单独列出并让退出码非 0。
+    unreachable: list[str] = []
     for mod in MODULES:
         spec = _get(f"{base.rstrip('/')}/api/{mod}/openapi.json")
         if not spec:
+            unreachable.append(mod)          # ★ 不跳过：记下来当失败报
             continue
         schemas = (spec.get("components") or {}).get("schemas") or {}
 
@@ -97,7 +103,7 @@ def scan(base: str) -> dict:
     return {
         "total_ops": total_ops, "ops_nodoc": ops_nodoc,
         "total_prm": total_prm, "prm_nodesc": prm_nodesc,
-        "per_module": per_module,
+        "per_module": per_module, "unreachable": unreachable,
     }
 
 
@@ -106,6 +112,8 @@ def main() -> int:
     ap.add_argument("--base", default="https://life.example.com:8443", help="life-os 基址")
     ap.add_argument("--fail-under", type=float, default=None, help="参数解释覆盖率下限（%%）")
     ap.add_argument("--show-missing", action="store_true", help="逐条列出缺解释的参数")
+    ap.add_argument("--allow-unreachable", action="store_true",
+                    help="允许有读不到的模块（默认：有则退出码 3）")
     args = ap.parse_args()
 
     r = scan(args.base)
@@ -113,7 +121,12 @@ def main() -> int:
         print(f"✗ 拉不到任何 openapi（base={args.base}）", file=sys.stderr)
         return 2
 
-    ops_pct = 100 * (r["total_ops"] - r["ops_nodoc"]) / r["total_ops"]
+    if r["unreachable"]:
+        print(f"⚠️  ⚠️  ⚠️  **{len(r['unreachable'])} 个模块读不到 openapi（插件可能未挂载）** ⚠️  ⚠️  ⚠️")
+        print("    " + ", ".join(r["unreachable"]))
+        print("    ⇒ 它们**不在下面的分母里**，所以数字会虚高 —— 请先修挂载再看覆盖率 ✗")
+        print()
+    ops_pct = 100 * (r["total_ops"] - r["ops_nodoc"]) / max(r["total_ops"], 1)
     prm_pct = 100 * (r["total_prm"] - r["prm_nodesc"]) / max(r["total_prm"], 1)
     print(f"端点解释覆盖率 : {ops_pct:5.1f}%  （{r['total_ops'] - r['ops_nodoc']}/{r['total_ops']}）"
           "   ← 会作为 MCP 工具描述")
@@ -128,6 +141,9 @@ def main() -> int:
             for line in missing[:20]:
                 print(f"        - {line}")
 
+    if r["unreachable"] and not args.allow_unreachable:
+        print(f"\n✗ 有 {len(r['unreachable'])} 个模块读不到 —— 覆盖率不可信，先修挂载")
+        return 3
     if args.fail_under is not None and prm_pct < args.fail_under:
         print(f"\n✗ 参数解释覆盖率 {prm_pct:.1f}% < 阈值 {args.fail_under}%")
         return 1
