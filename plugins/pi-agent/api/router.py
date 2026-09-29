@@ -259,7 +259,9 @@ def get_session_history(
     - limit：返回末尾 N 条（默认 200）
     - include_tools：是否含 toolResult 条目（默认否 —— 前端只展示对话流）
     """
-    from .history import read_messages
+    # ★ 2026-09-29（云昔）：改为 _load_sibling —— 本插件是**按文件路径加载的第三方插件**，
+    #   相对导入会抛 ImportError（插件挂载失败期间，这个 bug 一直被掩盖着）。
+    read_messages = _load_sibling("history").read_messages
 
     return read_messages(session, limit=limit, include_tools=include_tools)
 
