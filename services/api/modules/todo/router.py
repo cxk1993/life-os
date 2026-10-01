@@ -20,12 +20,13 @@ import json
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi import Path as FPath
 from sqlmodel import Session
 
 from core.deps import get_current_user, get_db
 from core.errors import NotFoundError, ValidationError
+from core.mcp_writes import is_mcp_call
 from core.security import User
 
 from . import health_link as _health_link  # noqa: E402,F401  ISSUE-007
@@ -38,13 +39,28 @@ from .schema import (
     TodoCreate,
     TodoItemOut,
     TodoListOut,
+    TodoTagOut,  # 2026-09-28 标签汇总出参
     TodoUpdate,
     ToggleOut,
 )
-from .schema import TodoTagOut  # 2026-09-28 标签汇总出参
-from .service import TodoService
+from .service import TodoService, parse_quick_line
 
 router = APIRouter()
+
+
+def _tags_from_raw(raw: str | None) -> list[str]:
+    """从 raw 一行 markdown 里取出 `#标签`（MCP 强制校验的 raw 兜底用）。
+
+    raw 是「语法糖」通路，标签藏在文本里（如「交作业 #学业/高数」）。
+    解析失败一律按「没有标签」处理 —— 交给调用方抛那条写明怎么补的 422，
+    **绝不静默放行**。
+    """
+    if not raw or not raw.strip():
+        return []
+    try:
+        return list(parse_quick_line(raw).tags or [])
+    except Exception:  # noqa: BLE001
+        return []
 
 _MANIFEST_PATH = Path(__file__).resolve().parent / "manifest.json"
 with _MANIFEST_PATH.open(encoding="utf-8") as _f:
@@ -97,6 +113,7 @@ def list_items(
 @router.post("/items", response_model=TodoItemOut, status_code=status.HTTP_201_CREATED)
 def create_item(
     body: TodoCreate,
+    request: Request,
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -104,7 +121,24 @@ def create_item(
 
     - `raw`：一行 markdown，服务端解析语法糖（`@明天` / `!高` / `#标签`）
     - 结构化字段：显式给 `text` / `due_at` / `priority` / `recur_rule` / `tags`
+
+    ★ 2026-10-02（主人令「mcp 里创建待办的时候强制加上标签，防止忘加」）：
+      **MCP / AI 来路**（内部请求头 `X-LifeOS-Client: mcp`）创建时，
+      `tags` **必填且不得为空** —— AI 忘了带标签会收到一条写明怎么补的 422，
+      而不是静默建出一条无分类的待办。
+      **人从网页/客户端来的请求不受此限**（`raw` 语法糖 / 手输文本照旧，
+      QuickAdd 里 `#标签` 本就是可选项）。
     """
+    if is_mcp_call(request):
+        # 结构化 tags 优先；只给 raw 语法糖时从文本里取 #标签
+        tags = body.tags or (_tags_from_raw(body.raw) if body.raw else [])
+        if not tags:
+            raise ValidationError(
+                "MCP 创建待办必须带 tags（至少一个标签），以免产生无分类条目。"
+                '例如：{"text":"交高数作业","tags":["学业","学业/高数"]}；'
+                "若走 raw 语法糖，请在文本里写 #标签（如「交高数作业 #学业/高数」）。"
+                "现有标签可用 todo_tag_read 查看，建议沿用既有层级标签。"
+            )
     # 事件在 service 层发布（todo.item.created）
     return TodoService(db).create(body)
 

@@ -456,3 +456,95 @@ def test_tag_summary_ignores_untagged_and_is_empty_when_none(client, auth):
 
 def test_tag_summary_requires_auth(client):
     assert client.get("/api/v1/todo/tags").status_code == 401
+
+
+# ═══════ ★ 2026-10-02（主人令）：MCP 来路创建待办必须带标签 ═══════
+# 背景：主人要求「在 mcp 这里，创建待办的时候强制加标签，防止 AI 忘加」。
+# ★ 关键约束：**只约束 AI 来路** —— 人从网页手输（有语料的既有测试）
+#   必须一个字都不受影响（本文件其它测试全部不带 X-LifeOS-Client 头，即为护栏）。
+
+# MCP 转发层 core/mcp_writes.py 打出的来源标记（与 forward.py 同源）。
+_MCP_HEADERS = {"X-LifeOS-Client": "mcp"}
+
+
+def _mcp_headers(auth):
+    return {**auth, **_MCP_HEADERS}
+
+
+def test_mcp_create_without_tags_is_rejected(client, auth):
+    """MCP 来路且无标签 → 422，错误信息必须写明怎么补（不是干巴巴拒绝）。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"text": "交高数作业"},
+        headers=_mcp_headers(auth),
+    )
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert "tags" in detail
+    # 报错要能直接照着做：给出结构化示例 + 提示查现有标签
+    assert "todo_tag_read" in detail
+    # 库里不得留下任何条目（拒绝必须是干净的）
+    assert client.get("/api/v1/todo/items?status=all", headers=auth).json()["items"] == []
+
+
+def test_mcp_create_with_empty_tags_list_is_rejected(client, auth):
+    """空数组等同于「没给」—— 不能拿 tags=[] 绕过。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"text": "交高数作业", "tags": []},
+        headers=_mcp_headers(auth),
+    )
+    assert r.status_code == 422, r.text
+
+
+def test_mcp_create_with_tags_succeeds(client, auth):
+    """带了标签 → 正常创建，标签落库（层级写法原样保留）。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"text": "交高数作业", "tags": ["学业", "学业/高数"]},
+        headers=_mcp_headers(auth),
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["tags"] == ["学业", "学业/高数"]
+
+
+def test_mcp_create_via_raw_with_hashtag_succeeds(client, auth):
+    """raw 语法糖通路：标签写在文本里（#学业/高数）也算带标签，不该被误伤。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"raw": "交高数作业 #学业/高数"},
+        headers=_mcp_headers(auth),
+    )
+    assert r.status_code == 201, r.text
+    assert "学业/高数" in r.json()["tags"]
+
+
+def test_mcp_create_via_raw_without_hashtag_is_rejected(client, auth):
+    """raw 里没有 #标签 → 同样拦（raw 不是后门）。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"raw": "@明天 交高数作业"},
+        headers=_mcp_headers(auth),
+    )
+    assert r.status_code == 422, r.text
+
+
+def test_human_create_without_tags_still_allowed(client, auth):
+    """★ 护栏的本意：人从网页创建（无来源标记）**照旧可以不写标签**。
+
+    这条是防回归的关键 —— 若哪天有人图省事把校验挪到 pydantic 模型上，
+    人的 QuickAdd 会被 422 拦住（占位符里 `#标签` 本就是可选项），本测试即红。
+    """
+    r = client.post("/api/v1/todo/items", json={"text": "买牛奶"}, headers=auth)
+    assert r.status_code == 201, r.text
+    assert r.json()["tags"] == []
+
+
+def test_unknown_client_header_is_not_treated_as_mcp(client, auth):
+    """只有子进程头才按 MCP 严管 —— 别的取值（含伪造成别家）一律放行。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"text": "买牛奶"},
+        headers={**auth, "X-LifeOS-Client": "web"},
+    )
+    assert r.status_code == 201, r.text

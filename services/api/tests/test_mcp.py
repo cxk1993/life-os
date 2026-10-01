@@ -386,6 +386,32 @@ def test_forward_mock_transport(monkeypatch):
     assert code == 200
 
 
+def test_forward_marks_mcp_origin(monkeypatch):
+    """★ 2026-10-02（主人令「mcp 创建待办强制加标签」）：转发必须打来路标记。
+
+    这是那条硬约束的**另一半** —— 插件侧（todo router）靠 `X-LifeOS-Client: mcp`
+    区分「AI 来路」与「人的来路」。少打这个头，插件的强制校验永远不会触发，
+    AI 又能静默建出无标签条目（护栏形同虚设，且**悄无声息**）。
+    故在此把「头确实发出去了」钉死。
+    """
+    from core.mcp_writes import CLIENT_MCP, HEADER
+    from modules.mcp.forward import forward
+
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["client"] = request.headers.get(HEADER)
+        seen["auth"] = request.headers.get("Authorization")
+        return httpx.Response(200, json={})
+
+    code, _ = forward("POST", "/api/v1/x/things", {"a": "1"},
+                      transport=httpx.MockTransport(handler))
+    assert code == 200
+    assert seen["client"] == CLIENT_MCP
+    # 身份依旧是内核 service JWT（来路标记是**附加**，不改原有鉴权口径）
+    assert seen["auth"].startswith("Bearer ")
+
+
 # ───────────────────────── ★ 模块洁癖自检 ─────────────────────────
 def test_mcp_module_purity():
     """modules/mcp/ 源码零业务词、零业务插件 import。

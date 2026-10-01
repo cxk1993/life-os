@@ -16,6 +16,8 @@ from urllib.parse import quote
 
 import httpx
 
+from core.mcp_writes import CLIENT_MCP
+from core.mcp_writes import HEADER as _CLIENT_HEADER
 from core.security import USER_SUB, create_access_token
 
 _DEFAULT_BASE = "http://127.0.0.1:18000"
@@ -76,7 +78,13 @@ def forward(
             "detail": f"该工具路径需要参数 {missing}，请在 payload 里给出",
             "path_template": path,
         }
-    headers = {"Authorization": f"Bearer {create_access_token(USER_SUB)}"}
+    # ★ 2026-10-02（主人令「MCP 创建待办时强制加标签」）：
+    #   打来源标记 —— 插件据此判定「这是 AI 来路」，从而施加比人更严的写约束
+    #   （见 core/mcp_writes.py 的来龙去脉）。人对前端的操作**一点不受影响**。
+    headers = {
+        "Authorization": f"Bearer {create_access_token(USER_SUB)}",
+        _CLIENT_HEADER: CLIENT_MCP,
+    }
     with httpx.Client(
         base_url=internal_base(), timeout=_TIMEOUT, transport=transport
     ) as client:

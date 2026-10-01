@@ -59,7 +59,11 @@ class TodoCreate(BaseModel):
     )
     tags: list[str] = Field(
         default_factory=list,
-        description="标签列表，用于分类与筛选。支持层级写法（如 学业/高数）；用 GET /tags 可查现有标签",
+        description=(
+            "标签列表，用于分类与筛选。支持层级写法（如 学业/高数）；"
+            "用 GET /tags 可查现有标签。"
+            "★ 经 MCP / AI 创建时**必填非空**（防 AI 忘记分类）；人从网页创建时可留空"
+        ),
     )
 
 
