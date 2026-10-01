@@ -33,8 +33,9 @@ export interface TodoList {
 /** ★ 2026-09-28：标签汇总的一项（GET /tags；AI 工具 todo_tag_read 同一个端点）。 */
 export interface TodoTagCount {
   tag: string;
-  todo: number;
-  done: number;
+  todo: number; // 未完成
+  done: number; // 已完成（★ 不含归档，与界面「已完成」栏同口径）
+  archived?: number; // 已完成满 ARCHIVE_AFTER_DAYS 天、已归档的条数
   total: number;
 }
 

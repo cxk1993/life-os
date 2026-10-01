@@ -8,15 +8,19 @@ import { useTodoUI } from "../state";
 import { TODO_KEY_ROOT } from "../keys";
 
 /**
- * 全部视图：所有待办（含已完成），可按标签过滤。
+ * 全部视图：有价值的待办（**不含已归档的**），可按标签过滤。
  * 服务端不做标签过滤时，这里在前端按 filterTag 过滤（filterTag 来自顶部标签条）。
+ *
+ * ★ 2026-10-02（主人令「已完成满 7 天自动隐藏」）：取 `status=active` 而**不是** `all`
+ *   —— `all` 是含归档的「一切」（供归档视图与学业页分组用），主列表用它会
+ *   把几十天前打完的旧账又摆出来，正是主人要消除的观感。要看归档请切「归档」栏。
  */
 export default function AllView() {
   const filterTag = useTodoUI((s) => s.filterTag);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: [TODO_KEY_ROOT, "all", filterTag],
-    queryFn: () => todoApi.list({ status: "all", limit: 200 }),
+    queryFn: () => todoApi.list({ status: "active", limit: 200 }),
   });
 
   if (isLoading) {

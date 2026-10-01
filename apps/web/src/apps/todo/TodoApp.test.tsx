@@ -65,12 +65,40 @@ beforeEach(() => {
 });
 
 describe("TodoApp 冒烟", () => {
-  it("挂载不报错，显示三个视图 Tab 与快速添加框", async () => {
+  it("挂载不报错，显示四个视图 Tab 与快速添加框", async () => {
     render(<TodoApp />, { wrapper: makeWrapper() });
     expect(screen.getByText("今日")).toBeTruthy();
     expect(screen.getByText("全部")).toBeTruthy();
     expect(screen.getByText("周期")).toBeTruthy();
+    // ★ 2026-10-02（主人令）：第三栏「归档」
+    expect(screen.getByText(/^归档 \d+天$/)).toBeTruthy();
     expect(screen.getByLabelText("快速添加待办")).toBeTruthy();
+  });
+
+  it("★ 「全部」视图请求 status=active（**不含归档**）—— 归档项不该混在主列表里", async () => {
+    // 主人原话：「打钩完成的日期过了 7 天，就可以自动归档、自动隐藏」。
+    // 全部视图若用 status=all，几十天前打完的旧账会照旧摆在主列表 —— 正是要消除的观感。
+    const { todoApi } = await import("./api");
+    vi.mocked(todoApi.list).mockResolvedValue({ items: [], next_cursor: null });
+    render(<TodoApp />, { wrapper: makeWrapper() });
+    fireEvent.click(screen.getByText("全部"));
+    await waitFor(() =>
+      expect(todoApi.list).toHaveBeenCalledWith(expect.objectContaining({ status: "active" })),
+    );
+    // 防回退：绝不能是 all
+    expect(vi.mocked(todoApi.list).mock.calls.every((c) => (c[0] as { status?: string })?.status !== "all")).toBe(
+      true,
+    );
+  });
+
+  it("★ 「归档」Tab 请求 status=archived", async () => {
+    const { todoApi } = await import("./api");
+    vi.mocked(todoApi.list).mockResolvedValue({ items: [], next_cursor: null });
+    render(<TodoApp />, { wrapper: makeWrapper() });
+    fireEvent.click(screen.getByText(/^归档 \d+天$/));
+    await waitFor(() =>
+      expect(todoApi.list).toHaveBeenCalledWith(expect.objectContaining({ status: "archived" })),
+    );
   });
 
   it("切换到「全部」Tab 渲染 AllView 空态", async () => {

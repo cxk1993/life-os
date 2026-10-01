@@ -140,5 +140,6 @@ class TodoTagOut(BaseModel):
 
     tag: str
     todo: int  # 未完成条数
-    done: int  # 已完成条数
+    done: int  # 已完成条数（★ 不含归档 —— 与界面「已完成」栏同口径）
+    archived: int = 0  # ★ 2026-10-02：已完成满 ARCHIVE_AFTER_DAYS 天、已归档的条数
     total: int

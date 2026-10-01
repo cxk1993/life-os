@@ -80,7 +80,10 @@ export default function TodoApp() {
                 className={on ? "todo-tagchip todo-tagchip--on" : "todo-tagchip"}
                 aria-pressed={on}
                 data-testid={`todo-tagchip-${c.tag}`}
-                title={`#${c.tag} 未完成 ${c.todo} · 已完成 ${c.done}`}
+                title={
+                  `#${c.tag} 未完成 ${c.todo} · 已完成 ${c.done}` +
+                  (c.archived ? ` · 归档 ${c.archived}` : "")
+                }
                 onClick={() => {
                   setFilterTag(on ? null : c.tag);
                   // 一键查看：点标签就直接切到「全部」并把筛子筛上

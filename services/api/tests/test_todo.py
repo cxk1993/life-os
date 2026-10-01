@@ -432,9 +432,42 @@ def test_tag_summary_counts_open_and_done(client, auth):
     r = client.get("/api/v1/todo/tags", headers=auth)
     assert r.status_code == 200, r.text
     got = {x["tag"]: x for x in r.json()}
-    assert got["学业"] == {"tag": "学业", "todo": 2, "done": 1, "total": 3}
-    assert got["学业/高数"] == {"tag": "学业/高数", "todo": 1, "done": 0, "total": 1}
+    assert got["学业"] == {
+        "tag": "学业",
+        "todo": 2,
+        "done": 1,
+        "archived": 0,  # ★ 2026-10-02 起随条目一起返回（未归档就是 0）
+        "total": 3,
+    }
+    assert got["学业/高数"] == {
+        "tag": "学业/高数",
+        "todo": 1,
+        "done": 0,
+        "archived": 0,
+        "total": 1,
+    }
     assert got["学业/化学原理"]["total"] == 1
+
+
+def test_tag_summary_counts_archived_separately(client, auth):
+    """★ 2026-10-02：归档数单独记，且 `done` **不含归档** —— 与界面「已完成」栏同口径。
+
+    回归背景：加归档之前，标签条悬停会说「已完成 4」而列表里只有 2 条 ——
+    因为 `done` 把归档项也算进去了。本用例钉住修正后的口径。
+    """
+    _create(client, auth, text="活跃的", tags=["学业"])
+    _make_done(client, auth, "刚完成的", 1, tags=["学业"])     # 在「已完成」栏
+    _make_done(client, auth, "早就完成的", 30, tags=["学业"])  # 在「归档」栏
+    r = client.get("/api/v1/todo/tags", headers=auth)
+    assert r.status_code == 200, r.text
+    got = {x["tag"]: x for x in r.json()}
+    st = got["学业"]
+    assert st["todo"] == 1, f"未完成应为 1，实际 {st}"
+    assert st["done"] == 1, f"已完成（不含归档）应为 1，实际 {st}"
+    assert st["archived"] == 1, f"归档应为 1，实际 {st}"
+    assert st["total"] == 3, f"总数应含归档，实际 {st}"
+    # ★ 三数自洽：不该有条目凭空消失或重复计数
+    assert st["todo"] + st["done"] + st["archived"] == st["total"]
 
 
 def test_tag_summary_orders_by_open_count(client, auth):
@@ -557,10 +590,10 @@ def test_unknown_client_header_is_not_treated_as_mcp(client, auth):
 #   没有归档动作/接口，时间到了自然分界。故这里用「伪造 done_at 年龄」来测。
 
 
-def _make_done(client, auth, label: str, age_days: float) -> str:
+def _make_done(client, auth, label: str, age_days: float, tags: list[str] | None = None) -> str:
     """造一条已完成待办，并把它的 done_at 伪造成 age_days 天前。
 
-    ⚠️ 两个坑（本席第一版都踩了，记下来）：
+    ⚠️ 三个坑（本席都踩了，记下来）：
 
     ① 参数别叫 `text` —— 会遮蔽 sqlmodel 的 `text()`，Pyright 当场报
        "Object of type str is not callable"。
@@ -569,8 +602,15 @@ def _make_done(client, auth, label: str, age_days: float) -> str:
        而 `.isoformat()` 给的是 `2026-09-24T17:00:00+08:00`（T 分隔、带偏移）。
        SQLite 对时间列是**按字符串字典序比较**的，两种写法混在一起就会错位 ——
        实测表现正是「8 天前那条没进归档」。走 ORM 才能保证格式与生产完全一致。
+    ③ `tags` 要显式给 —— 不带标签的条目**不进** `tag_summary`（它按标签聚合），
+       拿它测标签计数会得到「这个标签压根不存在」。
+       ⚠️ 且**不能传 `tags=None`**：`TodoCreate.tags` 是 `list[str]`，传 None
+       会被 pydantic 判 422（不是「用默认值」）—— 得整个字段省掉。
     """
-    item = _create(client, auth, text=label)
+    kw: dict[str, object] = {"text": label}
+    if tags is not None:
+        kw["tags"] = tags
+    item = _create(client, auth, **kw)
     client.post(f"/api/v1/todo/items/{item['id']}/toggle", headers=auth)
     # done_at 是 toggle 的产物，PATCH 不接管它 ⇒ 只能直接改库来伪造年龄
     engine = get_engine()

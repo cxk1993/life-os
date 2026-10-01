@@ -202,20 +202,36 @@ class TodoService:
 
     # ───────────────────────── 读 ─────────────────────────
     def tag_summary(self) -> list[dict[str, Any]]:
-        """标签汇总：每个标签的「未完成 / 已完成 / 总数」。
+        """标签汇总：每个标签的「未完成 / 已完成 / 归档 / 总数」。
 
         ★ 2026-09-28（主人令「AI 调用的时候看的更清楚，一目了然的分类」）：
           此前 AI 想知道"有哪些标签"只能拿 `GET /items?tag=x` 一个个试 —— 等于猜。
           本方法给出**标签词表 + 计数**，一次调用看清全局分类。
         ★ 层级标签各记各的：`学业` 与 `学业/高数` 分别成条（与 tag_hit 的匹配语义
           解耦 —— 汇总要的是"库里实际存了什么"，不是"匹配到什么"）。
+        ★ 2026-10-02（主人令「已完成满 7 天自动归档」）：新增 `archived` 计数，
+          且 `done` **改为不含归档** —— 与界面上「✅ 已完成」栏看到的条数同口径。
+          此前 done 把归档项也算进去，标签条悬停会说"已完成 4"而列表只有 2 条。
+          `total` 仍是**全部**（含归档）：它是这一分类的总量，不该随归档而缩水。
+          ⚠️ 三个数必须自洽：`todo + done + archived == total`（有测试钉住）。
         """
-        agg: dict[str, dict[str, int]] = {}
+        threshold = utcnow() - timedelta(days=ARCHIVE_AFTER_DAYS)
+        agg: dict[str, dict[str, Any]] = {}
         for row in self.db.exec(select(TodoItem)).all():
+            archived = self._is_archived(row, threshold)
             for t in tags_from_json(row.tags):
-                a = agg.setdefault(t, {"tag": t, "todo": 0, "done": 0, "total": 0})
+                # 显式给出计数骨架，别让 setdefault 从字面量推 dict[str, str|int]
+                # （实测 Pyright 会因 "tag" 是 str 而拒绝把它当 dict[str, int]）。
+                a = agg.setdefault(
+                    t, {"tag": t, "todo": 0, "done": 0, "archived": 0, "total": 0}
+                )
                 a["total"] += 1
-                a["done" if row.done else "todo"] += 1
+                if not row.done:
+                    a["todo"] += 1
+                elif archived:
+                    a["archived"] += 1
+                else:
+                    a["done"] += 1
         # 未完成多的在前（AI 先看到"手头最重的那一类"）；同数按标签名稳定排序
         return sorted(agg.values(), key=lambda x: (-x["todo"], x["tag"]))
 
