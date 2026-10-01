@@ -6,8 +6,10 @@ import QuickAdd from "./QuickAdd";
 import TodayView from "./views/TodayView";
 import AllView from "./views/AllView";
 import RecurringView from "./views/RecurringView";
+import ArchivedView from "./views/ArchivedView";
 import { todoApi } from "./api";
 import { TODO_KEY_ROOT } from "./keys";
+import { ARCHIVE_AFTER_DAYS } from "./constants";
 
 const STUDY_TAG = "学业";
 
@@ -15,6 +17,9 @@ const TABS: { id: TodoView; label: string }[] = [
   { id: "today", label: "今日" },
   { id: "all", label: "全部" },
   { id: "recurring", label: "周期" },
+  // ★ 2026-10-02（主人令）：第三栏「归档」—— 已完成满 N 天自动收进来。
+  //   标签文案带上天数，让主人一眼知道归档规则，不必去翻设置。
+  { id: "archived", label: `归档 ${ARCHIVE_AFTER_DAYS}天` },
 ];
 
 /**
@@ -92,6 +97,7 @@ export default function TodoApp() {
       {view === "today" && <TodayView />}
       {view === "all" && <AllView />}
       {view === "recurring" && <RecurringView />}
+      {view === "archived" && <ArchivedView />}
     </div>
   );
 }

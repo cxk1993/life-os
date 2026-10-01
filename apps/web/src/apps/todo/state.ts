@@ -4,7 +4,12 @@
  */
 import { create } from "zustand";
 
-export type TodoView = "today" | "all" | "recurring";
+/**
+ * ★ 2026-10-02（主人令）：新增 `archived` —— 已完成满 7 天自动归档的「第三栏」。
+ * 归档不是一种状态字段，是 done_at 老化的函数（后端按 `status=archived` 筛），
+ * 所以这里只是一个视图，没有任何「归档」动作要调。
+ */
+export type TodoView = "today" | "all" | "recurring" | "archived";
 
 interface TodoUIState {
   view: TodoView;

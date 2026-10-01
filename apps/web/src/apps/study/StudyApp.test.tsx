@@ -150,4 +150,65 @@ describe("StudyApp（学业页）", () => {
       expect(cached?.items?.[0]?.done).toBe(true);
     });
   });
+
+
+  it("★ 已完成满 7 天的条目不再出现在「已完成」，而是进「归档」栏", async () => {
+    // 主人原话：「打钩完成的日期过了 7 天，就可以自动归档、自动隐藏；
+    //   展开已完成的那小列表就不会显示了，而是自动有一个第三栏『归档』」。
+    // 本用例钉住这个观感 —— 归档项若还留在「已完成」里，或归档栏不出现，即红。
+    const now = Date.now();
+    const fresh = {
+      ...sample,
+      id: "fresh",
+      text: "刚完成的高数作业",
+      done: true,
+      done_at: new Date(now - 2 * 86_400_000).toISOString(), // 2 天前
+    };
+    const old = {
+      ...sample,
+      id: "old",
+      text: "很久前完成的化学作业",
+      done: true,
+      done_at: new Date(now - 30 * 86_400_000).toISOString(), // 30 天前
+      tags: ["学业", "学业/化学原理"],
+    };
+    vi.mocked(todoApi.list).mockResolvedValue({
+      items: [fresh, old],
+      next_cursor: null,
+    });
+
+    render(
+      <QueryClientProvider client={makeClient()}>
+        <StudyApp />
+      </QueryClientProvider>,
+    );
+
+    // ⚠️ 断言要**按栏位作用域**，不能用全局 queryByText 否定：
+    //    归档栏是个 <details>，折叠着但**内容仍在 DOM 里**，
+    //    所以「页面上找不到旧作业」这种全局否定必然失败（证书：本席第一版即如此）。
+    //    要看的是「它在哪一栏里」，这才是主人要的观感。
+    const doneBox = await screen.findByTestId("study-done");
+    expect(doneBox.textContent).toContain("已完成（1）");
+    expect(doneBox.textContent).toContain("刚完成的高数作业");
+    expect(doneBox.textContent).not.toContain("很久前完成的化学作业");
+
+    // 「归档」栏出现，且陈旧的那条在它里面
+    const archived = await screen.findByTestId("study-archived");
+    expect(archived.textContent).toContain("归档（1）");
+    expect(archived.textContent).toContain("很久前完成的化学作业");
+  });
+
+  it("★ 没有归档项时不渲染归档栏（不给空壳子占地方）", async () => {
+    vi.mocked(todoApi.list).mockResolvedValue({
+      items: [{ ...sample, done: true, done_at: new Date().toISOString() }],
+      next_cursor: null,
+    });
+    render(
+      <QueryClientProvider client={makeClient()}>
+        <StudyApp />
+      </QueryClientProvider>,
+    );
+    await screen.findByText(/已完成（1）/);
+    expect(screen.queryByTestId("study-archived")).toBeNull();
+  });
 });

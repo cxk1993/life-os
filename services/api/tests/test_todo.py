@@ -548,3 +548,96 @@ def test_unknown_client_header_is_not_treated_as_mcp(client, auth):
         headers={**auth, "X-LifeOS-Client": "web"},
     )
     assert r.status_code == 201, r.text
+
+
+# ═══════ ★ 2026-10-02（主人令）：已完成满 7 天自动归档 ═══════
+# 主人原话：「已经做完的待办 … 打钩完成的日期过了 7 天，就可以自动归档、
+#   自动隐藏；展开已完成的那小列表就不会显示了，而是自动有一个第三栏『归档』」
+# 设计要点：归档是 **done_at 老化** 的函数，不是状态字段 —— 没有 DB 列、
+#   没有归档动作/接口，时间到了自然分界。故这里用「伪造 done_at 年龄」来测。
+
+
+def _make_done(client, auth, label: str, age_days: float) -> str:
+    """造一条已完成待办，并把它的 done_at 伪造成 age_days 天前。
+
+    ⚠️ 两个坑（本席第一版都踩了，记下来）：
+
+    ① 参数别叫 `text` —— 会遮蔽 sqlmodel 的 `text()`，Pyright 当场报
+       "Object of type str is not callable"。
+    ② **必须走 ORM 写，不能手写 UPDATE 字符串**：`done_at` 是 `TZDateTime`，
+       它把值存成**无时区的 UTC**（`2026-09-24 17:00:00.123456`，空格分隔），
+       而 `.isoformat()` 给的是 `2026-09-24T17:00:00+08:00`（T 分隔、带偏移）。
+       SQLite 对时间列是**按字符串字典序比较**的，两种写法混在一起就会错位 ——
+       实测表现正是「8 天前那条没进归档」。走 ORM 才能保证格式与生产完全一致。
+    """
+    item = _create(client, auth, text=label)
+    client.post(f"/api/v1/todo/items/{item['id']}/toggle", headers=auth)
+    # done_at 是 toggle 的产物，PATCH 不接管它 ⇒ 只能直接改库来伪造年龄
+    engine = get_engine()
+    with Session(engine) as s:
+        row = s.get(TodoItem, item["id"])
+        assert row is not None
+        row.done_at = datetime.now(TZ) - timedelta(days=age_days)
+        s.add(row)
+        s.commit()
+    return item["id"]
+
+
+def test_archived_only_after_seven_days(client, auth):
+    """6.5 天前打勾 → 仍在「已完成」；7.5 天前打勾 → 已进「归档」。
+
+    ⚠️ 为什么是 6.5 / 7.5 而不是整数 6 / 8（本席第一版是 6/8，**双向验证时
+       发现它区分不出阈值 7 还是 8**，形同虚设）：2 和 10 这类值虽然「稳」，
+       但它们离阈值太远，阈值在 3~9 之间怎么改都照样通过。
+       取距阈值**半天**的两个点，则：
+         · 阈值 ≤6.5 → 「6.5 天前的」被误归档 ⇒ 红
+         · 阈值 ≥7.5 → 「7.5 天前的」进不了归档 ⇒ 红   ← 阈值改成 8 时正是这条抓红
+       半天的余量（43,200,000 ms）远大于服务端 `utcnow()` 与测试构造时间的
+       毫秒级抖动，不会 flaky。精确数字仍由
+       test_archive_threshold_is_seven_days 单独钉死。
+    """
+    fresh = _make_done(client, auth, "六天半前完成的", 6.5)
+    old = _make_done(client, auth, "七天半前完成的", 7.5)
+
+    done_ids = [x["id"] for x in client.get(
+        "/api/v1/todo/items?status=done", headers=auth).json()["items"]]
+    arch_ids = [x["id"] for x in client.get(
+        "/api/v1/todo/items?status=archived", headers=auth).json()["items"]]
+
+    assert fresh in done_ids and fresh not in arch_ids
+    assert old in arch_ids and old not in done_ids
+
+
+def test_archived_excluded_from_done_list(client, auth):
+    """★ 主人要的核心效果：归档后**不再出现在已完成列表里**。"""
+    _make_done(client, auth, "刚完成的", 1)
+    _make_done(client, auth, "早就完成的", 30)
+    done = client.get("/api/v1/todo/items?status=done", headers=auth).json()["items"]
+    assert [x["text"] for x in done] == ["刚完成的"]
+
+
+def test_active_is_complement_of_archived(client, auth):
+    """active = 未完成 + 打勾未满期；与 archived 严格互补、无重叠无遗漏。"""
+    _create(client, auth, text="还没做")
+    _make_done(client, auth, "新鲜的", 2)
+    _make_done(client, auth, "陈旧已归档", 20)
+
+    active = {x["id"] for x in client.get(
+        "/api/v1/todo/items?status=active", headers=auth).json()["items"]}
+    arch = {x["id"] for x in client.get(
+        "/api/v1/todo/items?status=archived", headers=auth).json()["items"]}
+    all_ids = {x["id"] for x in client.get(
+        "/api/v1/todo/items?status=all", headers=auth).json()["items"]}
+
+    assert active & arch == set(), "两个栏位不能有重叠"
+    assert active | arch == all_ids, "两栏合起来必须等于全部（不能有东西凭空消失）"
+
+
+def test_archived_requires_auth(client):
+    assert client.get("/api/v1/todo/items?status=archived").status_code == 401
+
+
+def test_archive_threshold_is_seven_days():
+    """阈值写死在 service 层，防有人顺手改小/改大而不改前端文案。"""
+    from modules.todo.service import ARCHIVE_AFTER_DAYS
+    assert ARCHIVE_AFTER_DAYS == 7

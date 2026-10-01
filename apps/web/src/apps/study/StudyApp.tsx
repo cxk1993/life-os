@@ -24,6 +24,8 @@ import ErrorState from "../todo/ErrorState";
 import ItemRow from "../todo/ItemRow";
 import { todoApi } from "../todo/api";
 import type { TodoItem } from "../todo/api";
+import { isArchived } from "../todo/archive";
+import { ARCHIVE_AFTER_DAYS } from "../todo/constants";
 import "../todo/todo.css";
 import { TODO_KEY_ROOT } from "../todo/keys";
 import "./study.css";
@@ -60,19 +62,27 @@ export default function StudyApp() {
     queryFn: () => todoApi.list({ status: "all", tag: STUDY_TAG, limit: 200 }),
   });
 
-  const { pending, unscheduled, done } = useMemo(() => {
+  const { pending, unscheduled, done, archived } = useMemo(() => {
     const all = data?.items ?? [];
     const p: TodoItem[] = [];
     const u: TodoItem[] = [];
     const d: TodoItem[] = [];
+    const a: TodoItem[] = [];
+    // ★ 2026-10-02（主人令）：已完成满 N 天的摘到「归档」，**不再出现在这里**。
+    //   判据同后端（见 todo/archive.ts 的说明）—— 否则展开已完成还是老样子。
     for (const it of all) {
-      if (it.done) d.push(it);
-      else if (it.due_at) p.push(it);
-      else u.push(it);
+      if (!it.done) {
+        if (it.due_at) p.push(it);
+        else u.push(it);
+      } else if (isArchived(it)) {
+        a.push(it);
+      } else {
+        d.push(it);
+      }
     }
     // ★ 最急在最上：due_at 升序
     p.sort((a, b) => new Date(a.due_at as string).getTime() - new Date(b.due_at as string).getTime());
-    return { pending: p, unscheduled: u, done: d };
+    return { pending: p, unscheduled: u, done: d, archived: a };
   }, [data]);
 
   if (isLoading) {
@@ -126,9 +136,20 @@ export default function StudyApp() {
         </>
       )}
       {done.length > 0 && (
-        <details className="study-done">
+        <details className="study-done" data-testid="study-done">
           <summary>✅ 已完成（{done.length}）</summary>
           {done.map(renderRow)}
+        </details>
+      )}
+      {/* ★ 2026-10-02（主人令）：第三栏「归档」—— 打勾满 N 天的已完成项。
+          与「已完成」严格互斥（归档的不在这里，这里的没归档），
+          故两处的条数不会重复计算。 */}
+      {archived.length > 0 && (
+        <details className="study-done study-archived" data-testid="study-archived">
+          <summary>
+            🗄 归档（{archived.length}）· 已完成满 {ARCHIVE_AFTER_DAYS} 天自动收进来
+          </summary>
+          {archived.map(renderRow)}
         </details>
       )}
     </div>

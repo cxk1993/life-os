@@ -153,9 +153,33 @@ def tag_hit(item_tags: list[str], query: str) -> bool:
     return any(t == q or t.startswith(prefix) for t in item_tags)
 
 
+#: 已完成待办的**归档阈值**（天）—— 打勾满这么多天后自动归入「归档」。
+#:
+#: ★ 2026-10-02（主人令：「已完成的任务，打勾日期过了 7 天就自动归档、自动隐藏；
+#:   展开已完成的小列表不再显示它，而是出现第三栏『归档』」）：
+#:   判据用 done_at 老化，**不加 DB 列** —— done_at 本来就在每次打勾时动态写入
+#:   （含周期任务每次完成），信息已经在了，再加一列只会多一处不一致的风险。
+#:   改这个数字即改归档节奏；将来若要「可配置」，从 settingsSchema 注入即可。
+ARCHIVE_AFTER_DAYS = 7
+
+#: 该状态变化时请一并通知前端「归档」栏的文案（见 apps/web/src/apps/todo）。
+ARCHIVE_AFTER_LABEL = f"{ARCHIVE_AFTER_DAYS} 天"
+
+
 class TodoService:
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    def _is_archived(self, r: TodoItem, now: datetime | None = None) -> bool:
+        """该条是否已归档：完成 + done_at 已过 ARCHIVE_AFTER_DAYS 天。
+
+        ⚠️ `done_at` 为空却 `done=True` 的脏数据（历史导入/手工改库）**不算归档**
+        —— 判不了龄就不归档，宁可多显示一条，也不能把它悄悄藏起来让主人找不到。
+        """
+        if not r.done or r.done_at is None:
+            return False
+        threshold = (now or utcnow()) - timedelta(days=ARCHIVE_AFTER_DAYS)
+        return r.done_at < threshold
 
     # ───────────────────────── 序列化 ─────────────────────────
     def _dump(self, r: TodoItem) -> dict:
@@ -207,10 +231,26 @@ class TodoService:
     ) -> tuple[list[dict[str, Any]], str | None]:
         stmt = select(TodoItem)
         conds: list[Any] = []
+        now = utcnow()
+        # 归档条件（用作单一判据，避免「活跃」与「归档」两头口径漂移）：
+        #   已打勾 **且** 打勾时间早于阈值。
+        #   ⚠️ done 却 done_at 为空的脏数据不满足它 ⇒ 既不算归档，
+        #      也不会从 active 里漏掉（见下），与 _is_archived 口径一致。
+        _archived_cond = (TodoItem.done == True) & (  # noqa: E712
+            col(TodoItem.done_at) < now - timedelta(days=ARCHIVE_AFTER_DAYS)
+        )
         if status == "done":
+            # 「已完成」= 打勾在归档期内（归档的进 archived 栏，不再混在这里）
             conds.append(TodoItem.done == True)  # noqa: E712
+            conds.append(col(TodoItem.done_at) >= now - timedelta(days=ARCHIVE_AFTER_DAYS))
         elif status == "todo":
             conds.append(TodoItem.done == False)  # noqa: E712
+        elif status == "active":
+            # 没归档的一切（未完成 + 打勾未满期）。归档栏的**补集**，可当默认视图。
+            conds.append(~_archived_cond)
+        elif status == "archived":
+            conds.append(_archived_cond)
+
         if due_before:
             conds.append(col(TodoItem.due_at) <= to_utc(due_before))
         if due_after:

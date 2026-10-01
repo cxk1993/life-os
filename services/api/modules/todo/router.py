@@ -85,7 +85,13 @@ def manifest() -> dict:
 
 @router.get("/items", response_model=TodoListOut)
 def list_items(
-    status: str | None = Query(None, description="done | todo | all（默认 all）"),
+    status: str | None = Query(
+        None,
+        description=(
+            "done | todo | all | active | archived（默认 all）。"
+            "active=没归档的一切；archived=打勾满 7 天的已完成项"
+        ),
+    ),
     due_before: str | None = Query(None, description="截止时间上界，带时区 ISO8601"),
     due_after: str | None = Query(None, description="截止时间下界，带时区 ISO8601"),
     tag: str | None = Query(None, description="按标签过滤"),
@@ -97,11 +103,17 @@ def list_items(
 ) -> dict[str, Any]:
     """列出待办（分页）。
 
-    - `status`：done=只看已完成 · todo=只看未完成 · all/缺省=全部
+    - `status`：`todo`=只看未完成 · `done`=已完成但仍新鲜 · `all`/缺省=全部
+      · `active`=**没归档的一切**（未完成 + 打勾未满归档期）
+      · `archived`=**归档**（已打勾且完成时间已过 7 天）
     - `tag`：**层级筛选** —— 传 `学业` 会同时命中 `学业/高数`、`学业/化学原理`
       （不知道该传什么标签时，先调 `GET /tags` 看现有标签与计数）
     - `due_before` / `due_after`：按截止时间过滤，带时区 ISO8601
     - `source`：按来源文件路径过滤（从 Obsidian 导入的条目才有）
+
+    ★ 2026-10-02（主人令）：`done` 与 `archived` 以「打勾满 7 天」为界互斥 ——
+      即已完成项满 7 天后**自动从「已完成」移到「归档」**，不需要人工干预，
+      也没有单独的归档动作/接口（归档是时间的函数，不是一种状态字段）。
     """
     items, next_cursor = TodoService(db).list_items(
         status=status, due_before=due_before, due_after=due_after,

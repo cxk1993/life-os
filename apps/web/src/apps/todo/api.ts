@@ -63,8 +63,19 @@ export interface ExportResult {
   markdown: string;
 }
 
+/**
+ * 待办状态筛选（与后端 `GET /items?status=` 对齐）。
+ *
+ * ★ 2026-10-02（主人令「已完成满 7 天自动归档」）：
+ *   新增 `active` / `archived`。归档是 **done_at 老化** 的函数 ——
+ *   `done` = 打勾在归档期内，`archived` = 打勾已过归档期，两者**互斥**；
+ *   `active` 是 `archived` 的补集（未完成 + 打勾未满期）。
+ *   `all` 仍返回一切（含归档）。
+ */
+export type TodoStatus = "done" | "todo" | "all" | "active" | "archived";
+
 export interface ListParams {
-  status?: "done" | "todo" | "all";
+  status?: TodoStatus;
   due_before?: string;
   due_after?: string;
   tag?: string;
