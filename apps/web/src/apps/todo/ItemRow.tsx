@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { todoApi, type TodoItem, type Priority } from "./api";
 import { updateTodoListCaches } from "./cache";
+import { isArchived, daysUntilArchive } from "./archive";
+import { ARCHIVE_AFTER_DAYS } from "./constants";
 import { TODO_KEY_ROOT } from "./keys";
 
 const PRIORITY_LABEL: Record<Priority, string> = {
@@ -18,6 +20,22 @@ function formatDue(dueAt: string | null): string | null {
   const date = `${d.getMonth() + 1}-${pad(d.getDate())}`;
   const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
   return hasTime ? `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}` : date;
+}
+
+/**
+ * 打钩日期（★ 2026-10-02 · 主人令「打钩日期要能看见」）。
+ *
+ * 主人原话：「我发现打钩日期不会在待办里面显示，所以我就开始担心了一下。」
+ * —— 她说得对。归档规则是「打钩满 N 天自动收走」，可打钩日期不显示，
+ * 主人就只能**靠信任**，没法自己验证那条规则在不在工作。
+ * 规则一旦可见，就从"我说的"变成"她看得见的"。
+ */
+function formatDone(doneAt: string | null): string | null {
+  if (!doneAt) return null;
+  const d = new Date(doneAt);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getMonth() + 1}-${pad(d.getDate())} 完成`;
 }
 
 interface Props {
@@ -86,6 +104,12 @@ export default function ItemRow({ item }: Props) {
   const due = formatDue(item.due_at);
   const now = Date.now();
   const overdue = !item.done && item.due_at != null && new Date(item.due_at).getTime() < now;
+  // ★ 2026-10-02（主人令「打钩日期要能看见」）：让归档规则变成看得见的东西。
+  //   已完成的条目显示「X-XX 完成」，并给出「N 天后归档」倒计时；
+  //   已归档的（只在归档栏出现）不再报倒计时 —— 它已经被收走了。
+  const doneLabel = item.done ? formatDone(item.done_at) : null;
+  const leftDays = daysUntilArchive(item);
+  const alreadyArchived = isArchived(item);
 
   const saveEdit = () => {
     const t = draft.trim();
@@ -189,6 +213,22 @@ export default function ItemRow({ item }: Props) {
           )}
           {due ? (
             <span className={`todo-pill${overdue ? " todo-pill--overdue" : ""}`}>🕘 {due}</span>
+          ) : null}
+          {/* ★ 2026-10-02（主人令「打钩日期要能看见」）：打钩日期 + 归档倒计时。
+              主人看不到这条信息就只能靠信任 —— 显示出来，规则才可自证。 */}
+          {doneLabel ? (
+            <span className="todo-pill todo-pill--done" data-testid="todo-done-at">
+              ✓ {doneLabel}
+            </span>
+          ) : null}
+          {!alreadyArchived && leftDays != null ? (
+            <span
+              className={`todo-pill todo-pill--archive-in${leftDays <= 1 ? " todo-pill--archive-soon" : ""}`}
+              data-testid="todo-archive-countdown"
+              title={`打勾满 ${ARCHIVE_AFTER_DAYS} 天后自动移到「归档」栏（数据不会删）`}
+            >
+              🗄 {leftDays} 天后归档
+            </span>
           ) : null}
           {item.recur_rule ? <span className="todo-pill todo-pill--recur">🔁 周期</span> : null}
         </div>

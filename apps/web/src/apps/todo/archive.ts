@@ -32,3 +32,24 @@ export function isArchived(item: TodoItem, now: Date = new Date()): boolean {
   if (Number.isNaN(t)) return false;
   return t < now.getTime() - ARCHIVE_AFTER_DAYS * MS_PER_DAY;
 }
+
+/**
+ * 距归档还有几天（★ 2026-10-02 · 主人令「打钩日期要能看见」）。
+ *
+ * ── 为什么需要这个 ────────────────────────────────────────────────
+ * 主人原话：「我发现打钩日期不会在待办里面显示，所以我就开始担心了一下。」
+ * 她说得对：规则看不见 = 只能靠信任。把「何时自动收走」直接写在行上，
+ * 规则就从"我说的"变成"她看得见的"。
+ *
+ * @returns 还剩几天；未完成 / 判不了龄 / **已归档** 时返回 null。
+ *          已归档返回 null 是有意的 —— 它已不在「已完成」栏，不该再报倒计时。
+ */
+export function daysUntilArchive(item: TodoItem, now: Date = new Date()): number | null {
+  if (!item.done || !item.done_at) return null;
+  const t = new Date(item.done_at).getTime();
+  if (Number.isNaN(t)) return null;
+  const left = ARCHIVE_AFTER_DAYS * MS_PER_DAY - (now.getTime() - t);
+  if (left <= 0) return null;
+  // 向上取整：还剩 0.5 天也显示「1 天后」，不显示「0 天后」（那像已经归档了）
+  return Math.ceil(left / MS_PER_DAY);
+}

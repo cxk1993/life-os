@@ -12,7 +12,7 @@
  */
 import { describe, it, expect } from "vitest";
 
-import { isArchived } from "./archive";
+import { isArchived, daysUntilArchive } from "./archive";
 import { ARCHIVE_AFTER_DAYS } from "./constants";
 import type { TodoItem } from "./api";
 
@@ -87,5 +87,44 @@ describe("isArchived（归档判据）", () => {
     const later = new Date(NOW.getTime() + 3 * 86_400_000); // 再过 3 天 → 满 8 天
     expect(isArchived(item, NOW)).toBe(false);
     expect(isArchived(item, later)).toBe(true);
+  });
+});
+
+describe("daysUntilArchive（归档倒计时）", () => {
+  // ★ 2026-10-02（主人令「打钩日期要能看见」）：主人看不到打钩日期就无从验证
+  //   「满 7 天归档」这条规则 —— 倒计时把它变成看得见的东西。
+  it("刚打勾 → 还剩 7 天", () => {
+    expect(daysUntilArchive(doneDaysAgo(0), NOW)).toBe(7);
+  });
+
+  it("1 天前打勾 → 还剩 6 天", () => {
+    expect(daysUntilArchive(doneDaysAgo(1), NOW)).toBe(6);
+  });
+
+  it("6.5 天前打勾 → 还剩 1 天（向上取整，不显示 0）", () => {
+    // 0.5 天剩量必须显示「1 天后」—— 显示「0 天后」像是已经归档了，会误导。
+    expect(daysUntilArchive(doneDaysAgo(6.5), NOW)).toBe(1);
+  });
+
+  it("已归档（7.5 天前打勾）→ null（不在归档栏再报倒计时）", () => {
+    expect(daysUntilArchive(doneDaysAgo(7.5), NOW)).toBeNull();
+  });
+
+  it("未完成 → null（没打钩谈不上归档）", () => {
+    expect(daysUntilArchive(mk({ done: false }), NOW)).toBeNull();
+  });
+
+  it("★ 脏数据 done_at 为空 / 非法 → null", () => {
+    expect(daysUntilArchive(mk({ done: true, done_at: null }), NOW)).toBeNull();
+    expect(daysUntilArchive(mk({ done: true, done_at: "garbage" }), NOW)).toBeNull();
+  });
+
+  it("★ 与 isArchived 互补且不重叠：有倒计时的必未归档，已归档的必无倒计时", () => {
+    for (const d of [0, 1, 3, 6.5, 6.9, 7.1, 7.5, 30]) {
+      const it = doneDaysAgo(d);
+      const archived = isArchived(it, NOW);
+      const left = daysUntilArchive(it, NOW);
+      expect(archived).toBe(left === null); // 恰好一个成立
+    }
   });
 });

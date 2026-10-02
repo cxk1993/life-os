@@ -123,6 +123,64 @@ describe("ItemRow", () => {
     expect(screen.getByText(/9-20/)).toBeTruthy();
   });
 
+  it("★ 已完成的条目**必须显示打钩日期**（主人令：打钩日期要能看见）", () => {
+    // 主人原话：「我发现打钩日期不会在待办里面显示，所以我就开始担心了一下。」
+    // 她看不到打钩日期，就无从验证「满 7 天归档」到底在不在工作 —— 本用例钉住它可见。
+    const done = {
+      ...sample,
+      done: true,
+      done_at: new Date(Date.now() - 2 * 86_400_000).toISOString(), // 2 天前
+    };
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ItemRow item={done} />
+      </QueryClientProvider>,
+    );
+    const pill = screen.getByTestId("todo-done-at");
+    expect(pill.textContent).toMatch(/完成/);
+    expect(pill.textContent).toMatch(/\d{1,2}-\d{2}/); // 形如 9-30 完成
+  });
+
+  it("★ 已完成的条目显示「N 天后归档」倒计时，且数字随打钩时间变化", () => {
+    const done = {
+      ...sample,
+      done: true,
+      done_at: new Date(Date.now() - 3 * 86_400_000).toISOString(), // 3 天前
+    };
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ItemRow item={done} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("todo-archive-countdown").textContent).toContain("4 天后归档");
+  });
+
+  it("★ 已归档的条目不报倒计时（它已经被收走了）", () => {
+    const archived = {
+      ...sample,
+      done: true,
+      done_at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+    };
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ItemRow item={archived} />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("todo-archive-countdown")).toBeNull();
+    // 但打钩日期仍要显示 —— 归档了更要知道它是什么时候完成的
+    expect(screen.getByTestId("todo-done-at")).toBeTruthy();
+  });
+
+  it("★ 未完成的条目**不该**出现打钩日期或归档倒计时", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ItemRow item={sample} />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("todo-done-at")).toBeNull();
+    expect(screen.queryByTestId("todo-archive-countdown")).toBeNull();
+  });
+
   it("勾选框点击触发 toggle", async () => {
     const { todoApi } = await import("./api");
     render(

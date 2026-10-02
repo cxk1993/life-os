@@ -194,6 +194,23 @@
   color: var(--txt-dim);
 }
 
+/* ★ 2026-10-02（主人令「打钩日期要能看见」）——
+   打钩日期 + 归档倒计时。用弱化色（不是警告色）：这是"信息"，不是"警报" */
+.todo-pill--done {
+  color: var(--txt-dim);
+}
+
+.todo-pill--archive-in {
+  color: var(--txt-dim);
+  opacity: 0.85;
+}
+
+/* 只剩 1 天时略微提亮 —— 提醒但不制造焦虑（主人偏好极简不轰炸） */
+.todo-pill--archive-soon {
+  color: var(--txt);
+  opacity: 1;
+}
+
 /* —— 错误态 —— */
 .todo-error {
   display: flex;
