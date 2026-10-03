@@ -174,12 +174,17 @@ def create_app(
         # TX-ACT-01：modules 仍是「已挂载」（生产口径不变，存量插件零漂移）；
         # 新增 registered/activated/activation_errors 三键暴露注册-激活二分
         # 与激活失败目击（卡档缓行纪律：只报目击，不自动处置）。
+        # ★ ADR-0005：再补 recovery_backoff —— 启动恢复连续失败的退避状态
+        #   （同样只报目击：这些插件状态原样保留、未被自动禁用或摘路由）。
+        from core.plugins.manager import recovery_backoff_snapshot as _backoff_snapshot
+
         return {
             "ok": True,
             "modules": reg.mounted(),
             "registered": sorted(app.state.modules),
             "activated": activator.activated,
             "activation_errors": activator.last_error,
+            "recovery_backoff": _backoff_snapshot(),
             "config": settings_as_dict(),
         }
 
@@ -368,6 +373,10 @@ def create_app(
         from core.deps import db_session as _db_session
         from core.plugins.discover import discover_plugins as _discover_plugins
         from core.plugins.manager import PluginManager as _PluginManager
+        from core.plugins.manager import (
+            note_recovery_attempt as _note_attempt,
+            note_recovery_result as _note_result,
+        )
         from db.models.system import PluginState as _PluginState
 
         _res = _discover_plugins()
@@ -376,6 +385,7 @@ def create_app(
         _mounted = 0
         _skipped: list[str] = []
         _failed: list[tuple[str, str]] = []
+        _backed_off: list[str] = []
         for _info in _res.plugins:
             if _info.source != "third-party":
                 continue
@@ -405,14 +415,27 @@ def create_app(
                         "第三方插件上次启用留有错误，本次将重试",
                         extra={"module": _info.id, "last_error": _prev_error},
                     )
+                # ★ 退避（卡档缓行纪律）：连续失败达上限则本轮**跳过重试** ——
+                #   但绝不改状态、不摘路由、不禁用。状态原样留着等人来看。
+                _should_backoff, _strikes = _note_attempt(_info.id)
+                if _should_backoff:
+                    _backed_off.append(_info.id)
+                    log.error(
+                        "第三方插件连续恢复失败 %d 次，本轮退避跳过（状态保留，等待人工处置）",
+                        _strikes,
+                        extra={"module": _info.id},
+                    )
+                    continue
                 _mgr.enable(_info.id, _registry)
                 # ★ 只有**真正挂载成功**的才进 app.state.modules ——
                 #   否则会与 /health/modules（只报已激活）不自洽（O1 自洽测试会红）。
                 app.state.modules[_info.id] = _info.manifest
                 _mounted += 1
+                _note_result(_info.id, None)
                 log.info("第三方插件已恢复挂载", extra={"module": _info.id})
             except Exception as _exc:  # noqa: BLE001 —— 单个失败不影响其它
                 _failed.append((_info.id, f"{type(_exc).__name__}: {_exc}"))
+                _note_result(_info.id, f"{type(_exc).__name__}: {_exc}")
                 log.warning(
                     "第三方插件恢复失败（已记录，不阻断启动）",
                     extra={"module": _info.id, "error": f"{type(_exc).__name__}: {_exc}"},
@@ -432,6 +455,13 @@ def create_app(
                 "第三方插件启动对账：恢复失败 %d 个 —— %s",
                 len(_failed),
                 "；".join(f"{pid}（{err}）" for pid, err in _failed),
+            )
+        # ★ ADR-0005：退避跳过也必须点名（这是最容易被误读成"正常"的状态）。
+        if _backed_off:
+            log.error(
+                "第三方插件启动对账：退避跳过 %d 个（连续失败已达上限，状态保留未改动）—— %s",
+                len(_backed_off),
+                "、".join(_backed_off),
             )
     except Exception as _exc:  # noqa: BLE001 —— 整段兜底，绝不让它拖垮启动
         log.warning("第三方插件恢复流程整体跳过：%s", _exc)

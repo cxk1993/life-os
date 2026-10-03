@@ -166,8 +166,15 @@ def rollback_migrations(engine: Any, info: Any) -> list[str]:
 
 
 def recorded_versions(engine: Any, plugin_id: str) -> set[str]:
-    """已执行迁移台账的只读快照（供可逆启用做前后差分）。"""
-    return _recorded(engine, plugin_id)
+    """已执行迁移的**版本号**快照（供可逆启用做前后差分）。
+
+    ⚠️ 返回的是裸版本号（如 ``0001_init``），**不是**台账 key
+    （``migration.<id>.0001_init``）。内部 `_recorded()` 给的是 key，
+    这里统一剥前缀 —— 否则调用方拿版本号去比 key 集合会**永远失配、
+    静默跳过**（2026-10-03 踩过：回滚静默 no-op，表留在原地）。
+    """
+    prefix = f"migration.{plugin_id}."
+    return {k[len(prefix) :] for k in _recorded(engine, plugin_id) if k.startswith(prefix)}
 
 
 def rollback_versions(engine: Any, info: Any, versions: Sequence[str]) -> list[str]:
@@ -175,12 +182,15 @@ def rollback_versions(engine: Any, info: Any, versions: Sequence[str]) -> list[s
 
     与 rollback_migrations 的区别：后者按台账全量倒序（卸载语义），本函数
     只碰调用方点名的版本（补偿语义）。不在台账里的版本会被跳过（幂等）。
+
+    ⚠️ `versions` 是**裸版本号**（与 recorded_versions 同口径）。这里显式
+    用 `_record_key` 构造 key 去比对，避免两种口径混用导致静默 no-op。
     """
-    done = _recorded(engine, info.id)
+    done_keys = _recorded(engine, info.id)
     by_name = dict(_discover(info))
     rolled: list[str] = []
     for version in reversed(list(versions)):
-        if version not in done or version not in by_name:
+        if _record_key(info.id, version) not in done_keys or version not in by_name:
             continue
         mod = _load(by_name[version], info)
         mod.downgrade(engine)

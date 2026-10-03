@@ -36,6 +36,22 @@ PLUGINS_DIR = API_ROOT.parent.parent / "plugins"  # 项目根/plugins
 BROKEN_ID = "zzbroken"
 MIGFAIL_ID = "zzmigfail"
 
+# 可正常挂载的最小 router（多处复用）
+GOOD_ROUTER = (
+    "from fastapi import APIRouter\n"
+    "router = APIRouter()\n"
+    "@router.get('/health')\n"
+    "def health(): return {'ok': True}\n"
+)
+
+# 一个可正常挂载的最小 router（多处复用）
+GOOD_ROUTER = (
+    "from fastapi import APIRouter\n"
+    "router = APIRouter()\n"
+    "@router.get('/health')\n"
+    "def health(): return {'ok': True}\n"
+)
+
 PLUGIN_JSON_BASE = {
     "name": "可逆性测试插件",
     "version": "0.1.0",
@@ -355,3 +371,167 @@ def test_activator_persist_is_optional(isolated_db: None) -> None:
     act.set_persist_hook(None)
     # 直接调私有落库：无钩子时应静默返回
     act._persist("whatever", "boom")  # noqa: SLF001
+
+
+# ═══════════════════ ADR-0005 第二批：install 补偿 + 延迟差分 + 退避 ═══════════════════
+def _write_lifecycle(root: Path, src: str) -> None:
+    (root / "api" / "lifecycle.py").write_text(src, encoding="utf-8")
+
+
+def _info_for(pid: str):
+    from core.plugins.discover import discover_plugins
+
+    for p in discover_plugins().plugins:
+        if p.id == pid:
+            return p
+    raise AssertionError(f"插件未被发现：{pid}")
+
+
+def test_install_failure_rolls_back_migration_and_state(isolated_db: None) -> None:
+    """install 失败必须回滚：表删掉、状态行不残留（回到「未安装」态）。
+
+    修复前必红：旧 install 无任何逆 —— 表建了、状态行 enabled=True 留着、
+    路由没挂上（半安装态），前端再点一次安装还会撞上已存在的表。
+    """
+    pid = "zzinstfail"
+    root = PLUGINS_DIR / pid
+    _write_plugin(
+        root,
+        router_src="import this_module_does_not_exist_xyz  # noqa\n",
+        migration_src=(
+            "from sqlmodel import text\n"
+            "def upgrade(engine):\n"
+            "    with engine.begin() as c:\n"
+            "        c.execute(text('CREATE TABLE IF NOT EXISTS zzinstfail_t (id TEXT)'))\n"
+            "def downgrade(engine):\n"
+            "    with engine.begin() as c:\n"
+            "        c.execute(text('DROP TABLE IF EXISTS zzinstfail_t'))\n"
+        ),
+    )
+    from sqlmodel import text
+
+    try:
+        app = create_app()
+        reg = app.state.registry
+        with pytest.raises(Exception):
+            get_plugin_manager().install(pid, reg)
+
+        with get_engine().begin() as c:
+            tbl = c.execute(
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='zzinstfail_t'"
+                )
+            ).first()
+        assert tbl is None, "★ install 失败后新建的表必须被回滚删除"
+        with db_session() as db:
+            assert db.get(PluginState, pid) is None, (
+                "★ install 失败后不得残留 plugin_state 行（应回到未安装态）"
+            )
+        assert pid not in reg.mounted(), "install 失败后不得留路由"
+    finally:
+        _cleanup(pid)
+
+
+def test_enable_compensates_partially_executed_migrations(isolated_db: None) -> None:
+    """迁移中途失败（0001 成功、0002 抛错）也必须回滚 0001 —— 延迟差分守护。
+
+    修复前必红（若差分在 run_migrations 之后立即计算）：异常使 `after_versions`
+    那行根本不执行，部分执行的 0001 会漏出补偿、留下孤儿表。
+    """
+    pid = "zzmultimig"
+    root = PLUGINS_DIR / pid
+    _write_plugin(root, router_src=GOOD_ROUTER, migration_src=None)
+    (root / "api" / "migrations").mkdir(parents=True, exist_ok=True)
+    (root / "api" / "migrations" / "0001_first.py").write_text(
+        "from sqlmodel import text\n"
+        "def upgrade(engine):\n"
+        "    with engine.begin() as c:\n"
+        "        c.execute(text('CREATE TABLE IF NOT EXISTS zzmultimig_t (id TEXT)'))\n"
+        "def downgrade(engine):\n"
+        "    with engine.begin() as c:\n"
+        "        c.execute(text('DROP TABLE IF EXISTS zzmultimig_t'))\n",
+        encoding="utf-8",
+    )
+    (root / "api" / "migrations" / "0002_boom.py").write_text(
+        "def upgrade(engine):\n    raise RuntimeError('mid-migration boom')\n"
+        "def downgrade(engine):\n    pass\n",
+        encoding="utf-8",
+    )
+    mf = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    mf["migrations"] = "api/migrations"
+    (root / "manifest.json").write_text(json.dumps(mf, ensure_ascii=False), encoding="utf-8")
+
+    from sqlmodel import text
+
+    try:
+        app = create_app()
+        reg = app.state.registry
+        with pytest.raises(Exception):
+            get_plugin_manager().enable(pid, reg)
+        with get_engine().begin() as c:
+            tbl = c.execute(
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='zzmultimig_t'"
+                )
+            ).first()
+        assert tbl is None, "★ 中途失败也必须回滚已成功执行的 0001（延迟差分）"
+    finally:
+        _cleanup(pid)
+
+
+def test_hook_failure_is_soft_does_not_rollback(isolated_db: None) -> None:
+    """生命周期钩子抛异常 = 软失败：不回滚，仅记 last_error（既有语义锁定）。
+
+    防止后来者「顺手」给钩子也加上回滚，把多年稳定的 best-effort 语义改掉。
+    """
+    pid = "zzhookerr"
+    root = PLUGINS_DIR / pid
+    _write_plugin(root, router_src=GOOD_ROUTER)
+    _write_lifecycle(root, "def on_enable(db=None):\n    raise RuntimeError('hook boom')\n")
+    try:
+        app = create_app()
+        reg = app.state.registry
+        get_plugin_manager().enable(pid, reg)  # 不得上抛
+        assert pid in reg.mounted(), "钩子软失败不得摘掉路由（effect 已生效）"
+        with db_session() as db:
+            st = db.get(PluginState, pid)
+        assert st is not None and st.enabled is True, "软失败仍保持启用"
+        assert st.last_error and "hook boom" in st.last_error, "错误须落到 last_error"
+    finally:
+        _cleanup(pid)
+
+
+def test_recovery_backoff_counts_and_never_disables() -> None:
+    """退避：连续失败达上限 → 应跳过；成功后清零（卡档缓行：绝不动状态）。"""
+    from core.plugins.manager import (
+        _RECOVERY_MAX_CONSECUTIVE,
+        note_recovery_attempt,
+        note_recovery_result,
+        recovery_backoff_snapshot,
+        reset_recovery_tracker,
+    )
+
+    reset_recovery_tracker()
+    p = "zzbackoff"
+    for i in range(_RECOVERY_MAX_CONSECUTIVE):
+        should, _n = note_recovery_attempt(p)
+        assert not should, f"第 {i + 1} 次不该退避"
+        note_recovery_result(p, f"err{i}")
+    should, n = note_recovery_attempt(p)
+    assert should and n == _RECOVERY_MAX_CONSECUTIVE, "达上限必须退避"
+    note_recovery_result(p, None)
+    should, _n = note_recovery_attempt(p)
+    assert not should, "成功后必须清零、下轮重新允许尝试"
+    assert recovery_backoff_snapshot() == {}, "成功后快照应为空"
+    reset_recovery_tracker()
+
+
+def test_readyz_exposes_recovery_backoff(client: TestClient) -> None:
+    """readyz 必须暴露退避状态（只报目击，不自动处置）。"""
+    r = client.get("/readyz")
+    assert r.status_code == 200
+    body = r.json()
+    assert "recovery_backoff" in body
+    assert "activation_errors" in body

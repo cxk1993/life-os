@@ -7,12 +7,17 @@
   - 发现/校验/版本/权限/迁移/设置/生命周期 分别由同包其它模块负责，这里只编排。
   - 路由挂载/摘掉 交给 core.registry.ModuleRegistry（T03 的 RouterHost）。
   - 数据库表/会话 交给 db（T04）。
+
+★ 可逆性纪律（ADR-0005，2026-10-03）：
+  每个 effect 必须携带逆；失败时按「应用的逆序」回放逆（论文 Theorem 16）。
+  改动前请自问：这个 effect 的逆是什么？在哪个状态上生效？
 """
 from __future__ import annotations
 
 import json
 import logging
 import shutil
+import threading
 from typing import Any
 
 from sqlmodel import select
@@ -33,6 +38,55 @@ from core.plugins.settings import read_settings, write_settings
 from db.models.system import PluginSetting, PluginState
 
 log = logging.getLogger("kernel.plugins")
+
+# ★ ADR-0005（2026-10-03）· 启动恢复的退避上限。
+#   严守「卡档缓行纪律」：达上限后**不自动禁用、不改 enabled、不摘路由** ——
+#   只退避（本轮跳过重试）+ 报警，状态原样保留等人来看。计数是**进程内**的，
+#   不落库 —— 否则「跳过」会被固化成事实，插件再也等不到自愈。
+_RECOVERY_MAX_CONSECUTIVE = 3
+
+# 启动恢复的进程内追踪（不落库 —— 见上方说明）
+_recovery_failures: dict[str, int] = {}
+_recovery_last_error: dict[str, str] = {}
+_recovery_lock = threading.Lock()
+
+
+def reset_recovery_tracker() -> None:
+    """清空启动恢复追踪（测试与「修复后手动重试成功」两处会调）。"""
+    with _recovery_lock:
+        _recovery_failures.clear()
+        _recovery_last_error.clear()
+
+
+def note_recovery_attempt(plugin_id: str) -> tuple[bool, int]:
+    """报一次启动恢复尝试 → (是否应退避跳过, 已累计连续失败次数)。
+
+    ⚠️ 退避分支里调用方**不得** enable、不得改 enabled、不得摘路由 ——
+    卡档缓行纪律：只跳过这一轮，状态原样留着等人。
+    """
+    with _recovery_lock:
+        n = _recovery_failures.get(plugin_id, 0)
+        return n >= _RECOVERY_MAX_CONSECUTIVE, n
+
+
+def note_recovery_result(plugin_id: str, error: str | None) -> None:
+    """记一次启动恢复结果：成功清零，失败累加。"""
+    with _recovery_lock:
+        if error is None:
+            _recovery_failures.pop(plugin_id, None)
+            _recovery_last_error.pop(plugin_id, None)
+        else:
+            _recovery_failures[plugin_id] = _recovery_failures.get(plugin_id, 0) + 1
+            _recovery_last_error[plugin_id] = error
+
+
+def recovery_backoff_snapshot() -> dict[str, tuple[int, str]]:
+    """退避状态只读快照（供 readyz / 测试查看）。"""
+    with _recovery_lock:
+        return {
+            k: (v, _recovery_last_error.get(k, ""))
+            for k, v in _recovery_failures.items()
+        }
 
 _BUILTIN_INCLUSION_NOTE = "内置插件随系统发布，不需要 install；可直接 enable/disable。"
 
@@ -205,14 +259,26 @@ class PluginManager:
 
             # 迁移：逆是「只回滚本次真正执行的那几个版本」。台账幂等，故先取
             # 差分；绝不能调全量 rollback_migrations（会 drop 掉承载历史数据的表）。
+            #
+            # ★ 差分必须**延迟到补偿时**才计算：run_migrations 若中途失败
+            #   （如 0001 成功、0002 抛错），`after_versions` 那行根本不会执行，
+            #   提前算出的差分会漏掉已执行的 0001。故 lambda 在 undo 时才取
+            #   「当前台账 − before」，捕获真正落库的那些版本。
+            # ★ 逆必须**先于 effect 注册**（2026-10-03 踩过）：
+            #   run_migrations 若中途失败（0001 建表成功、0002 抛错），它之后的
+            #   语句根本不会执行 —— 若把 _record 放在它后面，逆就没被登记，
+            #   补偿时无从回放，0001 建的表会永久残留。故先把「回滚到 before
+            #   台账」登记好，再施加 effect。
             before_versions = recorded_versions(engine, info.id)
-            run_migrations(engine, info)
-            after_versions = recorded_versions(engine, info.id)
-            newly_run = after_versions - before_versions
             _record(
                 "migrations",
-                lambda: rollback_versions(engine, info, sorted(newly_run)),
+                lambda: rollback_versions(
+                    engine,
+                    info,
+                    sorted(recorded_versions(engine, info.id) - before_versions),
+                ),
             )
+            run_migrations(engine, info)
 
             mount_plugin(info, registry)
             _record("mount", lambda: self._unmount(info, registry))
@@ -221,7 +287,18 @@ class PluginManager:
                 err = run_lifecycle_hook(info, "enable", db=db)
         except Exception as exc:  # noqa: BLE001
             self._compensate(done, info, exc)
-            self._upsert_state(info, enabled=False, last_error=str(exc))
+            # 补偿已把状态恢复到调用前（含"原先无行则删行"）。此后只做目击：
+            #   - 调用前本就是启用态（重调边界）→ **保持启用**，仅把错误写进 last_error
+            #     （绝不能顺手改成 disabled —— 那是一次计划外的副作用）；
+            #   - 否则建/改成 enabled=False 并记错误，留下可诊断的行。
+            #
+            # ★ 注意：本分支不会因「生命周期钩子抛异常」而进 —— run_lifecycle_hook
+            #   自己吞异常并返回错误串（见 lifecycle.py），钩子失败是**软失败**，
+            #   走下方 `if err:` 分支（不回滚，语义同旧实现）。
+            if prev_state and prev_state.get("enabled"):
+                self.note_activation_error(plugin_id, str(exc))
+            else:
+                self._upsert_state(info, enabled=False, last_error=str(exc))
             raise
         if err:
             # 钩子未抛异常、只回报了错误串：效果已生效（不回滚，语义同旧实现），
@@ -305,19 +382,95 @@ class PluginManager:
                 f"插件「{plugin_id}」是 {info.kind}，{_BUILTIN_INCLUSION_NOTE}"
             )
         # 校验权限声明合法（★ 2026-09-25 TX-FRAME-01：先归一化，兼容对象格式）
+        #
+        # ★ ADR-0005（2026-10-03）：这里**只做结构校验**（拒绝非法权限串）。
+        #   真正的授权决策在 uninstall 前的审批环节 —— 对应论文 §6.3 的
+        #   capability request：请求应在**组件运行前**被审阅批准，而非运行时才发现。
         for perm in normalize_permissions(info.manifest.get("permissions")):
             if not is_valid_permission(perm):
                 raise ForbiddenError(f"插件「{plugin_id}」声明了非法权限：{perm!r}")
-        # 建表
-        from db.engine import get_engine
 
-        engine = get_engine()
-        run_migrations(engine, info)
-        with db_session() as db:
-            run_lifecycle_hook(info, "install", db=db)
-        self._upsert_state(info, enabled=True, last_error=None)
-        mount_plugin(info, registry)
+        # ★ ADR-0005 · 可逆安装：effect 必须携带逆，失败按逆序回放。
+        #
+        # 旧实现与 enable() 同病 —— 四个 effect 全都没有逆：
+        #   [建表 → on_install → 状态落 enabled=True → 挂路由]
+        # 任何一步失败都会留下中间态：表建了、钩子跑了、状态说已启用，但路由不在，
+        # 且前端「安装」按钮看到的是一次 500 —— 再点一次会撞上已存在的表。
+        #
+        # 现按论文 §3.1 建模（与 enable() 同一 accumulator 纪律）：
+        #   done 累积已生效 effect 的逆，异常时 reversed(done) 逆序回放（Theorem 16）。
+        #   补偿自身失败只记日志、绝不上抛 —— 不许掩盖原始异常。
+        #
+        # ⚠️ 与 enable() 的一处不同：install 的迁移逆用**全量** rollback（newly_run
+        #   只是防御性限定），因为 install 的语义是「首次安装」—— 理论上无历史迁移，
+        #   且 uninstall 本就是全量 rollback_migrations（见其第 3 步）。语义一致。
+        #   enable() 则必须用差分（那里的插件可能已存在并有历史数据）。
+        prev_state = self._state_snapshot(plugin_id)
+        done: list[tuple[str, Any]] = []
+
+        def _record(name: str, undo: Any) -> None:
+            done.append((name, undo))
+
+        try:
+            from db.engine import get_engine
+
+            engine = get_engine()
+
+            # ★ 逆必须**先于 effect 注册**（2026-10-03 踩过）：
+            #   run_migrations 若中途失败（0001 建表成功、0002 抛错），它之后的
+            #   语句根本不会执行 —— 若把 _record 放在它后面，逆就没被登记，
+            #   补偿时无从回放，0001 建的表会永久残留。故先把「回滚到 before
+            #   台账」登记好，再施加 effect。
+            before_versions = recorded_versions(engine, info.id)
+            _record(
+                "migrations",
+                lambda: rollback_versions(
+                    engine,
+                    info,
+                    sorted(recorded_versions(engine, info.id) - before_versions),
+                ),
+            )
+            run_migrations(engine, info)
+
+            with db_session() as db:
+                run_lifecycle_hook(info, "install", db=db)
+            # 钩子的逆是与它配对的 teardown。run_lifecycle_hook 对
+            # 「钩子缺失/不抛」一律 best-effort 吞掉（见 lifecycle.py），故这里
+            # 无 on_uninstall 时是无害 no-op —— 与 uninstall() 第 1 步同一调用。
+            _record(
+                "install_hook",
+                lambda: self._run_hook_safe(info, "uninstall"),
+            )
+
+            self._upsert_state(info, enabled=True, last_error=None)
+            _record("state", lambda: self._restore_state(plugin_id, prev_state))
+
+            mount_plugin(info, registry)
+            _record("mount", lambda: self._unmount(info, registry))
+        except Exception as exc:  # noqa: BLE001
+            # 逆序回滚全部已生效 effect（含删表、删状态行）。
+            self._compensate(done, info, exc)
+            # 目击：install 失败 = 回到"未安装"，**不新建状态行**（与 uninstall 后的
+            # vacant 态一致）。仅当原先就有行（重装边界）时保留该行并记下错误。
+            if prev_state is not None:
+                self.note_activation_error(plugin_id, str(exc))
+            raise
         return self.get_plugin(plugin_id)
+
+    def _run_hook_safe(self, info: PluginInfo, stage: str) -> None:
+        """在补偿路径上跑钩子：自己吞异常（补偿绝不允许二次上抛）。"""
+        try:
+            with db_session() as db:
+                run_lifecycle_hook(info, stage, db=db)
+        except Exception as hook_exc:  # noqa: BLE001
+            log.warning(
+                "插件补偿钩子执行失败",
+                extra={
+                    "module": info.id,
+                    "stage": stage,
+                    "error": f"{type(hook_exc).__name__}: {hook_exc}",
+                },
+            )
 
     def uninstall(self, plugin_id: str, registry: Any) -> dict[str, Any]:
         info = self._require(plugin_id)
