@@ -22,7 +22,12 @@ from core.errors import ConflictError, ForbiddenError, NotFoundError
 from core.plugins import discover as discover_mod
 from core.plugins.discover import DiscoveryResult, PluginInfo, mount_plugin
 from core.plugins.lifecycle import run_lifecycle_hook
-from core.plugins.migrations import rollback_migrations, run_migrations
+from core.plugins.migrations import (
+    recorded_versions,
+    rollback_migrations,
+    rollback_versions,
+    run_migrations,
+)
 from core.plugins.permissions import is_valid_permission, normalize_permissions
 from core.plugins.settings import read_settings, write_settings
 from db.models.system import PluginSetting, PluginState
@@ -144,6 +149,20 @@ class PluginManager:
             st.granted_permissions = json.dumps(granted, ensure_ascii=False)
             db.commit()
 
+    def note_activation_error(self, plugin_id: str, error: str | None) -> None:
+        """写激活器目击到 plugin_state.last_error（ADR-0005 落库通道的宿主侧）。
+
+        由 core/app.py 注入给 PluginActivator.set_persist_hook。状态行不存在时
+        不新建 —— 激活器只对**已有注册态**的插件报错，凭空建行会让
+        list_plugins 的「无状态行 ⇒ 按来源取默认」口径漂移。
+        """
+        with db_session() as db:
+            st = db.get(PluginState, plugin_id)
+            if st is None:
+                return
+            st.last_error = error
+            db.commit()
+
     # ───────────────────────── 挂载 / 摘卸载 ─────────────────────────
     # 挂载统一走 core.plugins.discover.mount_plugin（TX-ACT-01 前置小步：
     # 与 create_app 启动全量挂载共用单一入口，本类不再各写一份）。
@@ -158,40 +177,123 @@ class PluginManager:
             # core 永远启用；这里只确保状态正确，不摘挂。
             self._upsert_state(info, enabled=True)
             return self.get_plugin(plugin_id)
-        self._upsert_state(info, enabled=True, last_error=None)
-        # ★ 2026-09-26 修（astrbot · 主人令「修一下就行」）：
-        #   原先只有 install() 跑迁移，enable() **不跑** —— 而 core/app.py 的
-        #   「启动恢复」走的正是 enable()，于是**已启用但从未 install 过的插件**
-        #   （如 countdown：直接放进 plugins/ 后手工建行启用）**表永远不建**，
-        #   接口恒 500（no such table）。修法：enable() 与 install() 一样先跑迁移
-        #   （run_migrations 自带台账幂等，重复调用零副作用）。
+
+        # ★ ADR-0005（2026-10-03）· 可逆启用：effect 必须携带逆，失败按逆序回放。
+        #
+        # 旧实现是「部分提交」：状态先落 enabled=True，再跑迁移（失败静默吞），
+        # 再挂路由（失败只记 last_error 后上抛）。三个 effect 全都没有逆，于是
+        # 失败后留下**状态说已启用、路由却不在**的中间态 —— 这正是主人实盘见过
+        # 的「路由全 404 但工具在列」。且 core/app.py 的启动恢复只读 enabled、
+        # 不看 last_error，于是每次重启重试、每次重复半提交。
+        #
+        # 现按论文 §3.1 建模：done 是 accumulator（累积已生效 effect 的逆），
+        # 异常时 reversed(done) 逆序回放（Theorem 16：逆必须按应用的逆序施加）。
+        # 补偿自身失败只记日志、绝不上抛 —— 不许掩盖原始异常。
+        prev_state = self._state_snapshot(plugin_id)
+        done: list[tuple[str, Any]] = []  # [(effect 名, 逆操作)]
+
+        def _record(name: str, undo: Any) -> None:
+            done.append((name, undo))
+
         try:
+            self._upsert_state(info, enabled=True, last_error=None)
+            _record("state", lambda: self._restore_state(plugin_id, prev_state))
+
             from db.engine import get_engine
 
-            run_migrations(get_engine(), info)
-        except Exception as mig_exc:  # noqa: BLE001 —— 迁移失败不该阻断启用
-            log.warning(
-                "插件迁移执行失败（已记录，不阻断启用）",
-                extra={"module": info.id, "error": f"{type(mig_exc).__name__}: {mig_exc}"},
+            engine = get_engine()
+
+            # 迁移：逆是「只回滚本次真正执行的那几个版本」。台账幂等，故先取
+            # 差分；绝不能调全量 rollback_migrations（会 drop 掉承载历史数据的表）。
+            before_versions = recorded_versions(engine, info.id)
+            run_migrations(engine, info)
+            after_versions = recorded_versions(engine, info.id)
+            newly_run = after_versions - before_versions
+            _record(
+                "migrations",
+                lambda: rollback_versions(engine, info, sorted(newly_run)),
             )
-        try:
+
             mount_plugin(info, registry)
+            _record("mount", lambda: self._unmount(info, registry))
+
             with db_session() as db:
                 err = run_lifecycle_hook(info, "enable", db=db)
         except Exception as exc:  # noqa: BLE001
-            self._upsert_state(info, enabled=True, last_error=str(exc))
+            self._compensate(done, info, exc)
+            self._upsert_state(info, enabled=False, last_error=str(exc))
             raise
         if err:
+            # 钩子未抛异常、只回报了错误串：效果已生效（不回滚，语义同旧实现），
+            # 仅把错误落到 last_error 供 health/readyz 目击。
             self._upsert_state(info, enabled=True, last_error=err)
         return self.get_plugin(plugin_id)
+
+    def _compensate(
+        self, done: list[tuple[str, Any]], info: PluginInfo, exc: BaseException
+    ) -> None:
+        """逆序回放已生效 effect 的逆（Theorem 16）。补偿失败只记，不上抛。"""
+        for name, undo in reversed(done):
+            try:
+                undo()
+            except Exception as undo_exc:  # noqa: BLE001 —— 不许掩盖原始异常
+                log.warning(
+                    "插件启用补偿失败（已记录，不掩盖原始异常）",
+                    extra={
+                        "module": info.id,
+                        "step": name,
+                        "original": f"{type(exc).__name__}: {exc}",
+                        "undo_error": f"{type(undo_exc).__name__}: {undo_exc}",
+                    },
+                )
+
+    def _state_snapshot(self, plugin_id: str) -> dict[str, Any] | None:
+        """取插件状态行的可恢复快照（无行时为 None）。"""
+        with db_session() as db:
+            st = db.get(PluginState, plugin_id)
+            if st is None:
+                return None
+            return {
+                "version": st.version,
+                "kind": st.kind,
+                "enabled": st.enabled,
+                "last_error": st.last_error,
+                "granted_permissions": st.granted_permissions,
+            }
+
+    def _restore_state(self, plugin_id: str, snapshot: dict[str, Any] | None) -> None:
+        """把状态行恢复到快照值；原先无行则删除该行（完整回滚）。"""
+        with db_session() as db:
+            st = db.get(PluginState, plugin_id)
+            if snapshot is None:
+                if st is not None:
+                    db.delete(st)
+                    db.commit()
+                return
+            if st is None:
+                st = PluginState(id=plugin_id)
+                db.add(st)
+            st.version = snapshot["version"]
+            st.kind = snapshot["kind"]
+            st.enabled = snapshot["enabled"]
+            st.last_error = snapshot["last_error"]
+            st.granted_permissions = snapshot["granted_permissions"]
+            db.commit()
 
     def disable(self, plugin_id: str, registry: Any) -> dict[str, Any]:
         info = self._require(plugin_id)
         if info.kind == "core":
             raise ForbiddenError(f"内核插件「{plugin_id}」不可禁用（kind=core）")
-        self._unmount(info, registry)
+        # ★ ADR-0005（2026-10-03）：逆序。加载顺序是
+        #     [迁移 → 挂路由 → on_enable]，卸载必须严格逆序：
+        #     [on_disable → 摘路由 → (迁移回滚)]
+        #   旧实现先 _unmount 再跑 on_disable —— 插件撤自己的东西时，它的路由
+        #   已经消失了（顺序反了）。迁移回滚仍留在 uninstall：disable 的语义是
+        #   「停用」不是「删数据」，表要留着等下次 enable（run_migrations 台账
+        #   幂等，不会重跑也不会丢数据）。
         with db_session() as db:
             err = run_lifecycle_hook(info, "disable", db=db)
+        self._unmount(info, registry)
         self._upsert_state(info, enabled=False, last_error=err)
         return self.get_plugin(plugin_id)
 

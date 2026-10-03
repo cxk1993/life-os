@@ -156,6 +156,40 @@ def rollback_migrations(engine: Any, info: Any) -> list[str]:
     return rolled
 
 
+# ───────────────── ADR-0005 · 可逆启用的差分补偿原语 ─────────────────
+# 背景：run_migrations 自带台账（app_setting 的 migration.<id>.<ver>），
+#   幂等且只增不改。因此「一次 enable 的迁移 effect」= 它**本次真正执行**的那
+#   几个版本，而不是插件全部迁移。失败时若直接调 rollback_migrations（全量
+#   倒序 downgrade），会把历史迁移一并 drop —— 删掉承载数据的表，属于比原
+#   故障更严重的二次破坏。
+#   对齐论文 Definition 8：逆只需在「该 effect 被应用的那个状态」上生效。
+
+
+def recorded_versions(engine: Any, plugin_id: str) -> set[str]:
+    """已执行迁移台账的只读快照（供可逆启用做前后差分）。"""
+    return _recorded(engine, plugin_id)
+
+
+def rollback_versions(engine: Any, info: Any, versions: Sequence[str]) -> list[str]:
+    """只回滚**指定的**若干版本（倒序），用于补偿一次 enable 的部分迁移。
+
+    与 rollback_migrations 的区别：后者按台账全量倒序（卸载语义），本函数
+    只碰调用方点名的版本（补偿语义）。不在台账里的版本会被跳过（幂等）。
+    """
+    done = _recorded(engine, info.id)
+    by_name = dict(_discover(info))
+    rolled: list[str] = []
+    for version in reversed(list(versions)):
+        if version not in done or version not in by_name:
+            continue
+        mod = _load(by_name[version], info)
+        mod.downgrade(engine)
+        _unrecord(engine, info.id, version)
+        rolled.append(version)
+    return rolled
+
+
+
 def has_migrations(info: Any) -> bool:
     return len(_discover(info)) > 0
 

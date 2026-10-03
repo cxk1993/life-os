@@ -43,7 +43,21 @@ class ModuleRegistry:
         if plugin_id in self._mounted:
             raise RuntimeError(f"模块已挂载：{plugin_id}")
         before = len(self._app.routes)
-        self._app.include_router(router, prefix=prefix, tags=[plugin_id])
+        try:
+            self._app.include_router(router, prefix=prefix, tags=[plugin_id])
+        except BaseException:
+            # ★ ADR-0005（2026-10-03）：include_router 可能**部分写入**后才抛
+            #   （prefix 冲突、依赖注入签名错误等）。若就此上抛，这些路由已进
+            #   app.routes 却没人登记 → 成为**永远无法 unmount 的孤儿路由**，
+            #   "插件可禁用"被击穿。故此处先按对象身份摘掉本次写入的片段再上抛，
+            #   保证 mount 失败后 app.routes 与调用前逐元素等价（可逆性）。
+            added = self._app.routes[before:]
+            if added:
+                owned = {id(r) for r in added}
+                self._app.router.routes = [
+                    r for r in self._app.router.routes if id(r) not in owned
+                ]
+            raise
         added = self._app.routes[before:]
         self._mounted[plugin_id] = added
 

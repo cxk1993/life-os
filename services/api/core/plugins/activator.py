@@ -10,13 +10,15 @@
   - 注册表（app.state.modules 全量）由 create_app 主导，本器只管「激活」与「pending 索引」。
   - 挂载动作统一走 discover.mount_plugin（前置小步确立的单一入口）。
   - 激活失败：记入 last_error 表 + 暴露到 readyz（只报目击，不自动重启/禁用——卡档缓行纪律）。
-    plugin_state 落库候与 manager 线统一（见完工帖取舍）。
+    ★ ADR-0005（2026-10-03）：原 `_last_error` 只是进程内 dict，重启即失忆；
+    「plugin_state 落库」原为候办项，现由 `persist_hook` 注入通道落地（见
+    `set_persist_hook`），本模块仍不 import db，分层约定不破。
   - 线程安全：事件可能从任意线程 publish，activate() 全程持锁串行。
 """
 from __future__ import annotations
 
 import threading
-from typing import Any
+from typing import Any, Callable
 
 from core.logging import get_logger
 from core.plugins.discover import PluginInfo, mount_plugin
@@ -53,6 +55,28 @@ class PluginActivator:
         self._pending: dict[str, list[PluginInfo]] = {}
         # 激活失败目击表（id -> 错误摘要）；成功后移除。只报不自动处置。
         self._last_error: dict[str, str] = {}
+        # ★ ADR-0005：落库通道（由 create_app 注入 manager 侧写函数）。
+        #   本模块不 import db —— 分层约定不破；未注入时退化为纯内存（测试友好）。
+        self._persist_hook: Callable[[str, str | None], None] | None = None
+
+    def set_persist_hook(self, hook: Callable[[str, str | None], None] | None) -> None:
+        """注入「把激活错误写进 plugin_state.last_error」的通道。
+
+        传 None 可退回纯内存模式（单测用）。签名：hook(plugin_id, error_or_None)。
+        """
+        self._persist_hook = hook
+
+    def _persist(self, plugin_id: str, error: str | None) -> None:
+        """经注入通道落库；失败只记日志，绝不影响激活主流程。"""
+        if self._persist_hook is None:
+            return
+        try:
+            self._persist_hook(plugin_id, error)
+        except Exception as exc:  # noqa: BLE001 —— 落库失败不该改变激活结果
+            log.warning(
+                "激活错误落库失败（已记录，不影响激活）",
+                extra={"module": plugin_id, "error": f"{type(exc).__name__}: {exc}"},
+            )
 
     # ─────────────────────── 查询 ───────────────────────
     @property
@@ -107,12 +131,17 @@ class PluginActivator:
             if info.manifest.get("kind") == "container":
                 self._activated.add(info.id)
                 self._last_error.pop(info.id, None)
+                self._persist(info.id, None)
                 log.info("容器型模块跳过路由挂载", extra={"module": info.id})
                 return
             try:
                 mount_plugin(info, self._registry)
             except Exception as exc:  # noqa: BLE001 —— 缓行纪律：记目击，不自动处置
-                self._last_error[info.id] = f"{type(exc).__name__}: {exc}"
+                err_text = f"{type(exc).__name__}: {exc}"
+                self._last_error[info.id] = err_text
+                # ★ ADR-0005：目击同时落库 —— 原为进程内 dict，重启即失忆，
+                #   且 startup 恢复只读 enabled 不看错误，导致「永远不自愈」。
+                self._persist(info.id, err_text)
                 log.error(
                     "插件激活失败（已记录，不自动重试）",
                     extra={"module": info.id, "error": str(exc)},
@@ -120,6 +149,7 @@ class PluginActivator:
                 raise
             self._activated.add(info.id)
             self._last_error.pop(info.id, None)
+            self._persist(info.id, None)
             log.info("模块已激活", extra={"module": info.id})
 
     # ─────────────────────── 事件路径 ───────────────────────

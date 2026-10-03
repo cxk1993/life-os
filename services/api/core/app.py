@@ -106,6 +106,19 @@ def create_app(
     # （路由真正在跑的）。startup:always（或缺省）启动即激活，event: 型等命中。
     reg = registry or ModuleRegistry()
     activator = PluginActivator(reg)
+    # ★ ADR-0005（2026-10-03）：把「激活失败目击」接进 plugin_state.last_error。
+    #   原实现只写进程内 dict，重启即失忆；而启动恢复只读 enabled 不看错误 →
+    #   失败插件每次重启重试、永远不自愈。这里经 manager 注入落库通道，
+    #   activator 仍不 import db（分层约定不破）。
+    try:
+        from core.plugins.manager import get_plugin_manager
+
+        activator.set_persist_hook(get_plugin_manager().note_activation_error)
+    except Exception as _hook_exc:  # noqa: BLE001 —— 接不上不阻断启动
+        log.warning(
+            "激活错误落库通道注入失败（退化为内存目击）",
+            extra={"error": f"{type(_hook_exc).__name__}: {_hook_exc}"},
+        )
     # 固化 bound method 引用，add/remove 操作同一对象（去重/摘除都可靠）。
     activator_listener = activator.on_event
 
@@ -265,7 +278,7 @@ def create_app(
     #       S-3 审计只记操作与状态，不含 Authorization
     # ★ 鉴权：聚合的是用户数据，端点本身必须先过 get_current_user（不能成为新的裸奔口）。
     # ★ 自查修正（2026-09-24 深夜 · 主人「严格检验」轮）：原硬编码四家违反
-    #   「一切皆插件」ADR-0003 —— 新插件加聚合源要改内核代码。
+    #   「一切皆插件」ADR-0005 —— 新插件加聚合源要改内核代码。
     #   改为**从 manifest 动态发现**：插件在 provides 声明 x.summary.today
     #   即自动成为聚合源，零内核改动（Manifest 模型 D′ 后字段可见）。
     _summary_providers: tuple[tuple[str, str], ...] = tuple(
@@ -362,14 +375,17 @@ def create_app(
         _registry = getattr(app.state, "registry", None) or registry
         _mounted = 0
         _skipped: list[str] = []
+        _failed: list[tuple[str, str]] = []
         for _info in _res.plugins:
             if _info.source != "third-party":
                 continue
             try:
+                _prev_error: str | None = None
                 try:
                     with _db_session() as _db:
                         _st = _db.get(_PluginState, _info.id)
                         _enabled = bool(_st.enabled) if _st is not None else False
+                        _prev_error = _st.last_error if _st is not None else None
                 except Exception:
                     # ★ 表不存在（如测试用的临时库）→ 视为"未启用"，**静默跳过**
                     #   （不刷 warning 噪音；这是"没记录"的正常情形之一）
@@ -380,6 +396,15 @@ def create_app(
                     )
                     _skipped.append(_info.id)
                     continue
+                # ★ ADR-0005（2026-10-03）：上一次启用的残留错误先点名，再重试。
+                #   旧行为只读 enabled、不看 last_error → 失败插件每轮重启重试、
+                #   每轮无声重复半提交（"永远不自愈"）。现在把残留错误显式纳入
+                #   对账，运维一眼可见「它上次就是坏的」。
+                if _prev_error:
+                    log.warning(
+                        "第三方插件上次启用留有错误，本次将重试",
+                        extra={"module": _info.id, "last_error": _prev_error},
+                    )
                 _mgr.enable(_info.id, _registry)
                 # ★ 只有**真正挂载成功**的才进 app.state.modules ——
                 #   否则会与 /health/modules（只报已激活）不自洽（O1 自洽测试会红）。
@@ -387,6 +412,7 @@ def create_app(
                 _mounted += 1
                 log.info("第三方插件已恢复挂载", extra={"module": _info.id})
             except Exception as _exc:  # noqa: BLE001 —— 单个失败不影响其它
+                _failed.append((_info.id, f"{type(_exc).__name__}: {_exc}"))
                 log.warning(
                     "第三方插件恢复失败（已记录，不阻断启动）",
                     extra={"module": _info.id, "error": f"{type(_exc).__name__}: {_exc}"},
@@ -399,6 +425,13 @@ def create_app(
                 _mounted,
                 len(_skipped),
                 "、".join(_skipped),
+            )
+        # ★ ADR-0005：恢复失败必须点名，不许只留在单条 warning 里。
+        if _failed:
+            log.error(
+                "第三方插件启动对账：恢复失败 %d 个 —— %s",
+                len(_failed),
+                "；".join(f"{pid}（{err}）" for pid, err in _failed),
             )
     except Exception as _exc:  # noqa: BLE001 —— 整段兜底，绝不让它拖垮启动
         log.warning("第三方插件恢复流程整体跳过：%s", _exc)
