@@ -18,9 +18,16 @@
   "api": {
     "base": "/api/v1/mcp",
     "openapi": "/api/v1/mcp/openapi.json",
-    "health": "/api/v1/mcp/health"
+    "health": "/api/v1/mcp/health",
+    "tools": {
+      "pat.patch": "/pats/{pat_id}",
+      "pat.delete": "/pats/{pat_id}"
+    }
   },
-  "provides": [],
+  "provides": [
+    "mcp.pat.patch",
+    "mcp.pat.delete"
+  ],
   "requires": [],
   "slots": [
     "settings.page"
