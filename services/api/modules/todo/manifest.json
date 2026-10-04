@@ -17,14 +17,18 @@
     "base": "/api/v1/todo",
     "openapi": "/api/v1/todo/openapi.json",
     "health": "/api/v1/todo/health",
-    "tools": { "item.patch": "/items/{item_id}" }
+    "tools": {
+      "item.patch": "/items/{item_id}",
+      "item.delete": "/items/{item_id}"
+    }
   },
   "provides": [
     "todo.item.read",
     "todo.item.write",
     "todo.item.patch",
     "todo.tag.read",
-    "x.summary.today"
+    "x.summary.today",
+    "todo.item.delete"
   ],
   "requires": [],
   "slots": [

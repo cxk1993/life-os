@@ -19,12 +19,18 @@
   "api": {
     "base": "/api/v1/health",
     "openapi": "/api/v1/health/openapi.json",
-    "health": "/api/v1/health/health"
+    "health": "/api/v1/health/health",
+    "tools": {
+      "record.patch": "/records/{record_id}",
+      "record.delete": "/records/{record_id}"
+    }
   },
   "provides": [
     "health.record.read",
     "health.record.write",
-    "health.care.request"
+    "health.care.request",
+    "health.record.patch",
+    "health.record.delete"
   ],
   "requires": [],
   "slots": [

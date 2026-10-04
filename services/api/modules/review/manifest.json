@@ -21,14 +21,16 @@
     "health": "/api/v1/review/health",
     "tools": {
       "daily": "/days",
-      "source": "/source"
+      "source": "/source",
+      "note.delete": "/notes/{note_id}"
     }
   },
   "provides": [
     "review.daily.read",
     "review.note.write",
     "review.source.read",
-    "x.summary.today"
+    "x.summary.today",
+    "review.note.delete"
   ],
   "requires": [],
   "slots": [],

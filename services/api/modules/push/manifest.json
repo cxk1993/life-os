@@ -8,21 +8,46 @@
   "icon": "bell",
   "description": "Web Push（PWA 浏览器推送）：订阅管理 + VAPID 发送 + 提醒事件转推送。桌面通知走桥（calendar T25），本插件管浏览器侧。",
   "author": "yunxi",
-  "window": { "w": 760, "h": 520, "minW": 480, "minH": 360 },
+  "window": {
+    "w": 760,
+    "h": 520,
+    "minW": 480,
+    "minH": 360
+  },
   "entry": "@/apps/push",
   "api": {
     "base": "/api/v1/push",
     "openapi": "/api/v1/push/openapi.json",
     "health": "/api/v1/push/health",
-    "tools": { "send": "/send" }
+    "tools": {
+      "send": "/send",
+      "subscribe": "/subscribe"
+    }
   },
-  "provides": ["push.subscription.read", "push.send.write"],
+  "provides": [
+    "push.subscription.read",
+    "push.send.write",
+    "push.subscribe.delete"
+  ],
   "requires": [],
-  "slots": ["settings.page"],
-  "emits": ["push.sent"],
-  "consumes": ["calendar.reminder.fired"],
-  "permissions": ["db:own"],
+  "slots": [
+    "settings.page"
+  ],
+  "emits": [
+    "push.sent"
+  ],
+  "consumes": [
+    "calendar.reminder.fired"
+  ],
+  "permissions": [
+    "db:own"
+  ],
   "migrations": "api/migrations",
   "settingsSchema": "api/settings.schema.json",
-  "lifecycle": { "onInstall": null, "onEnable": null, "onDisable": null, "onUninstall": null }
+  "lifecycle": {
+    "onInstall": null,
+    "onEnable": null,
+    "onDisable": null,
+    "onUninstall": null
+  }
 }

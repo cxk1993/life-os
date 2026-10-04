@@ -19,14 +19,18 @@
     "health": "/api/v1/finance/health",
     "tools": {
       "entry": "/entries",
-      "beeccount": "/beecount/source"
+      "beeccount": "/beecount/source",
+      "entry.patch": "/entries/{entry_id}",
+      "entry.delete": "/entries/{entry_id}"
     }
   },
   "provides": [
     "finance.entry.read",
     "finance.entry.write",
     "finance.snapshot.read",
-    "finance.beeccount.read"
+    "finance.beeccount.read",
+    "finance.entry.patch",
+    "finance.entry.delete"
   ],
   "requires": [],
   "slots": [],

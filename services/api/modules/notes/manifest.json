@@ -16,12 +16,23 @@
   "api": {
     "base": "/api/v1/notes",
     "openapi": "/api/v1/notes/openapi.json",
-    "health": "/api/v1/notes/health"
+    "health": "/api/v1/notes/health",
+    "tools": {
+      "note.update": "/notes/{note_id}",
+      "note.delete": "/notes/{note_id}"
+    }
   },
-  "provides": [],
+  "provides": [
+    "notes.note.update",
+    "notes.note.delete"
+  ],
   "requires": [],
-  "slots": ["dashboard.card"],
-  "emits": ["notes.lib.synced"],
+  "slots": [
+    "dashboard.card"
+  ],
+  "emits": [
+    "notes.lib.synced"
+  ],
   "consumes": [],
   "permissions": [
     "db:own",

@@ -16,10 +16,16 @@
   "api": {
     "base": "/api/v1/catalog",
     "openapi": "/api/v1/catalog/openapi.json",
-    "health": "/api/v1/catalog/health"
+    "health": "/api/v1/catalog/health",
+    "tools": {
+      "manual.patch": "/manual/{entry_id}",
+      "manual.delete": "/manual/{entry_id}"
+    }
   },
   "provides": [
-    "catalog.read"
+    "catalog.read",
+    "catalog.manual.patch",
+    "catalog.manual.delete"
   ],
   "requires": [
     "web.entry.read",

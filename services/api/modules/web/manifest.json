@@ -18,12 +18,16 @@
     "openapi": "/api/v1/web/openapi.json",
     "health": "/api/v1/web/health",
     "tools": {
-      "entry": "/entries"
+      "entry": "/entries",
+      "entry.patch": "/entries/{entry_id}",
+      "entry.delete": "/entries/{entry_id}"
     }
   },
   "provides": [
     "web.entry.read",
-    "web.entry.write"
+    "web.entry.write",
+    "web.entry.patch",
+    "web.entry.delete"
   ],
   "requires": [],
   "slots": [],

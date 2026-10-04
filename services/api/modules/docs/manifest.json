@@ -20,7 +20,9 @@
     "tools": {
       "content": "/content",
       "node.patch": "/nodes/{node_id}",
-      "node.delete": "/nodes/{node_id}"
+      "node.delete": "/nodes/{node_id}",
+      "trash.delete": "/trash/{node_id}",
+      "content.update": "/nodes/{node_id}/content"
     }
   },
   "provides": [
@@ -29,7 +31,9 @@
     "docs.node.patch",
     "docs.node.delete",
     "docs.search",
-    "docs.content.write"
+    "docs.content.write",
+    "docs.trash.delete",
+    "docs.content.update"
   ],
   "requires": [],
   "slots": [

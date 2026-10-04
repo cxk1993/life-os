@@ -18,9 +18,17 @@
   "api": {
     "base": "/api/v1/diary",
     "openapi": "/api/v1/diary/openapi.json",
-    "health": "/api/v1/diary/health"
+    "health": "/api/v1/diary/health",
+    "tools": {
+      "entry.patch": "/entry/{node_id}",
+      "entry.delete": "/entry/{node_id}"
+    }
   },
-  "provides": ["x.summary.today"],
+  "provides": [
+    "x.summary.today",
+    "diary.entry.patch",
+    "diary.entry.delete"
+  ],
   "requires": [
     "docs.node.read",
     "docs.node.write",

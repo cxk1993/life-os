@@ -19,12 +19,20 @@
     "base": "/api/v1/course",
     "openapi": "/api/v1/course/openapi.json",
     "health": "/api/v1/course/health",
-    "tools": { "schedule": "/week" }
+    "tools": {
+      "schedule": "/week",
+      "item.patch": "/items/{item_id}",
+      "item.delete": "/items/{item_id}",
+      "term.update": "/term"
+    }
   },
   "provides": [
     "course.item.read",
     "course.item.write",
-    "course.schedule.read"
+    "course.schedule.read",
+    "course.item.patch",
+    "course.item.delete",
+    "course.term.update"
   ],
   "requires": [],
   "slots": [],

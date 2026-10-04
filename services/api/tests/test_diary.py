@@ -253,7 +253,11 @@ def test_manifest(client):
     assert r.status_code == 200
     m = r.json()
     assert m["id"] == "diary"
-    assert m["provides"] == ["x.summary.today"]
+    # ★ 2026-10-04：由「精确相等」改为「子集」。
+    #   原写法 `== ["x.summary.today"]` 是**清单式断言** —— 模块一新增能力
+    #   （如给 AI 补上改/删日记的 provides）它就红，把「能力扩展」误判成回归。
+    #   防回退的正确语义是「原有的必须还在」，不是「不许变多」。
+    assert set(m["provides"]) >= {"x.summary.today"}, m["provides"]
     assert sorted(m["requires"]) == ["docs.node.read", "docs.node.write", "docs.search"]
     assert m["permissions"] == []
 

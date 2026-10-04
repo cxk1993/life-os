@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 # ★ 必须在 import 任何内核/模块之前设置临时库，init_engine 只认一次。
 os.environ["DB_PATH"] = "./data/tmp_t18mcp.db"
@@ -184,6 +185,101 @@ def test_tool_map_explicit_routes_end_to_end(client):
     assert tools["todo_tag_read"].path == "/api/v1/todo/tags"
     # 工具数量随模块扩展而增长（含 agents 模块新工具）
     assert len(tools) >= 25, f"当前 {len(tools)} 个工具，期望 ≥25"
+
+
+# ───────────────── 改动型端点成批暴露（2026-10-04）─────────────────
+# 背景：2026-09-27 那次「打通往路径参数型端点」只补了 docs/habits/todo 三个模块的
+#   provides，其余 12 个模块的 PATCH/DELETE 端点**后端有、工具面没有** ——
+#   AI 只能新建不能改/删（实证：改一条日程标题只能请主人手动点）。
+# 纪律：manifest 的 api.tools 用**细粒度 `resource.verb` 键**（粗键 `resource` 会撞车：
+#   同一 resource 上常挂多个端点且路径不同）。
+_MUTATION_TOOLS = [
+    # (工具名, 方法, 完整路径, scope)
+    ("calendar_event_patch",   "PATCH",  "/api/v1/calendar/events/{event_id}",  "calendar:patch"),
+    ("calendar_event_delete",  "DELETE", "/api/v1/calendar/events/{event_id}",  "calendar:delete"),
+    ("todo_item_delete",       "DELETE", "/api/v1/todo/items/{item_id}",        "todo:delete"),
+    ("habits_habit_patch",     "PATCH",  "/api/v1/habits/{habit_id}",           "habits:patch"),
+    ("habits_habit_delete",    "DELETE", "/api/v1/habits/{habit_id}",           "habits:delete"),
+    ("sidebar_item_patch",     "PATCH",  "/api/v1/sidebar/items/{item_id}",     "sidebar:patch"),
+    ("sidebar_item_delete",    "DELETE", "/api/v1/sidebar/items/{item_id}",     "sidebar:delete"),
+    ("web_entry_patch",        "PATCH",  "/api/v1/web/entries/{entry_id}",      "web:patch"),
+    ("web_entry_delete",       "DELETE", "/api/v1/web/entries/{entry_id}",      "web:delete"),
+    ("course_item_patch",      "PATCH",  "/api/v1/course/items/{item_id}",      "course:patch"),
+    ("course_item_delete",     "DELETE", "/api/v1/course/items/{item_id}",      "course:delete"),
+    ("finance_entry_patch",    "PATCH",  "/api/v1/finance/entries/{entry_id}",  "finance:patch"),
+    ("finance_entry_delete",   "DELETE", "/api/v1/finance/entries/{entry_id}",  "finance:delete"),
+    ("health_record_patch",    "PATCH",  "/api/v1/health/records/{record_id}",  "health:patch"),
+    ("health_record_delete",   "DELETE", "/api/v1/health/records/{record_id}",  "health:delete"),
+    ("diary_entry_patch",      "PATCH",  "/api/v1/diary/entry/{node_id}",       "diary:patch"),
+    ("diary_entry_delete",     "DELETE", "/api/v1/diary/entry/{node_id}",       "diary:delete"),
+    ("push_subscribe_delete",  "DELETE", "/api/v1/push/subscribe",              "push:delete"),
+    ("review_note_delete",     "DELETE", "/api/v1/review/notes/{note_id}",      "review:delete"),
+    ("agents_agent_patch",     "PATCH",  "/api/v1/agents/agents/{agent_id}",    "agents:patch"),
+    ("agents_agent_delete",    "DELETE", "/api/v1/agents/agents/{agent_id}",    "agents:delete"),
+    ("agents_task_patch",      "PATCH",  "/api/v1/agents/tasks/{task_id}",      "agents:patch"),
+    ("agents_task_delete",     "DELETE", "/api/v1/agents/tasks/{task_id}",      "agents:delete"),
+]
+
+
+def test_mutation_tools_exposed(client):
+    """改动型端点成批可达：PATCH/DELETE 不再缺席工具面。
+
+    ★ 这条测试的意义：**照见「测试全绿 ≠ 改动生效」**。上一版测试只断言
+      若干写工具存在，于是「12 个模块的删改端点整类不可达」在 42 个测试
+      全绿的情况下潜伏了 7 天。这里逐条钉死方法 + 完整路径 + scope。
+    """
+    from modules.mcp.registry_adapter import build_tool_map
+
+    tools = {t.name: t for t in build_tool_map()}
+    missing = [n for n, *_ in _MUTATION_TOOLS if n not in tools]
+    assert not missing, f"以下改动型工具未暴露：{missing}"
+
+    for name, method, path, scope in _MUTATION_TOOLS:
+        t = tools[name]
+        assert t.method == method, f"{name} 方法应为 {method}，实际 {t.method}"
+        assert t.path == path, f"{name} 路径应为 {path}，实际 {t.path}"
+        assert t.scope == scope, f"{name} scope 应为 {scope}，实际 {t.scope}"
+
+    # 反向对照：路径**模板**允许含 `{param}`（forward 层运行时代入），
+    # 但要防真正的推导事故 —— 空路径段（`//`，说明拼错了）与未闭合花括号。
+    # ★ 2026-10-04 自纠：上一版这里是**手工白名单 replace**（把已知参数名逐个
+    #   抠掉再看有没有残留 `{`）—— 新增一个路径参数（如 `{child_id}`）就会误报。
+    #   那是我自己写的测试在自伤（坑谱 #66）。改成结构性判据，一劳永逸。
+    for t in tools.values():
+        assert "//" not in t.path.replace("://", ""), \
+            f"{t.name} 路径含空段（拼接事故）：{t.path}"
+        assert t.path.count("{") == t.path.count("}"), \
+            f"{t.name} 路径花括号不配对：{t.path}"
+        for seg in t.path.split("/"):
+            if "{" in seg:
+                assert re.fullmatch(r"\{[a-z][a-z0-9_]*\}", seg), \
+                    f"{t.name} 路径参数段写法异常：{seg}"
+
+
+def test_mutation_endpoints_match_router_truth(client):
+    """对表：每条改动型工具的 (方法, 路径) 必须在真实 router 里存在。
+
+    ★ 这是**双向验证**（坑谱 #67(d)）：只查工具面存在 = 自己证明自己；
+      这里回到模块 OpenAPI（内核已暴露 `/api/{module}/openapi.json`）
+      核对端点真身，防止「工具面有、后端无」的幽灵工具。
+    """
+    import httpx
+    from modules.mcp.registry_adapter import build_tool_map
+
+    tools = {t.name: t for t in build_tool_map()}
+    seen: set[tuple[str, str]] = set()
+    for name, method, path, _scope in _MUTATION_TOOLS:
+        module = name.split("_")[0]
+        try:
+            spec = client.get(f"/api/{module}/openapi.json").json()
+        except Exception:  # noqa: BLE001 —— 拿不到就跳过（内核版本差异，不误报）
+            continue
+        paths = spec.get("paths") or {}
+        seen.add((method, path))
+        assert path in paths, f"{name}: 后端 OpenAPI 里没有 {path}"
+        ops = {k.lower() for k in paths[path]}
+        assert method.lower() in ops, f"{name}: {path} 不支持 {method}，只有 {sorted(ops)}"
+    assert len(seen) >= 20, f"对表只覆盖了 {len(seen)} 条，期望 ≥20"
 
 
 # ───────────────────────── PAT 生命周期 ─────────────────────────

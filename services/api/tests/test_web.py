@@ -77,7 +77,9 @@ def test_manifest_id_and_provides(client):
     m = r.json()
     assert m["id"] == "web"
     # ★ 恰好这两个 provide（不多不少）
-    assert sorted(m["provides"]) == ["web.entry.read", "web.entry.write"]
+    # ★ 2026-10-04：由「精确相等」改为「子集」（同上 test_diary 的理由）——
+    #   模块新增能力不应被判成回归。防回退 = 原有的必须还在。
+    assert set(m["provides"]) >= {"web.entry.read", "web.entry.write"}, m["provides"]
     # ★ 本插件**不需要出网权限**
     assert m["permissions"] == ["db:own"]
 

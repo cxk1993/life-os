@@ -21,14 +21,22 @@
     "openapi": "/api/v1/calendar/openapi.json",
     "health": "/api/v1/calendar/health",
     "tools": {
-      "slot": "/free-slots"
+      "slot": "/free-slots",
+      "event.patch": "/events/{event_id}",
+      "event.delete": "/events/{event_id}",
+      "child.patch": "/events/{event_id}/children/{child_id}",
+      "child.delete": "/events/{event_id}/children/{child_id}"
     }
   },
   "provides": [
     "calendar.event.read",
     "calendar.event.write",
     "calendar.slot.free",
-    "x.summary.today"
+    "x.summary.today",
+    "calendar.event.patch",
+    "calendar.event.delete",
+    "calendar.child.patch",
+    "calendar.child.delete"
   ],
   "requires": [],
   "slots": [

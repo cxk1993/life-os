@@ -22,13 +22,19 @@
     "health": "/api/v1/habits/health",
     "tools": {
       "habit": "/api/v1/habits",
-      "log.write": "/{habit_id}/checkin"
+      "log.write": "/{habit_id}/checkin",
+      "habit.patch": "/{habit_id}",
+      "habit.delete": "/{habit_id}",
+      "log.delete": "/{habit_id}/checkin/{day}"
     }
   },
   "provides": [
     "habits.habit.read",
     "habits.habit.write",
-    "habits.log.write"
+    "habits.log.write",
+    "habits.habit.patch",
+    "habits.habit.delete",
+    "habits.log.delete"
   ],
   "requires": [],
   "slots": [

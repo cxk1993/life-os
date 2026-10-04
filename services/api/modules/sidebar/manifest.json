@@ -16,14 +16,28 @@
   "api": {
     "base": "/api/v1/sidebar",
     "openapi": "/api/v1/sidebar/openapi.json",
-    "health": "/api/v1/sidebar/health"
+    "health": "/api/v1/sidebar/health",
+    "tools": {
+      "item.patch": "/items/{item_id}",
+      "item.delete": "/items/{item_id}"
+    }
   },
-  "provides": ["sidebar.item.read", "sidebar.item.write"],
+  "provides": [
+    "sidebar.item.read",
+    "sidebar.item.write",
+    "sidebar.item.patch",
+    "sidebar.item.delete"
+  ],
   "requires": [],
-  "slots": ["desktop.dock-left", "desktop.dock-right"],
+  "slots": [
+    "desktop.dock-left",
+    "desktop.dock-right"
+  ],
   "emits": [],
   "consumes": [],
-  "permissions": ["db:own"],
+  "permissions": [
+    "db:own"
+  ],
   "migrations": "api/migrations",
   "settingsSchema": "api/settings.schema.json",
   "lifecycle": {
