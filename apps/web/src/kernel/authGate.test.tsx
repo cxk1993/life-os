@@ -99,7 +99,7 @@ describe("★ T30 登录页：成功进桌面 / 失败人话报错", () => {
         <div data-testid="desktop">桌面</div>
       </AuthGate>,
     );
-    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "REDACTED" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "test-password" } });
     fireEvent.click(screen.getByText("进入"));
 
     await waitFor(() => expect(screen.getByTestId("desktop")).toBeTruthy());

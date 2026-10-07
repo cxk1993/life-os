@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ISSUE-006 Route A probe using stdlib urllib only."""
+"""ISSUE-006 Route A probe using stdlib urllib only.
+
+用法：管理员口令经环境变量传入，勿硬编码（口令不落代码/历史）。
+    LIFEOS_ADMIN_PASSWORD=<口令> python3 tools/probe_issue006_routeA.py
+"""
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -42,7 +47,7 @@ def main() -> int:
     st, body, hdrs = req(
         "POST",
         "/api/v1/auth/login",
-        body={"username": "admin", "password": "REDACTED"},
+        body={"username": "admin", "password": os.environ.get("LIFEOS_ADMIN_PASSWORD", "")},
     )
     print(f"{'OK' if st==200 else 'FAIL':4s}  login  {st}")
     set_cookie = ""

@@ -16,7 +16,7 @@ from core.config import get_settings  # noqa: E402
 from core.errors import UnauthorizedError  # noqa: E402
 from modules.auth import service as auth_service  # noqa: E402
 
-PASSWORD = "REDACTED-test"
+PASSWORD = "test-password"
 
 
 class _FakeSettings:
