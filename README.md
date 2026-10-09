@@ -160,6 +160,31 @@ Life-OS 不重复造轮子。有些事别人已经做得很好 —— 那就为�
 
 ---
 
+## 服务器端部署：本体之外的附属服务
+
+> **Life-OS 本体很轻** —— 一个 FastAPI 后端 + 一个静态前端，Python + Node 就能跑起来。
+> 但**它有几个插件是接别人的**：一旦你要在服务器上把「理财」「智能体」真正用起来，
+> 就得额外跑下面这些服务。
+>
+> ⚠️ **本仓库不含它们的源码** —— 它们由你自己安装（它们的许可也是这么要求的）。
+> 这就是「一切皆插件」的代价，也是它的自由：**你可以只装你要用的那几个。**
+
+| 附属服务 | 谁需要它 | 怎么装 | 关键点 |
+|:--|:--|:--|:--|
+| **Node ≥ 22.19** | 「智能体」插件 | [官方 tarball](https://nodejs.org/) / nvm | ⚠️ 系统自带的 node 常常低于 22.19，pi 会起不来（`engines` 硬性要求） |
+| **pi CLI**<br>`@earendil-works/pi-coding-agent` | 「智能体」插件 | `npm i -g --prefix ~/.npm-global` | 插件按 `~/.npm-global/bin/pi` 找它 —— **装到别处它找不到** |
+| **pi-web-ui** | 「智能体」专业模式（`/pi/`） | `npm i -g pi-web-ui` | 独立服务（默认 `127.0.0.1:8787`），由 nginx 反代 + token 墙 |
+| **BeeCount-Cloud** | 「理财」插件 | `docker pull sunxiao0721/beecount-cloud` | 账本上游；插件经 MCP **只读**对接，不自带账本 |
+| **nginx + 证书** | 对外访问 | acme.sh / certbot | HTTPS；**`/api/` 永不缓存**是硬要求 |
+
+**一项都不装，系统照样能跑。** 插件可以单独启用 / 禁用 / 卸载，内核不会因为你没装 pi 就启动失败 ——
+你只想用日程 / 待办 / 习惯 / 笔记，那 `python tools/task.py dev` 就够了。
+
+> 现成的片段就在 [`deploy/`](deploy/) 下：`nginx/lifos.conf`（含 `location /api/` 三行与 BeeCount 同源反代）、
+> `systemd/lifeos-api.service`、`Dockerfile.api` / `Dockerfile.web`；逐步说明见 [`deploy/README.md`](deploy/README.md)。
+
+---
+
 ## 设计边界（给使用者）
 
 Life-OS 是**单人、自托管**的个人系统，有些事是刻意不做的：
