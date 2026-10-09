@@ -61,16 +61,112 @@ def _load_sibling(name: str):
     return mod
 
 
+_SETTINGS_CACHE: dict[str, Any] = {}
+_SETTINGS_CACHE_AT: float = 0.0
+_SETTINGS_TTL = 5.0  # 秒；PATCH settings 后最迟 5 秒生效（无需重启服务）
+
+# ★ 记录"池/管理器是按哪组参数建的"——设置变了自动重建（否则 provider/model 改动不生效）
+_POOL_SIG: tuple[Any, ...] | None = None
+_MGR_SIG: tuple[Any, ...] | None = None
+
+
+def _plugin_settings(force: bool = False) -> dict[str, Any]:
+    """读本插件的 plugin_setting 表（容错：读不到 → 返回 {}，绝不影响对话）。
+
+    ★ 5 秒 TTL 缓存：避免每条消息都打库；PATCH settings 之后最迟 5 秒生效。
+    """
+    global _SETTINGS_CACHE, _SETTINGS_CACHE_AT
+    import time as _time
+
+    now = _time.monotonic()
+    if not force and _SETTINGS_CACHE_AT and (now - _SETTINGS_CACHE_AT) < _SETTINGS_TTL:
+        return _SETTINGS_CACHE
+    try:
+        from core.deps import db_session
+        from core.plugins.settings import read_settings
+
+        with db_session() as db:
+            _SETTINGS_CACHE = read_settings(db, "pi-agent") or {}
+    except Exception as exc:  # noqa: BLE001 — 设置读不到就用默认值，不该阻断对话
+        log.debug("[pi-agent] 读插件设置失败（走默认值）：%s", exc)
+        _SETTINGS_CACHE = {}
+    _SETTINGS_CACHE_AT = now
+    return _SETTINGS_CACHE
+
+
+def _runtime_options() -> dict[str, Any]:
+    """把插件设置翻译成运行时参数（缺省值与 settingsSchema 的 default 保持一致）。
+
+    ★ 为什么要有这层（2026-10-10 修复）：此前 provider/model 硬编码在
+      process.py / sessions.py（`DEFAULT_PROVIDER = "life-os"`），
+      settingsSchema 里的 provider / model / pi_binary / max_parallel_sessions
+      全是"摆设"——配了不生效，换网关必须改代码。这是实打实的风险点。
+    """
+    s = _plugin_settings()
+    thinking = (str(s.get("thinking_level") or "high").strip()) or "high"
+    model = (str(s.get("model") or "life-os").strip()) or "life-os"
+    binary = str(s.get("pi_binary") or "").strip() or None
+    try:
+        max_sessions = int(s.get("max_parallel_sessions") or 4)
+    except (TypeError, ValueError):
+        max_sessions = 4
+    # sandbox: None = 未设置（交给 get_pool 读环境变量）；bool = 显式开关
+    sandbox = s.get("sandbox") if isinstance(s.get("sandbox"), bool) else None
+    return {
+        "provider": (str(s.get("provider") or "life-os").strip()) or "life-os",
+        # pi 的 --model 支持 ":<thinking>" 后缀（见 rpc.py 注）
+        "model": model if ":" in model else f"{model}:{thinking}",
+        "binary": binary,
+        "max_sessions": max_sessions,
+        "sandbox": sandbox,
+        "sandbox_image": str(s.get("sandbox_image") or "").strip() or None,
+    }
+
+
 def _manager():
-    """取单会话进程管理器（第②刀形态；health/status 用）。"""
+    """取单会话进程管理器（第②刀形态；health/status 用）。
+
+    ★ 设置变更（provider/model/binary）时自动重建，否则新配置不生效。
+    """
+    global _MGR_SIG
     proc = _load_sibling("process")
-    return proc.get_manager(cwd=str(_PLUGIN_DIR / "runtime"))
+    o = _runtime_options()
+    sig = (o["binary"], o["provider"], o["model"])
+    if _MGR_SIG is not None and _MGR_SIG != sig:
+        log.info("[pi-agent] 设置变更 → 重建进程管理器：%s → %s", _MGR_SIG, sig)
+        try:
+            proc.shutdown_manager()
+        except Exception:  # noqa: BLE001
+            pass
+    _MGR_SIG = sig
+    return proc.get_manager(
+        cwd=str(_PLUGIN_DIR / "runtime"),
+        binary=o["binary"], provider=o["provider"], model=o["model"],
+    )
 
 
 def _pool():
-    """取会话池（第④刀；对话与会话管理走这里）。"""
+    """取会话池（第④刀；对话与会话管理走这里）。
+
+    ★ 设置变更时自动重建 —— 否则 PATCH settings 改了 provider/model 仍走旧值。
+    """
+    global _POOL_SIG
     sess = _load_sibling("sessions")
-    return sess.get_pool(cwd=str(_PLUGIN_DIR / "runtime"))
+    o = _runtime_options()
+    sig = (o["binary"], o["provider"], o["model"], o["max_sessions"], o["sandbox"], o["sandbox_image"])
+    if _POOL_SIG is not None and _POOL_SIG != sig:
+        log.info("[pi-agent] 设置变更 → 重建会话池：%s → %s", _POOL_SIG, sig)
+        try:
+            sess.shutdown_pool()
+        except Exception:  # noqa: BLE001
+            pass
+    _POOL_SIG = sig
+    return sess.get_pool(
+        cwd=str(_PLUGIN_DIR / "runtime"),
+        binary=o["binary"], provider=o["provider"], model=o["model"],
+        max_sessions=o["max_sessions"], sandbox=o["sandbox"],
+        sandbox_image=o["sandbox_image"],
+    )
 
 
 def _level() -> str:
