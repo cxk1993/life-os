@@ -171,7 +171,7 @@ Life-OS 不重复造轮子。有些事别人已经做得很好 —— 那就为�
 
 | 附属服务 | 谁需要它 | 怎么装 | 关键点 |
 |:--|:--|:--|:--|
-| **Node ≥ 22.19** | 「智能体」插件 | [官方 tarball](https://nodejs.org/) / nvm | ⚠️ 系统自带的 node 常常低于 22.19，pi 会起不来（`engines` 硬性要求） |
+| **Node ≥ 22.19** | 「智能体」插件 | [官方 tarball](https://nodejs.org/) / nvm | 前端构建只要 20+，但 **pi 硬性要求 ≥22.19** —— 直接装 22.19+，两者通吃 |
 | **pi CLI**<br>`@earendil-works/pi-coding-agent` | 「智能体」插件 | `npm i -g --prefix ~/.npm-global` | 插件按 `~/.npm-global/bin/pi` 找它 —— **装到别处它找不到** |
 | **pi-web-ui** | 「智能体」专业模式（`/pi/`） | `npm i -g pi-web-ui` | 独立服务（默认 `127.0.0.1:8787`），由 nginx 反代 + token 墙 |
 | **BeeCount-Cloud** | 「理财」插件 | `docker pull sunxiao0721/beecount-cloud` | 账本上游；插件经 MCP **只读**对接，不自带账本 |
