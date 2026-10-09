@@ -6,7 +6,7 @@
   "minKernel": "0.1.0",
   "kernelApi": "^1",
   "icon": "bot",
-  "description": "内嵌 Pi agent 运行时：AI 对话 + AI 编排（复用 pi 社区插件）。★ 会话池：一个 session = 一个 pi 子进程（外部 agent 可锁定/切换会话）。★ 经 ADR-0003 MCP 桥自动暴露 pi_chat_write / pi_session_read / pi_session_write。★ 第⑤刀：对话 UI（流式 SSE + 会话切换 + L1/L2/L3 降级可见）。",
+  "description": "接入 Pi 编码 agent（外部 CLI，独立安装）：AI 对话 + AI 编排。★ 会话池：一个 session = 一个 pi 子进程（外部 agent 可锁定/切换会话）。★ 经 ADR-0003 MCP 桥自动暴露 pi_chat_write / pi_session_read / pi_session_write。★ 对话 UI：流式 SSE + 会话切换 + L1/L2/L3 降级可见。",
   "author": "astrbot（云昔）",
   "window": {
     "w": 900,
