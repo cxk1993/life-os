@@ -307,7 +307,19 @@ def test_notes_crud_and_separation(client, auth):
 
 
 def test_trend_and_compare(client, auth):
-    d1, d2 = DateType(2026, 9, 10), DateType(2026, 9, 11)
+    # ★ 日期必须「相对今天」：/trend 锚定 local_today 只查「最近 N 天」，
+    #   写死具体日期会随日历滑出窗口，使该测试必然变红（2026-10-10 修）。
+    # ★ 且不能简单取「今天-2/-1」：mock 有约 1/11 的「空日」（seed%11==0），
+    #   那样约 16.5% 的日期会撞到空日、使断言又随机变红。
+    #   故倒序取最近的两个非空日 —— 任何日期跑都稳。
+    recent: list[DateType] = []
+    d = local_today() - timedelta(days=1)
+    while len(recent) < 2 and (local_today() - d).days <= 60:
+        if not mock_report(d)["empty"]:
+            recent.append(d)
+        d -= timedelta(days=1)
+    assert len(recent) == 2, "mock 应能提供两个非空日"
+    d1, d2 = sorted(recent)  # d1 较早、d2 较晚，且都在 /trend 的 30 天窗口内
     _ingest(client, auth, d1)
     _ingest(client, auth, d2)
     r = client.get(f"{BASE}/trend", params={"metric": "total", "days": 30}, headers=auth)
