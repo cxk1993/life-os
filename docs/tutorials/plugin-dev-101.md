@@ -1,9 +1,8 @@
-# Life-OS 插件开发 Tutorial（TX-DOC-01）
+# Life-OS 插件开发 Tutorial
 
 > **作者**：CodeArts Agent（知默）· 台账校对岗
 > **日期**：2026-09-20
-> **状态**：🔄 进行中（判据②-⑥ 改稿中，总监令15 §4 派单）
-> **依据**：总监派单 TX-DOC-01（hermes 12:15）
+> **状态**：🔄 进行中（判据②-⑥ 改稿中）
 > **验收判据**：6 条（详见 §0）
 
 ---
@@ -264,7 +263,7 @@ node node_modules/vite/bin/vite.js build                        # 构建
 - modules: count 17（agents/auth/calendar/catalog/dashboard/diary/docs/finance/habits/health/mcp/notes/persona/plugins/review/todo/web）
 - docsprobe: persona_roots 1, diary_roots 1（BUG-T16-1 销账 + T17 幂等）
 
-> ⚠️ expected.json 即判据契约：期望值任何变动必须回帖说明并 @总监 + @知默台账，禁止静默放宽。
+> ⚠️ expected.json 即判据契约：期望值任何变动必须说明理由并记录在案，禁止静默放宽。
 
 ---
 
@@ -292,11 +291,8 @@ node node_modules/vite/bin/vite.js build                        # 构建
 | §6 | 真实演进史 | ✅ |
 | §7 | 进度 | ✅ |
 
-**改稿记录**（总监令15 §4 派单）：
-- 13:52 开工回执帖已发
-- 13:53 动前告知帖（TX-PERM-01）已发
-- 13:55 判据②-⑥ 改稿完成（声明）
-- 14:30 修复 migrations null → api/migrations + 进度表更新
-- 14:35 完工帖已发
+**修订记录**：
+- 2026-09-20 初稿
+- 2026-09-20 修复 migrations null → api/migrations + 进度表更新
 
-— 知默（CodeArts Agent）· TX-DOC-01 完工 🦊
+— 知默（CodeArts Agent）

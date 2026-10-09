@@ -1,7 +1,7 @@
 # 纪念日倒数 countdown（插件 id：`countdown`）
 
 > **作者**：astrbot（云昔）｜ **版本**：0.1.0 ｜ **kind**：`third-party`
-> **地位**：★ **Life-OS 第一个真实第三方插件**（2026-09-23，主人特许 + 总监令 54 派单）。
+> **地位**：★ **Life-OS 第一个真实第三方插件**（2026-09-23）。
 > 内置插件早就有 17 个，但 `plugins/` 目录此前只有一个 `.gitkeep`——
 > 也就是说 `manager.install()` / `uninstall()` 这两个**只对第三方开放**的入口，
 > 在本插件之前**从未被真实插件跑过**。本 README 的「踩坑记录」一节就是这一趟的产出。
@@ -38,16 +38,16 @@
 依据 **Dai, Milkman & Riis (2014), _The Fresh Start Effect_, Management Science 60(10)**：
 人在时间里程碑（周一、月初、生日、节日）之后显著更可能开始追求目标。
 系统里本来就存着主人的私人里程碑，**这个端点把它们从「被看的数字」变成「别的模块可以用的触发点」**——
-概览卡、复盘发起、提醒择时（`TX-REMIND-01`）都是它的下游。
+概览卡、复盘发起、提醒择时都是它的下游。
 
 ## 3. ⚠️ 当前边界（V1 明确不做的事，别踩）
 
 | # | 边界 | 原因（都是实测，不是推测） |
 |:--|:--|:--|
 | ① | **没有窗口 UI，`entry` 故意为空串** | 前端 `ModuleRegistry.ts:25` 的 `APP_ENTRY_GLOB = import.meta.glob("../apps/*/index.tsx")` 是**构建期**求值，只扫内置目录；把 `entry` 填成 `@/apps/countdown` 会 `loadEntry` reject「未找到插件入口」。**"第三方前端可插"是平台缺口，不是本插件偷懒** |
-| ② | **跨插件调用当前会 403** | `core/deps.py::_caller_plugin_id` 靠 `app.state.modules` 反查 caller，而该注册表只登记内置模块（实测 18 条）→ 第三方永远识别不出来。**修法在 `TX-MANIFEST-01` D1-3（census 与清单同源）**，`/example-cross-plugin` 端点保留作复验样本 |
-| ③ | **不声明软依赖** | `manifest.optionalDependencies` 被 `contracts/plugin.schema.json`（`additionalProperties:false` 且无此字段）直接拒收——**写了就装不上**。内核模型其实认识这个字段；本席首版写了，装不上，遂删除并留复现测试 |
-| ④ | 无 MCP 工具声明 | V2 候选：若将来插件可申报 `api.tools`，AI 侧即可"发现即用"；本插件首版不做，避免与 `TX-MANIFEST-01` 契约改动抢跑道 |
+| ② | **跨插件调用当前会 403** | `core/deps.py::_caller_plugin_id` 靠 `app.state.modules` 反查 caller，而该注册表只登记内置模块（实测 18 条）→ 第三方永远识别不出来。**修法：census 与清单应同源**，`/example-cross-plugin` 端点保留作复验样本 |
+| ③ | **不声明软依赖** | `manifest.optionalDependencies` 被 `contracts/plugin.schema.json`（`additionalProperties:false` 且无此字段）直接拒收——**写了就装不上**。内核模型其实认识这个字段；首版写了、装不上，遂删除并留复现测试 |
+| ④ | 无 MCP 工具声明 | V2 候选：若将来插件可申报 `api.tools`，AI 侧即可"发现即用"；本插件首版不做，避免与契约改动抢跑道 |
 
 ## 4. 安装 / 卸载（★ 卸载是「三清」，不是「禁用」——先读完）
 
@@ -88,10 +88,10 @@ curl -X POST $BASE/api/v1/plugins/countdown/uninstall -H "Authorization: Bearer 
 > `manager.uninstall()` 这条路径**从未被真实插件跑过**。第一趟跑下来发现——
 > 平台上**没有**"卸载但保留数据"的选项（`onUninstall` 钩子也拿不到"是否要留数据"的信号），
 > 而业界规范（Agent Plugins Spec）把**数据保留**当作合规默认。
-> 这属于**平台缺口**，已由本席作为 N5 提案转呈总监；**本节的写法只解决"读者不踩坑"，不解决"平台该不该改"**。
+> 这属于**平台缺口**，已作为改进提案上报；**本节的写法只解决"读者不踩坑"，不解决"平台该不该改"**。
 
-> ★ **勘误留痕**：本席 09-23《签收令 56》帖中引用为 `manager.py:193-222`，**行号有 4 行偏差**；
-> 正本为 `197-226`（`def uninstall` 起，`return` 止）。按本席自缚纪律第 ①④ 条，此处以**实测行号**为准并留痕。
+> ★ **勘误留痕**：2026-09-23 引用为 `manager.py:193-222`，**行号有 4 行偏差**；
+> 正本为 `197-226`（`def uninstall` 起，`return` 止）。此处以**实测行号**为准并留痕。
 
 ## 5. 测试
 
@@ -106,7 +106,7 @@ cd services/api && python3 -m pytest ../../plugins/countdown/tests -q     # 20 p
 
 ★ 其中三条是**「提醒碑」测试**（故意钉住平台现状，平台修好后它们会红）：
 `test_复现_声明软依赖会被契约拒收` / `test_pin_模型与契约两张字段表不一致` / `test_清单形状与manifest缺位_pin`。
-它们已被总监收编为 `TX-MANIFEST-01` 卡判据 4/5/8/10，**修好后请顺手撤碑**（本席会主动改红为绿并回帖）。
+它们已被收录为该插件的判据 4/5/8/10，**修好后请顺手撤碑**。
 
 ## 6. 踩坑记录（给下一个第三方插件作者）
 
@@ -116,11 +116,11 @@ cd services/api && python3 -m pytest ../../plugins/countdown/tests -q     # 20 p
    且 `_MODEL_KEY` / `_MODEL_MODULE` **必须逐字一致**（否则缓存不共享）。
 2. **迁移里的 `_load_models()` 必须先看 `sys.modules`。** 无条件 `exec_module` 会让 SQLModel 类被定义两次，
    挂载时报 `InvalidRequestError: Table 'xxx_item' is already defined for this MetaData instance`。
-   ——**`create_plugin.py` 生成的迁移模板缺这道判空**（本席已在自己两份文件里修好，并交 @知默 回填模板）。
+   ——**`create_plugin.py` 生成的迁移模板缺这道判空**（已在两份文件中修好，并回填模板）。
 3. **`get_plugin_client` 不是 FastAPI 依赖。** 它签名是 `(request, target_capabilities)`，第二参数无默认值，
    写成 `Depends(get_plugin_client)` 会让 GET 端点 **422 body Field required**。正确写法见 `router.py` 的
    `/example-cross-plugin`（函数直调 + target 必须 ⊆ `manifest.requires`）。
-   ——**`create_plugin.py --with-example` 生成的示例就是这个错写法**，TX-AST-01 本席自己的账，已在交接区报备。
+   ——**`create_plugin.py --with-example` 生成的示例就是这个错写法**，属本插件的账，已在交接区报备。
 4. **`optionalDependencies` 目前写进 manifest 会导致装不上**（见 §3-③）。
 5. **Tutorial 里两处与实现不符**：①「必须在 `services/api/` 下执行否则生成到 `scripts/`」——路径全部由
    `__file__` 推导（`create_plugin.py:41-43`），与 cwd 无关，且第三方落点是 `plugins/<id>/`；

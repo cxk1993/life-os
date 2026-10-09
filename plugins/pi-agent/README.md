@@ -1,56 +1,122 @@
 # Pi 智能体（插件 id：`pi-agent`）
 
-> ★ **TX-FRAME-01** · 把整个 Pi agent 项目内嵌融合为 **Life-OS 的一个插件**。
-> 指挥线：**主人 × astrbot**（总监令 10 §1）· 设计：本目录同源各帖（探讨帖 / 设计卡 v1·v2 / 选型帖）。
+> **把 CLI 编码 agent 接进 Life-OS 的「适配器插件」。**
+> 它通过 **RPC 子进程**桥接一个外部 agent，把「对话 + 会话管理」变成 Life-OS 的一个插件，
+> 并经 MCP 桥把能力暴露成工具、供外部 agent 调用。
+
+> ★ **本仓库不含 pi 的源码。** pi（[`@earendil-works/pi-coding-agent`](https://github.com/earendil-works/pi)，MIT）
+> 由使用者自行 `npm install`；本插件只负责「起进程、递消息、收结果」。
+> 版权与许可声明见仓库根 [`NOTICE`](../../NOTICE)。
 
 | 项 | 值 |
 |:--|:--|
 | id | `pi-agent` |
-| kind | **`third-party`**（★ 可禁用、可卸载）|
+| kind | `third-party`（**可禁用、可卸载**）|
 | API 前缀 | `/api/v1/pi-agent` |
-| 能力 | `pi.chat` · `pi.session.manage` |
-| 权限 | `fs:plugin` · `net:out:localhost`（★ 总监令 10 红线③收口）|
+| 能力 | `pi.chat.write` · `pi.session.read` · `pi.session.write` |
+| 权限 | `fs:plugin` · `net:out:localhost` · `subprocess` |
 
 ---
 
-## ★ 当前进度：**第①刀（骨架）**
+## 1. 这是一个「适配器」，不是「唯一的 agent」
 
-**目标**：**只验证「pi 能被内核识别为一个 third-party 插件」** —— 可禁用、可卸载、**不改内核一行**（ADR-0002 唯一判据）。
+**pi 只是第一个被接进来的 CLI agent。** 桥接范式是通用的 —— 换一个 agent，只需换最下面那一层：
 
-| 做了什么 | 没做什么（刻意）|
+| 层 | 做什么 | 换 agent 要改吗 |
+|:--|:--|:--|
+| 插件骨架 | manifest / 权限 / 生命周期 / 设置 | 基本不动 |
+| **桥接层**（`api/rpc.py`） | 起子进程、说它的协议（JSONL / RPC）、收流 | **要改**（各 agent 协议不同） |
+| 会话池（`api/sessions.py`） | 一个 session = 一个子进程，可锁定 / 切换 | 复用 |
+| 对外暴露 | `provides` → MCP 工具（ADR-0003 桥） | 复用 |
+| 对话 UI | `apps/web/src/apps/pi-agent/` | 复用 |
+
+⇒ **opencode、deepseek harness 等任何 CLI agent，都可以照这个结构各写一个适配器插件。**
+本插件不是内核的一部分 —— 禁用 / 卸载它，不影响系统其它任何能力。
+
+---
+
+## 2. 它提供什么
+
+### 2.1 HTTP 端点（前缀由内核按 `manifest.api.base` 挂，代码内不写 prefix）
+
+| 方法 | 路径 | 说明 |
+|:--|:--|:--|
+| GET | `/health` | 健康探测（含降级等级） |
+| GET | `/manifest` | 回显本插件 manifest 原文 |
+| GET | `/status` | 运行状态（进程数 / 会话数 / 熔断状态） |
+| POST | `/reset-circuit` | 手动复位熔断 |
+| POST | `/chat` | 对话 |
+| POST | `/chat/stream` | 对话（SSE 流式） |
+| GET | `/sessions` | 会话列表 |
+| POST | `/sessions` | 新建 / 切换会话 |
+| GET | `/sessions/history` | 会话历史 |
+
+### 2.2 经 MCP 暴露的工具（外部 agent 可调）
+
+`pi.chat.write` / `pi.session.read` / `pi.session.write` 三条能力，经 **ADR-0003 MCP 桥**自动变成：
+
+```
+pi_chat_write · pi_session_read · pi_session_write
+```
+
+### 2.3 会话池
+
+**一个 session = 一个 agent 子进程。** 外部 agent 传 `session="alpha"` / `"beta"` 即得
+**互相隔离**的进程 —— 可锁定（独占）、可切换，互不干扰。
+
+### 2.4 降级口径
+
+| 等级 | 含义 |
 |:--|:--|
-| `manifest.json`（契约 + 收口权限 + lifecycle 钩子）| ❌ 不起 pi 子进程 |
-| `api/router.py`（health / manifest / status）| ❌ 不接 MCP |
-| `api/lifecycle.py`（**空壳**，只打日志）| ❌ 不写 UI |
-| 本 README + 测试骨架 | ❌ 不碰 `kernel/` `core/` |
+| **L0** | 待命（懒启动，尚未起进程 —— 正常态，非故障） |
+| **L1** | 正常（走 agent，有工具能力） |
+| **L2** | 重启中 —— **快速失败**，不排队 |
+| **L3** | 熔断 —— 明确告知「AI 工具能力暂不可用」，由前端保底轻量对话 |
 
-**判据**：J-21（不改内核）· J-22（可禁用）· J-23（可卸载无残留）。
-
----
-
-## ★ 已定的关键设计（后续刀次用）
-
-| 项 | 定案 |
-|:--|:--|
-| **接入方式** | ★ **RPC 模式**（`pi --mode rpc`，JSONL over stdin/stdout；官方有 Python 示例）|
-| **模型** | ★ **`life-os` 路由**（`step-5-preview` + `agnes-3.0-flash` 自动故障转移）· 子 agent 复用 · 视觉兜底 `识图` · 思考强度 `high` |
-| **对外口子** | ★ **零新造** —— 走 **ADR-0003 MCP 桥**（`provides` → MCP tools）+ **session 工具集**（`pi_session_new` / `pi_chat` / `pi_session_switch` / `pi_session_lock`）|
-| **记忆** | ★ **Pi 用自己完整的记忆体系**（主人明确：无妨，不设限）|
-| **降级** | ★ **L1 正常 / L2 重启中（快速失败不排队）/ L3 熔断 → 保底「轻量对话」**（workbuddy 拍砖口径）|
-| **沙箱** | `gondolin`（micro-VM + **secret 占位符** = 零凭证纪律）|
-| **前端** | ★ **自建**（保 tokens/主题一致性；`pi-web-ui` 仅作参考实现）|
+启动策略是**懒启动**：`on_enable` 只标记启用、不起进程（内核启动路径上不该等一个外部进程），
+真正的拉起发生在第一次对话；失败也只是那一次请求降级，**内核与其它插件零影响**。
 
 ---
 
-## ★ 已知缺口（候内核补）
+## 3. 安装与配置
 
-| 缺口 | 说明 |
-|:--|:--|
-| **`subprocess` 权限** | Pi 需起子进程，但内核 `permissions.py` 目前**只认字符串格式**（`db:own` / `net:out:<host>` / `fs:plugin` …），**没有 subprocess**；schema 里的"对象格式"（`filesystem`/`network`/`subprocess`）**内核尚未实现**。→ **第①刀刻意不起进程，正好规避**；接 RPC 前需内核补此权限。 |
+```bash
+# 1. 装 agent CLI（本插件按 ~/.npm-global/bin/pi 找它）
+npm i -g --prefix ~/.npm-global @earendil-works/pi-coding-agent
+
+# 2. 环境变量告诉插件去哪儿找运行时
+export PI_CODING_AGENT_DIR=<插件目录>/runtime
+```
+
+**模型提供商走插件设置**（`provider` / `model` / `thinking`），改设置即生效、**不用改代码**。
+设置项定义在 `api/settings.schema.json`，可在 Life-OS 的「设置」页填入。
+
+> ⚠️ **provider / model 必须与 `runtime/models.json` 里的一致**，且 **model id 要填上游网关认的名字**
+> —— 写错会得到网关的「无可用模型」错误（历史上这里踩过：设置声明了却完全不生效，因为代码没读它）。
 
 ---
 
-## 改这个插件时不许做的事（照 ADR-0002 硬规则）
+## 4. 结构
+
+```
+plugins/pi-agent/
+├─ manifest.json            # 契约：能力 / 权限 / 生命周期 / 设置入口
+├─ api/
+│  ├─ router.py             # HTTP 端点（就近定义出入参，第三方插件不能用相对导入）
+│  ├─ rpc.py                # ★ 桥接层：起子进程 + JSONL 协议 + 收流
+│  ├─ sessions.py           # 会话池（一 session 一进程）
+│  ├─ process.py            # 单进程管理器（懒启动）
+│  ├─ lifecycle.py          # 启停钩子（懒启动；禁用必须收干净）
+│  ├─ history.py            # 会话历史
+│  └─ settings.schema.json  # 设置项声明
+├─ runtime/                 # agent 运行时数据 + 本插件自持 PAT（★ 全忽略，不入库）
+├─ tests/
+└─ Dockerfile.pi            # 可选：把 agent 关进容器（Plain Docker 隔离；凭证走环境变量，不落镜像）
+```
+
+---
+
+## 5. 改这个插件时不许做的事（照 ADR-0002 硬规则）
 
 1. 不许 import 别的插件 —— 走事件总线 / 对方公开 API / 扩展点
 2. 不许 join 别人的表 —— 要数据就调对方 API，并在 `manifest.requires` 里声明

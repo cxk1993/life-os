@@ -145,15 +145,17 @@ Life-OS 不重复造轮子。有些事别人已经做得很好 —— 那就为�
 | 项目 | 它是什么 | 怎么接 | 它的许可 |
 |:--|:--|:--|:--|
 | [BeeCount](https://github.com/TNT-Likely/BeeCount) · [BeeCount-Cloud](https://github.com/TNT-Likely/BeeCount-Cloud) | 本地优先的跨端记账（自建云 / 多端同步 / MCP） | `services/api/modules/finance/` 走 MCP + REST 对接，Web 端由 `deploy/` 同源反代内嵌 | 自定义许可（个人免费，商用需授权） |
-| [pi-web-ui](https://github.com/xing-shuyin/pi-web-ui) | 浏览器里的 AI 编码座舱（chat / code / files / terminal / git） | `apps/web/src/apps/web/` 的网页插件窗口，以 iframe 内嵌 | MIT |
-| [pi](https://github.com/earendil-works/pi)（`@earendil-works/pi-coding-agent`） | 带 read / bash / edit / write 工具的编码 agent CLI | `plugins/pi-agent/` 运行时桥接（RPC + 会话管理） | MIT |
+| [pi-web-ui](https://github.com/xing-shuyin/pi-web-ui) | 浏览器里的 AI 编码座舱（chat / code / files / terminal / git） | **独立部署**（`npm i -g pi-web-ui`，默认 8787）：由 nginx 反代到 `/pi/`；Life-OS 的网页插件窗口可内嵌其 URL | MIT |
+| [pi](https://github.com/earendil-works/pi)（`@earendil-works/pi-coding-agent`） | 带 read / bash / edit / write 工具的编码 agent CLI | `plugins/pi-agent/` —— 一个 **agent 适配器插件**（RPC 子进程 + 会话池）。★ 它只是**第一个**；opencode、deepseek harness 等可用同一结构各写一个 | MIT |
 
-> **本仓库不包含以上任何项目的源码。** 它们由你自己安装（Docker / npm），
-> Life-OS 只是接上话 —— 这既是干净的集成方式，也正是它们的许可所允许的。
+> **本仓库不包含以上任何项目的源码 —— 它们都是独立部署的。** 由你自己安装（Docker / npm），
+> Life-OS 只是通过公开接口接上话 —— 这既是干净的集成方式，也正是它们的许可所允许的。
+> 版权与许可声明见 [`NOTICE`](NOTICE)。
 
 > **这就是「一切皆插件」的样子。**
 > 我欣赏一个项目，就为它写一个插件，把它接进我自己的系统。
 > 你也可以这么做 —— 为你喜欢的任何项目、任何 App、任何设备，搓一个属于你自己的插件。
+> 连 AI agent 也一样：`plugins/pi-agent/` 就是个例子，**换一个 agent 只需换掉最下面那层桥接**。
 > 插件协议是公开的（`docs/tutorials/plugin-dev-101.md`），**不必先问谁，也不必先得到允许**。
 > 
 > **记得给喜欢的他们点star呐~**
