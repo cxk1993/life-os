@@ -16,11 +16,21 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import zhCnLocale from "@fullcalendar/core/locales/zh-cn";
 import type { CalendarEvent } from "../api";
 import type { EventInput, EventApi } from "@fullcalendar/core";
 import "../calendar.css";
 
 export type CalView = "day" | "week" | "month";
+
+/**
+ * ★ 周起始日 = **周一**，与 CalendarApp 的 `anchorLabel()`（用 `shMonday()`）保持一致。
+ *
+ * 不设此项时 FullCalendar 默认「周日为首」，而标题按「周一为首」算 ——
+ * 同一周会显示成两个范围，整体**错位一天**（标题「10/5–11」vs 列头「Sun 10/4–Sat 10/10」）。
+ * zh-cn locale 的 `week.dow = 1`：既修掉错位，也顺带把中文语境补齐。
+ */
+export const WEEK_LOCALE = zhCnLocale;
 
 interface Props {
   events: CalendarEvent[];
@@ -75,7 +85,9 @@ export function argToSpan(arg: { event: Pick<EventApi, "start" | "end" | "extend
   const end = arg.event.end?.toISOString() ?? "";
   const prev = arg.event.extendedProps?.span_days as number | undefined;
   const spanDays =
-    typeof prev === "number" ? prev : Math.max(1, Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000));
+    typeof prev === "number"
+      ? prev
+      : Math.max(1, Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000));
   return { start, end, spanDays };
 }
 
@@ -117,6 +129,7 @@ export default function FullCalView({
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        locale={WEEK_LOCALE}
         initialView={toFullCalView(view)}
         initialDate={anchor}
         headerToolbar={{

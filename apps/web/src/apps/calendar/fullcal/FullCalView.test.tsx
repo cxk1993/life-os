@@ -7,7 +7,13 @@
  */
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-import FullCalView, { toEventInputs, toFullCalView, argToSpan, renderBadge } from "./FullCalView";
+import FullCalView, {
+  toEventInputs,
+  toFullCalView,
+  argToSpan,
+  renderBadge,
+  WEEK_LOCALE,
+} from "./FullCalView";
 import type { CalendarEvent } from "../api";
 
 const ev = (id: string, over: Partial<CalendarEvent> = {}): CalendarEvent => ({
@@ -91,5 +97,36 @@ describe("V8 FullCalendar 原型", () => {
       />,
     );
     expect(container.querySelector('[data-testid="fullcal-view"]')).toBeTruthy();
+  });
+
+  // ★ 回归：周起始日必须与标题口径一致（2026-10-10 修「错位一天」）
+  //   症状：标题写「10/5–11」（周一起算）而列头写「Sun 10/4 – Sat 10/10」（周日起算）。
+  //   根因：FullCalendar 默认 dow=0（周日为首），CalendarApp 的 anchorLabel 用 shMonday()（周一为首）。
+  it("周起始日 = 周一（与 anchorLabel / shMonday 口径一致，防错位一天回退）", () => {
+    // LocaleInput 的 d.ts 未把 week 建模成对象（运行时确实是 {dow,doy}），故断言时收窄类型
+    const week = (WEEK_LOCALE as { week?: { dow?: number } }).week;
+    expect(week?.dow).toBe(1);
+  });
+
+  it("week 视图列头从周一开始（渲染后首列本周一、末列周日）", () => {
+    // 2026-09-24（周四）所在周：周一 9/21 … 周日 9/27
+    const { container } = render(
+      <FullCalView
+        events={[]}
+        view="week"
+        anchor={new Date("2026-09-24T00:00:00+08:00")}
+        onMove={() => undefined}
+        onResize={() => undefined}
+        onCreateAt={() => undefined}
+        onSelect={() => undefined}
+      />,
+    );
+    const heads = Array.from(container.querySelectorAll(".fc-col-header-cell-cushion")).map((el) =>
+      (el.textContent ?? "").trim(),
+    );
+    expect(heads.length).toBe(7);
+    // 首列 = 9/21（周一），末列 = 9/27（周日）；若回退成周日起算会变成 9/20…9/26
+    expect(heads[0]).toContain("21");
+    expect(heads[6]).toContain("27");
   });
 });
