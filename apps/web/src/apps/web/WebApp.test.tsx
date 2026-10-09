@@ -21,6 +21,7 @@ import type { CapabilityEntry, WebEntry } from "./api";
 vi.mock("@/shared/api/events", () => ({ usePluginEvent: () => {} }));
 
 const listMock = vi.fn();
+const frameUrlMock = vi.fn();
 vi.mock("./api", async (orig) => {
   const actual = await orig<typeof import("./api")>();
   return {
@@ -31,6 +32,7 @@ vi.mock("./api", async (orig) => {
       update: vi.fn().mockResolvedValue({}),
       remove: vi.fn().mockResolvedValue(undefined),
       touch: vi.fn().mockResolvedValue({ id: "e1", opened_at: "now" }),
+      frameUrl: (...a: unknown[]) => frameUrlMock(...a),
     },
   };
 });
@@ -162,6 +164,55 @@ describe("WebFrame", () => {
     } finally {
       useDesktopStore.setState({ windows: snapshot });
     }
+  });
+
+  // ── ★ 2026-10-10 新增：auth_ref 凭据注入链路（防回退）──────────────
+  it("★ 无 auth_ref 的条目：不调 frame-url，iframe 直接用 entry.url（老行为零变化）", async () => {
+    const frameMock = frameUrlMock;
+    frameMock.mockClear();
+    render(<WebFrame entry={entry({ slug: "plain", url: "https://plain.invalid/x" })} />);
+    await act(async () => {});
+    expect(frameMock).not.toHaveBeenCalled();
+    const frame = document.querySelector("iframe");
+    expect(frame?.getAttribute("src")).toBe("https://plain.invalid/x");
+  });
+
+  it("★ 带 auth_ref 的条目：调 frame-url 拿注入凭据的地址，且 URL 里的 token 不进界面", async () => {
+    const frameMock = frameUrlMock;
+    frameMock.mockClear();
+    frameMock.mockResolvedValue({
+      id: "id-secret",
+      slug: "secret",
+      title: "带凭据",
+      url: "https://secret.invalid/pi/?token=SUPERSECRETVALUE123456",
+      auth_ref: "token:env:PI_WEB_TOKEN",
+      parsed: true,
+    });
+    render(
+      <WebFrame
+        entry={entry({ slug: "secret", url: "https://secret.invalid/pi/", auth_ref: "token:env:PI_WEB_TOKEN" })}
+      />,
+    );
+    await act(async () => {});
+    expect(frameMock).toHaveBeenCalledWith("id-secret");
+    const frame = document.querySelector("iframe");
+    expect(frame?.getAttribute("src")).toContain("token=SUPERSECRETVALUE123456");
+    // ★ 凭据只进 iframe，不进工具栏文本
+    expect(document.body.textContent ?? "").not.toContain("SUPERSECRETVALUE123456");
+  });
+
+  it("★ frame-url 解析失败（.env 缺变量）→ 明确提示，不静默白屏", async () => {
+    const frameMock = frameUrlMock;
+    frameMock.mockClear();
+    frameMock.mockRejectedValue(new Error("凭据解析失败：环境变量 PI_WEB_TOKEN 未设置。"));
+    render(
+      <WebFrame
+        entry={entry({ slug: "broken", url: "https://broken.invalid/", auth_ref: "token:env:PI_WEB_TOKEN" })}
+      />,
+    );
+    await act(async () => {});
+    expect(screen.getByText("凭据没能解析")).toBeTruthy();
+    expect(screen.getByText(/PI_WEB_TOKEN 未设置/)).toBeTruthy();
   });
 });
 

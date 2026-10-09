@@ -6,7 +6,7 @@
 
 三处校验（都必须在**后端**做，前端只是第一道）：
   1. url：只允许 http / https（拒 javascript: / data: …）
-  2. auth_ref：只允许 "none" 或 "<pat|bearer|basic>:env:<大写变量名>"；
+  2. auth_ref：只允许 "none" 或 "<pat|bearer|basic|token>:env:<大写变量名>"；
      ★ 形状不符一律 400 —— 这是"绝不存明文凭据"的执行点
   3. kind：枚举 web | web+rest | web+mcp；非 web 时 endpoint 必填
 """
@@ -29,7 +29,7 @@ KINDS = ("web", "web+rest", "web+mcp")
 _SLUG_RE = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
 
 # auth_ref：方式 + env 引用；变量名必须是大写字母开头的 SNAKE_CASE
-_AUTH_REF_RE = re.compile(r"^(pat|bearer|basic):env:[A-Z][A-Z0-9_]{0,63}$")
+_AUTH_REF_RE = re.compile(r"^(pat|bearer|basic|token):env:[A-Z][A-Z0-9_]{0,63}$")
 
 # 疑似明文凭据：一段 24 位以上的连续 [A-Za-z0-9_-]（正常变量名/URL 不会这么长且无分隔）
 _SECRET_LIKE_RE = re.compile(r"[A-Za-z0-9_\-]{24,}")

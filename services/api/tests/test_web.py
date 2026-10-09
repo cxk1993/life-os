@@ -131,6 +131,60 @@ def test_delete(client, auth):
     assert client.get(f"{BASE}/entries/{e['id']}", headers=auth).status_code == 404
 
 
+# ───────────────────── ★ frame-url：凭据注入链路（2026-10-10） ─────────────────────
+def test_frame_url_without_auth_ref_returns_url_as_is(client, auth):
+    """没配 auth_ref 的条目：原样回 url，parsed=False（老条目零变化）。"""
+    e = _create(client, auth)
+    r = client.get(f"{BASE}/entries/{e['id']}/frame-url", headers=auth)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["parsed"] is False
+    assert body["url"] == e["url"]
+    assert "token=" not in body["url"]
+
+
+def test_frame_url_injects_token_from_env(client, auth, monkeypatch):
+    """★ token:env:VAR 形态：从环境变量取值，拼成 ?token=<值>（pi-web-ui 靠这个）。
+
+    守着"凭据只存引用、真值运行时注入"这条纪律不退化。
+    """
+    monkeypatch.setenv("PI_WEB_TOKEN", "abc123deadbeef4567890123456789ab")
+    e = client.post(
+        f"{BASE}/entries",
+        json=_payload(
+            slug="pi-web-probe",
+            url="https://demo.invalid/pi/",
+            auth_ref="token:env:PI_WEB_TOKEN",
+        ),
+        headers=auth,
+    ).json()
+    r = client.get(f"{BASE}/entries/{e['id']}/frame-url", headers=auth)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["parsed"] is True
+    assert body["url"] == "https://demo.invalid/pi/?token=abc123deadbeef4567890123456789ab"
+    # ★ 表里存的仍是引用，不是真值
+    assert e["auth_ref"] == "token:env:PI_WEB_TOKEN"
+    assert "abc123" not in str(e)
+
+
+def test_frame_url_missing_env_var_is_error_not_silent(client, auth, monkeypatch):
+    """`.env` 里缺变量 → 明确报错（422），绝不静默返回半个 URL。"""
+    monkeypatch.delenv("PI_WEB_TOKEN", raising=False)
+    e = client.post(
+        f"{BASE}/entries",
+        json=_payload(
+            slug="pi-web-noenv",
+            url="https://demo.invalid/pi/",
+            auth_ref="token:env:PI_WEB_TOKEN",
+        ),
+        headers=auth,
+    ).json()
+    r = client.get(f"{BASE}/entries/{e['id']}/frame-url", headers=auth)
+    assert r.status_code == 422, r.text
+    assert "PI_WEB_TOKEN" in r.text
+
+
 # ───────────────────────── ★ 三处校验（本卡重点） ─────────────────────────
 @pytest.mark.parametrize(
     "bad_url",
@@ -155,7 +209,16 @@ def test_reject_plaintext_credentials(client, auth, bad_ref):
     assert r.status_code == 422, r.text
 
 
-@pytest.mark.parametrize("good_ref", ["none", "pat:env:EXAMPLE_TOKEN", "bearer:env:OTHER_KEY"])
+@pytest.mark.parametrize(
+    "good_ref",
+    [
+        "none",
+        "pat:env:EXAMPLE_TOKEN",
+        "bearer:env:OTHER_KEY",
+        # ★ 2026-10-10：token: 形态（给认 query 参数的自建服务，如 pi-web-ui 的 ?token=）
+        "token:env:PI_WEB_TOKEN",
+    ],
+)
 def test_accept_reference_style_auth(client, auth, good_ref):
     slug = "ok-" + good_ref.lower().replace(":", "-").replace("_", "-")
     r = client.post(

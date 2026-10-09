@@ -209,6 +209,19 @@
   font-size: 12px;
 }
 
+/* ★ 凭据解析失败时的补充说明（比正文更淡一档，且不抢眼） */
+.web-frame__overlay-hint {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.web-frame__overlay-hint code {
+  font-family: var(--font-mono, monospace);
+  background: var(--surface-2, rgba(127, 127, 127, 0.12));
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
 .web-frame__overlay-actions {
   display: flex;
   gap: var(--sp-2);

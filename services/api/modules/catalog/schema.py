@@ -19,7 +19,7 @@ from core.errors import ValidationError
 
 KINDS = ("web", "web+rest", "web+mcp")
 
-_AUTH_REF_RE = re.compile(r"^(pat|bearer|basic):env:[A-Z][A-Z0-9_]{0,63}$")
+_AUTH_REF_RE = re.compile(r"^(pat|bearer|basic|token):env:[A-Z][A-Z0-9_]{0,63}$")
 _SECRET_LIKE_RE = re.compile(r"[A-Za-z0-9_\-]{24,}")
 
 
@@ -49,7 +49,7 @@ def normalize_auth_ref(raw: str | None) -> str | None:
         )
     raise ValidationError(
         "auth_ref 只接受 'none' 或 "
-        "'<pat|bearer|basic>:env:<大写变量名>'（例：pat:env:EXAMPLE_TOKEN）"
+        "'<pat|bearer|basic|token>:env:<大写变量名>'（例：pat:env:EXAMPLE_TOKEN）"
     )
 
 

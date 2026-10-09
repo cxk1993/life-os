@@ -52,10 +52,14 @@ slug 冲突 **409**、找不到 **404**、未鉴权 **401**。
 | # | 规则 | 为什么 |
 |:--:|:--|:--|
 | 1 | `url` **只允许 `http` / `https`** | 拒 `javascript:` / `data:` —— 防注入 |
-| 2 | `auth_ref` 只收 `"none"` 或 `"<pat\|bearer\|basic>:env:<大写变量名>"` | ★ **绝不存明文凭据**；形状不符一律拒，含"疑似贴了 token"的启发式拦截 |
+| 2 | `auth_ref` 只收 `"none"` 或 `"<pat\|bearer\|basic\|token>:env:<大写变量名>"` | ★ **绝不存明文凭据**；形状不符一律拒，含"疑似贴了 token"的启发式拦截 |
 | 3 | `kind` 非 `web` 时必须给 `endpoint` | 声明了能力却没地方调 = 骗 agent |
 
 实现位置：`schema.py` 的 `normalize_url` / `normalize_auth_ref` / `normalize_kind`。
+
+> **`token:` 这一种是给谁用的**：有些自建服务认 query 参数（如 pi-web-ui 的 `?token=…`），
+> 而不是 `Authorization` 头。`token:env:PI_WEB_TOKEN` 会在内嵌时拼成 `?token=<值>`。
+> 四种形态共用同一条纪律：**表里只存变量名，真值永远在 `.env`**。
 
 ---
 
@@ -88,10 +92,28 @@ slug 冲突 **409**、找不到 **404**、未鉴权 **401**。
 |:--|:--|
 | `index.tsx` | 插件入口，`default { manifestId: "web", Component }` |
 | `WebApp.tsx` | 主界面：左栏入口 + 右侧内嵌；页签「浏览 / 管理入口」 |
-| `WebFrame.tsx` | 内嵌窗口（工具条 + 超时兜底 + 常驻退路） |
+| `WebFrame.tsx` | 内嵌窗口（工具条 + 超时兜底 + 常驻退路）；★ 带 `auth_ref` 的条目先调 `frame-url` 换真地址 |
 | `WebEntriesPanel.tsx` | 入口管理：增删改 / 开关 / **能力声明表单 + catalog 形状预览** |
 | `api.ts` | 请求层 + `webKeys` 查询键 |
 | `web.css` | 样式，**只用设计令牌** |
+
+### ★ 凭据注入链路（2026-10-10 补全）
+
+条目里的 `auth_ref` 是**引用**，不是值。真正拼进 iframe 地址的是后端：
+
+```
+条目        auth_ref = "token:env:PI_WEB_TOKEN"
+                    ↓  （iframe 渲染前调用）
+后端        GET /api/v1/web/entries/{id}/frame-url
+                    ↓  （从 os.environ 取 PI_WEB_TOKEN）
+返回        { url: "https://…/pi/?token=<真值>", parsed: true }
+                    ↓
+前端        <iframe src={真值}>   ← 凭据只进 iframe，不进界面/剪贴板
+```
+
+- 没填 `auth_ref` 的条目：**不发这个请求**，直接用 `entry.url`（老条目零变化）。
+- `.env` 里缺该变量 → 前端显示「凭据没能解析」+ 变量名，**不静默白屏**。
+- 工具栏显示的地址会**去掉 query**（只留 origin + path），防 token 出现在界面上。
 
 ### ⚠️ 一个**已知限制**（不是 bug）
 

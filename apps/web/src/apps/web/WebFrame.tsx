@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/shared/components/Button";
 import { useDesktopStore } from "@/kernel/store";
 import { useWindowInstance } from "@/kernel/windowInstance";
-import type { WebEntry } from "./api";
+import { webApi, type WebEntry } from "./api";
 
 /** 加载超时（毫秒）——超过即认为"内嵌不成功"。 */
 export const FRAME_TIMEOUT_MS = 6000;
@@ -32,6 +32,11 @@ export default function WebFrame({ entry }: Props) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [nonce, setNonce] = useState(0);
   const timerRef = useRef<number | null>(null);
+  // ★ 真正塞进 iframe 的地址：默认 = entry.url；条目带 auth_ref 时由后端注入凭据后替换。
+  const [srcUrl, setSrcUrl] = useState(entry.url);
+  const [credError, setCredError] = useState<string | null>(null);
+  // 记得本次渲染用的是哪份 URL（下拉选另一个条目时用它比对，避免闪烁）
+  const [resolvedFor, setResolvedFor] = useState(`${entry.id}:${nonce}`);
 
   // ★ T22：这两按钮要操作"本窗" —— 从内核上下文拿 instanceId（同模块可能开多窗，不能靠 moduleId 反查）
   const instanceId = useWindowInstance();
@@ -46,8 +51,44 @@ export default function WebFrame({ entry }: Props) {
   const setPinned = useDesktopStore((s) => s.setPinned);
   const setFixedGeometry = useDesktopStore((s) => s.setFixedGeometry);
 
-  // 换条目 / 手动刷新 → 重走加载流程
+  // ★ 解析内嵌地址：没配 auth_ref 的条目一步到位（与旧行为完全一致，零额外请求）。
+  //   配了 auth_ref 的（如 token:env:PI_WEB_TOKEN）才去后端换带凭据的 URL ——
+  //   凭据本体永远不进前端代码/条目表，前端只拿到"这一次可用"的地址。
   useEffect(() => {
+    let cancelled = false;
+    const key = `${entry.id}:${nonce}`;
+    setCredError(null);
+
+    if (!entry.auth_ref || entry.auth_ref.toLowerCase() === "none") {
+      setSrcUrl(entry.url);
+      setResolvedFor(key);
+      return;
+    }
+
+    setResolvedFor(""); // 待解析：先不渲染 iframe，等拿到真地址
+    webApi
+      .frameUrl(entry.id)
+      .then((r) => {
+        if (cancelled) return;
+        setSrcUrl(r.url);
+        setResolvedFor(key);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        // 解析失败（多半是 .env 里缺该变量）→ 明确提示，不静默空白
+        const msg = e instanceof Error ? e.message : "凭据解析失败";
+        setCredError(msg);
+        setResolvedFor(key);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [entry.id, entry.url, entry.auth_ref, nonce]);
+
+  // 地址就绪 / 手动刷新 → 重走加载流程
+  useEffect(() => {
+    if (resolvedFor === "") return; // 还没拿到真地址，不计时
     setPhase("loading");
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
@@ -56,7 +97,7 @@ export default function WebFrame({ entry }: Props) {
     return () => {
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
-  }, [entry.url, nonce]);
+  }, [srcUrl, nonce, resolvedFor]);
 
   const onLoad = useCallback(() => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
@@ -64,16 +105,16 @@ export default function WebFrame({ entry }: Props) {
   }, []);
 
   const openExternal = useCallback(() => {
-    window.open(entry.url, "_blank", "noopener,noreferrer");
-  }, [entry.url]);
+    window.open(srcUrl, "_blank", "noopener,noreferrer");
+  }, [srcUrl]);
 
   const copyUrl = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(entry.url);
+      await navigator.clipboard.writeText(srcUrl);
     } catch {
       /* 剪贴板不可用时静默（不是关键路径） */
     }
-  }, [entry.url]);
+  }, [srcUrl]);
 
   // ★ sandbox 说明：allow-scripts + allow-same-origin 同时给，浏览器会有安全告警
   //   （理论上被嵌页面可自解除 sandbox）。但被嵌页面与本应用**跨源**，
@@ -84,14 +125,24 @@ export default function WebFrame({ entry }: Props) {
 
   const title = useMemo(() => entry.title || entry.slug, [entry.title, entry.slug]);
 
+  /** ★ 工具栏/复制用：隐藏凭据，只显示到主机名（token 不进 UI，也不进剪贴板）。 */
+  const displayUrl = useMemo(() => {
+    try {
+      const u = new URL(srcUrl);
+      return `${u.origin}${u.pathname}`;
+    } catch {
+      return entry.url;
+    }
+  }, [srcUrl, entry.url]);
+
   return (
     <div className="web-frame">
       <div className="web-frame__bar">
         <span className="web-frame__title" title={title}>
           {title}
         </span>
-        <span className="web-frame__url" title={entry.url}>
-          {entry.url}
+        <span className="web-frame__url" title={displayUrl}>
+          {displayUrl}
         </span>
         <span className="web-frame__spacer" />
 
@@ -138,23 +189,47 @@ export default function WebFrame({ entry }: Props) {
       </div>
 
       <div className="web-frame__body">
-        <iframe
-          key={`${entry.id}-${nonce}`}
-          className="web-frame__iframe"
-          src={entry.url}
-          title={title}
-          sandbox={sandbox}
-          referrerPolicy="no-referrer"
-          onLoad={onLoad}
-        />
+        {resolvedFor !== "" && (
+          <iframe
+            key={`${entry.id}-${nonce}`}
+            className="web-frame__iframe"
+            src={srcUrl}
+            title={title}
+            sandbox={sandbox}
+            referrerPolicy="no-referrer"
+            onLoad={onLoad}
+          />
+        )}
 
-        {phase === "loading" && (
+        {resolvedFor === "" && (
+          <div className="web-frame__overlay">
+            <div className="web-frame__overlay-text">正在准备访问凭据…</div>
+          </div>
+        )}
+
+        {credError && (
+          <div className="web-frame__overlay web-frame__overlay--solid">
+            <div className="web-frame__overlay-text">
+              <strong>凭据没能解析</strong>
+              <p>{credError}</p>
+              <p className="web-frame__overlay-hint">
+                该条目声明了 <code>auth_ref = {entry.auth_ref}</code>，
+                请在后端 <code>.env</code> 里配好对应变量后重试。
+              </p>
+            </div>
+            <div className="web-frame__overlay-actions">
+              <Button onClick={() => setNonce((n) => n + 1)}>重试</Button>
+            </div>
+          </div>
+        )}
+
+        {!credError && resolvedFor !== "" && phase === "loading" && (
           <div className="web-frame__overlay">
             <div className="web-frame__overlay-text">正在加载…</div>
           </div>
         )}
 
-        {phase === "timeout" && (
+        {!credError && phase === "timeout" && (
           <div className="web-frame__overlay web-frame__overlay--solid">
             <div className="web-frame__overlay-text">
               <strong>没能内嵌这个网页</strong>
