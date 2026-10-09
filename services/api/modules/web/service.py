@@ -138,7 +138,8 @@ class WebEntryService:
     def frame_url(self, entry_id: str) -> FrameUrlOut:
         """返回 iframe 内嵌用的真实 URL（含 auth_ref 解析后的凭据）。
 
-        ★ 条目表永不明文凭据：auth_ref 形如 "pat:env:PI_TOKEN"，运行时从 os.environ 取。
+        ★ 条目表永不明文凭据：auth_ref 形如 "pat:env:PI_TOKEN"，运行时经
+          core.config.read_setting 取（os.environ 优先，缺失回退项目根 .env）。
         ★ 解析失败（env 变量缺失）→ 422 + 错误详情，不吞异常。
         ★ 无 auth_ref 或 "none" → 直接返回原 url。
         """
@@ -161,8 +162,14 @@ class WebEntryService:
         except ValueError:
             raise ValidationError(f"auth_ref 格式错误：{auth_ref}")
 
-        # 从环境变量获取凭据
-        secret = os.environ.get(env_var)
+        # ★ 从配置读凭据 —— 必须走 core.config.read_setting，**不能**用 os.environ.get：
+        #   本项目的 .env 只由 pydantic-settings 加载，**不会注入进程 os.environ**
+        #   （web 模块曾因此拿不到值；finance 模块早先也栽过同一个坑，见
+        #   core/config.py::_dotenv_values 的注释）。read_setting 语义 =
+        #   真实环境变量优先，缺失时回退解析项目根 .env。
+        from core.config import read_setting
+
+        secret = read_setting(env_var, "")
         if not secret:
             raise ValidationError(
                 f"凭据解析失败：环境变量 {env_var} 未设置。"

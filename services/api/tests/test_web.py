@@ -185,6 +185,28 @@ def test_frame_url_missing_env_var_is_error_not_silent(client, auth, monkeypatch
     assert "PI_WEB_TOKEN" in r.text
 
 
+def test_frame_url_reads_dotenv_not_only_os_environ(client, auth, monkeypatch, tmp_path):
+    """★ 守护：凭据必须能**从 .env 文件**读到，而不只是 os.environ。
+
+    背景（本项目经典坑）：.env 只由 pydantic-settings 加载，**不注入 os.environ**。
+    web 模块最初直接 `os.environ.get()` → 明明 .env 里配了也报「未设置」。
+    finance 模块早先栽过同一个坑。这条测试钉死「必须走 read_setting」。
+    """
+    monkeypatch.delenv("PI_WEB_TOKEN", raising=False)  # 确保进程环境里没有
+    import core.config as cfg
+
+    # 假 .env：把 read_setting 的 dotenv 回退源换成只含这一项的字典
+    monkeypatch.setattr(cfg, "_dotenv_values", lambda: {"PI_WEB_TOKEN": "fromdotenv9876543210"}, raising=True)
+    e = client.post(
+        f"{BASE}/entries",
+        json=_payload(slug="pi-web-dotenv", url="https://d.invalid/pi/", auth_ref="token:env:PI_WEB_TOKEN"),
+        headers=auth,
+    ).json()
+    r = client.get(f"{BASE}/entries/{e['id']}/frame-url", headers=auth)
+    assert r.status_code == 200, r.text
+    assert r.json()["url"] == "https://d.invalid/pi/?token=fromdotenv9876543210"
+
+
 # ───────────────────────── ★ 三处校验（本卡重点） ─────────────────────────
 @pytest.mark.parametrize(
     "bad_url",
