@@ -1,6 +1,6 @@
-"""MCP server 核心（T18 §C）：把 JSON-RPC 消息分发到 tools。
+"""MCP server 核心：把 JSON-RPC 消息分发到 tools。
 
-★ 传输形态说明（与任务卡差异的备案，详见 docs/verify/T18-report.md）：
+★ 传输形态说明（与官方 SDK 默认形态的差异备案）：
   任务卡建议直接用官方 SDK 的 StreamableHTTPServerTransport。实测它需要
   持有 app lifespan 控制权（`async with session_manager.run()`），而插件框架
   （ModuleRegistry.mount → include_router）不向插件提供 lifespan —— 结构性冲突。

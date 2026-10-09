@@ -44,7 +44,7 @@ hermes 的 `_HttpxDocsAdapter`：diary 后端用 **httpx 真请求本服务** `/
 
 ## 关联
 
-- T17 交接帖 §2（发现者）、`docs/verify/T17-report.md` §偏差 1
+- 实装中发现，2026-09-19 成文
 - ADR-0002（插件协议：跨插件只走 API + requires）
 - `docs/issues/ISSUE-005-方案详评.md`（方案详评，hermes 起草 2026-09-19）
 - 若采纳 A/B：`diary` 的 `_HttpxDocsAdapter` 可平滑替换（hermes 已留了适配器接口）

@@ -1,19 +1,18 @@
-# 本机笔记桥配置（跑在主人 Windows 上）
+# 本机笔记桥配置（跑在你自己的电脑上）
 #
-# ★ PSK（预共享密钥）不要写在这里的明文。生产由 nssm 服务环境注入 BRIDGE_PSK，
+# ★ PSK（预共享密钥）不要写在这里的明文。生产由服务环境注入 BRIDGE_PSK，
 #   桥读取优先级：环境变量 BRIDGE_PSK > 下面的 psk 字段（仅本地开发兜底）。
 #   同步改到服务器侧 .env 的 BRIDGE_PSK，两侧必须一致。
 psk: ""
 
-# ★ Work-Review 上游（跑在主人本机）—— 桥 /bridge/work-review/* 的转发目标
-#   astrbot 下场 · 主人令「修数据链路」：服务器上的 127.0.0.1 不是主人电脑，必须经桥转发
+# ★ Work-Review 上游（跑在本机）—— 桥 /bridge/work-review/* 的转发目标
 work_review_base_url: "http://127.0.0.1:49996"
 
-# 四个笔记库（主人真实路径）
+# 笔记库（改成你自己的路径）
 libs:
   - id: main
     name: 主仓库
-    path: "./vault/笔记软件/obsidian/主仓库"
+    path: "./vault/主仓库"
     mode: ro            # 默认只读
     enabled: true
     include: ["*.md", "**/*.md"]
@@ -21,7 +20,7 @@ libs:
 
   - id: review
     name: work review 日报
-    path: "./vault/笔记软件/obsidian/主仓库/work review日报"
+    path: "./vault/主仓库/work review日报"
     mode: ro
     enabled: true
     include: ["*.md", "**/*.md"]
@@ -29,28 +28,17 @@ libs:
 
   - id: undo
     name: 复盘
-    path: "./vault/笔记软件/obsidian/主仓库/复盘"
+    path: "./vault/主仓库/复盘"
     mode: ro
     enabled: true
     include: ["*.md", "**/*.md"]
     exclude: []
 
-  # ★ 附件库（astrbot 下场 · 主人⑤「ob 笔记的附件、图片插入的这个 md 文件展示功能也要加上」）
-  #   主人原话给的附件文件夹路径；include 放开为「所有文件」（图片/PDF/音视频等）。
-  #   mode: ro —— 附件只读，绝不回写。
+  # ★ 附件库：include 放开为「所有文件」（图片/PDF/音视频等），只读绝不回写。
   - id: attach
     name: obsidian 附件
-    path: "./vault/笔记软件/obsidian附件"
+    path: "./vault/obsidian附件"
     mode: ro
     enabled: true
     include: ["**/*"]
-    exclude: []
-
-  # 云昔专用文件夹：默认关，主人自行打开
-  - id: claude
-    name: 云昔专用文件夹
-    path: "./vault/笔记软件/obsidian/主仓库/云昔专用文件夹"
-    mode: ro
-    enabled: false
-    include: ["*.md", "**/*.md"]
     exclude: []

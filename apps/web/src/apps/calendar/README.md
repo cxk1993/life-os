@@ -53,4 +53,4 @@ calendar/
 
 - 纯逻辑（吸附/钳制/跨天分段/重叠/子块钳制/乐观回滚）均有 jsdom 测试，命令：
   `cd apps/web && node node_modules/vitest/vitest.mjs run src/apps/calendar`
-- 与真后端联调、拖拽帧率、点钟定位、SSE 实时性等交互项，需在真服务下**人工验证**（见 `docs/verify/T05-report.md`）。
+- 与真后端联调、拖拽帧率、点钟定位、SSE 实时性等交互项，需在真服务下**人工验证**。

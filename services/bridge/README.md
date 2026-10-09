@@ -33,12 +33,12 @@
 
 ## 自定义笔记夹（B2）
 
-`config.yaml` 的 `libs[]` 即全部笔记库。增加主人自定义文件夹：
+`config.yaml` 的 `libs[]` 即全部笔记库。增加自定义文件夹：
 
 ```yaml
   - id: my-notes
     name: 我的笔记夹
-    path: "./vault/笔记软件/obsidian/主仓库/某文件夹"
+    path: "./vault/主仓库/某文件夹"
     mode: ro
     enabled: true
     include: ["**/*.md"]
