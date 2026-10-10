@@ -20,7 +20,7 @@
   ],
   "allOf": [
     {
-      "description": "★ 路径 a（总监令 78）：仅 container 型可省 api；其余 kind 必须声明 api。",
+      "description": "★ 路径 a：仅 container 型可省 api；其余 kind 必须声明 api。",
       "if": { "properties": { "kind": { "not": { "const": "container" } } } },
       "then": { "required": ["api"] }
     }
@@ -106,7 +106,7 @@
     },
     "tabs": {
       "type": "array",
-      "description": "★ 路径 a（总监令 78）：容器型模块（kind=container）的页签声明。一次定稿，形状与前端 SystemApp（70c0702）对接面一致：{key,label,entry?}。entry=模块 id（该页懒加载对应 App）；无 entry 的页 =「后端模块 · 仅服务」薄壳语义。",
+      "description": "★ 路径 a：容器型模块（kind=container）的页签声明。一次定稿，形状与前端 SystemApp（70c0702）对接面一致：{key,label,entry?}。entry=模块 id（该页懒加载对应 App）；无 entry 的页 =「后端模块 · 仅服务」薄壳语义。",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -134,7 +134,7 @@
     "optionalDependencies": {
       "type": "array",
       "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$" },
-      "description": "TX-DEG-01 软依赖：缺了不阻塞启动，O1 挂 degraded+reason_code。与 requires 互斥（同一条目不得两处都写）。"
+      "description": "软依赖：缺了不阻塞启动，O1 挂 degraded+reason_code。与 requires 互斥（同一条目不得两处都写）。"
     },
     "slots": {
       "type": "array",
@@ -197,7 +197,7 @@
         "type": "string",
         "pattern": "^(startup:always|event:[a-z0-9-]+(\\.[a-z0-9-]+)+)$"
       },
-      "description": "声明式激活事件（TX-ACT-01）。缺省或含 startup:always = 启动即激活（向后兼容）；event:<topic> = 事件命中触发懒加载（精确匹配）；未命中则保持注册未激活。"
+      "description": "声明式激活事件。缺省或含 startup:always = 启动即激活（向后兼容）；event:<topic> = 事件命中触发懒加载（精确匹配）；未命中则保持注册未激活。"
     },
     "migrations": {
       "type": ["string", "null"],
