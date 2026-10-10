@@ -681,3 +681,80 @@ def test_archive_threshold_is_seven_days():
     """阈值写死在 service 层，防有人顺手改小/改大而不改前端文案。"""
     from modules.todo.service import ARCHIVE_AFTER_DAYS
     assert ARCHIVE_AFTER_DAYS == 7
+
+
+# ═══════ ★ 2026-10-10（主人「待办来源标记」）：人建 / AI 建分得清 ═══════
+# 动机（答云昔 10-10 帖四·1）：日历事件有 source（她建的标 yunxi），
+#   待办却没有「谁建的」标记 —— AI 建的与人建的分不清，回滚时不好定位。
+# 设计：复用 10-02 立的那枚来路标记（X-LifeOS-Client: mcp），不新造机制。
+#   同一请求判定一次，既管「AI 必带标签」，也管 origin=ai。
+
+
+def test_human_create_marks_origin_human(client, auth):
+    """人从网页建（无来源标记）→ origin 默认 human。"""
+    r = client.post("/api/v1/todo/items", json={"text": "买牛奶"}, headers=auth)
+    assert r.status_code == 201, r.text
+    assert r.json()["origin"] == "human"
+
+
+def test_mcp_create_marks_origin_ai(client, auth):
+    """AI / MCP 来路建 → origin=ai。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"text": "交高数作业", "tags": ["学业"]},
+        headers=_mcp_headers(auth),
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["origin"] == "ai"
+
+
+def test_origin_in_list_and_get(client, auth):
+    """origin 必须出现在列表与详情出参里（前端/审计要靠它分辨）。"""
+    client.post(
+        "/api/v1/todo/items",
+        json={"text": "AI 建的", "tags": ["AI协作"]},
+        headers=_mcp_headers(auth),
+    )
+    client.post("/api/v1/todo/items", json={"text": "人建的"}, headers=auth)
+    items = client.get("/api/v1/todo/items?status=all", headers=auth).json()["items"]
+    by_text = {it["text"]: it["origin"] for it in items}
+    assert by_text["AI 建的"] == "ai"
+    assert by_text["人建的"] == "human"
+    one = client.get(f"/api/v1/todo/items/{items[0]['id']}", headers=auth).json()
+    assert "origin" in one
+
+
+def test_unknown_client_header_still_marks_human(client, auth):
+    """伪造成别家来路（X-LifeOS-Client: web）→ 仍算 human，不得误标成 ai。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"text": "买牛奶"},
+        headers={**auth, "X-LifeOS-Client": "web"},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["origin"] == "human"
+
+
+def test_ai_recurring_child_inherits_origin(client, auth):
+    """AI 建的周期任务，勾完后自动生成的下一实例仍记 ai（来源沿链继承）。"""
+    r = client.post(
+        "/api/v1/todo/items",
+        json={"text": "每日复盘", "tags": ["复盘"], "recur_rule": "FREQ=DAILY",
+              "due_at": "2026-10-10T23:59:00+08:00"},
+        headers=_mcp_headers(auth),
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["origin"] == "ai"
+    item_id = r.json()["id"]
+    t = client.post(f"/api/v1/todo/items/{item_id}/toggle", headers=auth)
+    assert t.status_code == 200, t.text
+    nxt_id = t.json()["next_id"]
+    assert nxt_id, "周期任务勾完必须生成下一实例"
+    child = client.get(f"/api/v1/todo/items/{nxt_id}", headers=auth).json()
+    assert child["origin"] == "ai"
+
+
+def test_origin_default_is_human_in_model():
+    """模型默认值写死 human —— 防有人把默认改成 ai 让存量数据全变脸。"""
+    from modules.todo.models import TodoItem
+    assert TodoItem.model_fields["origin"].default == "human"

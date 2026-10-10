@@ -188,7 +188,7 @@ class TodoService:
             "done_at": r.done_at, "due_at": r.due_at,
             "priority": r.priority, "recur_rule": r.recur_rule,
             "tags": tags_from_json(r.tags), "source_path": r.source_path,
-            "source_line": r.source_line, "sort": r.sort,
+            "source_line": r.source_line, "origin": r.origin, "sort": r.sort,
             "series_id": r.series_id, "instance_no": r.instance_no,
             "created_at": r.created_at, "updated_at": r.updated_at,
         }
@@ -346,14 +346,15 @@ class TodoService:
         }
 
     # ───────────────────────── 写 ─────────────────────────
-    def create(self, body: TodoCreate) -> dict:
+    def create(self, body: TodoCreate, origin: str = "human") -> dict:
+        """新建一条。origin 由调用方（router）按来路判定传入，默认 human。"""
         if body.raw is not None and body.raw.strip():
             tl = parse_quick_line(body.raw)
             item = TodoItem(
                 text=tl.text, done=tl.done,
                 due_at=date_to_utc(tl.due_at) if tl.due_at else None,
                 priority=tl.priority, recur_rule=tl.recur_rule,
-                tags=tags_to_json(tl.tags),
+                tags=tags_to_json(tl.tags), origin=origin,
             )
         else:
             if not body.text or not body.text.strip():
@@ -362,7 +363,7 @@ class TodoService:
                 text=body.text.strip(),
                 due_at=to_utc(body.due_at) if body.due_at else None,
                 priority=body.priority, recur_rule=body.recur_rule,
-                tags=tags_to_json(body.tags),
+                tags=tags_to_json(body.tags), origin=origin,
             )
         item.series_id = item.id  # 单条自成链
         self.db.add(item)
@@ -412,6 +413,7 @@ class TodoService:
         child = TodoItem(
             text=item.text, done=False, due_at=nxt, priority=item.priority,
             recur_rule=item.recur_rule, tags=item.tags, source_path=item.source_path,
+            origin=item.origin,
             series_id=item.series_id, instance_no=item.instance_no + 1,
         )
         self.db.add(child)

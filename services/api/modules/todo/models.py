@@ -15,6 +15,9 @@
   tags        JSON 数组字符串（SQLite 无数组类型）
   source_path 来自哪个笔记文件（导入时记录）
   source_line 在原文件中的行号
+  origin      来源身份：human（人建，默认）| ai（AI/MCP 来路建）
+              —— 与 calendar_event.source 同构的「谁建的」标记；
+                 精确到哪个 agent 不在这张表里，而在 audit_log（actor=mcp:...）
   sort        手动排序权重
   series_id   周期任务链 id（同一条周期任务的所有实例共享）
   instance_no 周期实例序号（第几个，从 0 计）
@@ -44,6 +47,9 @@ class TodoItem(PkMixin, TimestampMixin, table=True):
     tags: str | None = Field(default=None)  # JSON 列表
     source_path: str | None = Field(default=None, max_length=500)
     source_line: int | None = Field(default=None)
+    # ★ 来源身份：human（人建）| ai（AI/MCP 来路建）。默认 human——
+    #   与 calendar_event.source 同款默认值口径；改这条的语义见 core/mcp_writes.py。
+    origin: str = Field(default="human", max_length=8, index=True)
     sort: int = Field(default=0)
     series_id: str | None = Field(default=None, index=True)  # 周期链 id
     instance_no: int = Field(default=0)

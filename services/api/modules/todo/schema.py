@@ -22,6 +22,8 @@ class TodoItemOut(BaseModel):
     tags: list[str] = []
     source_path: str | None = None
     source_line: int | None = None
+    # ★ 来源身份：human（人建）| ai（AI/MCP 来路建）。见 models.py 同名字段说明。
+    origin: str = "human"
     sort: int = 0
     series_id: str | None = None
     instance_no: int = 0

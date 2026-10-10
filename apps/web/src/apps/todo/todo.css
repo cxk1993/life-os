@@ -194,6 +194,14 @@
   color: var(--txt-dim);
 }
 
+/* ★ 2026-10-10（待办来源标记）—— AI 建的条目标一枚弱化徽标。
+   用 dim 色而非强调色：这是「信息标注」，不是「警报」，与主人极简不扰的偏好一致。 */
+.todo-pill--ai {
+  color: var(--txt-dim);
+  border-color: var(--border);
+  background: transparent;
+}
+
 /* ★ 2026-10-02（主人令「打钩日期要能看见」）——
    打钩日期 + 归档倒计时。用弱化色（不是警告色）：这是"信息"，不是"警报" */
 .todo-pill--done {

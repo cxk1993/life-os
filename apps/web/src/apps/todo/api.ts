@@ -18,6 +18,8 @@ export interface TodoItem {
   tags: string[];
   source_path: string | null;
   source_line: number | null;
+  /** ★ 2026-10-10：来源身份 —— human（人建）| ai（AI/MCP 来路建）。 */
+  origin: "human" | "ai";
   sort: number;
   series_id: string | null;
   instance_no: number;

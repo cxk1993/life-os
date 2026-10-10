@@ -140,8 +140,14 @@ def create_item(
       而不是静默建出一条无分类的待办。
       **人从网页/客户端来的请求不受此限**（`raw` 语法糖 / 手输文本照旧，
       QuickAdd 里 `#标签` 本就是可选项）。
+
+    ★ 2026-10-10（主人「待办来源标记」）：同一枚来路标记顺带定 `origin` ——
+      MCP/AI 来路 → `ai`；其余（网页/客户端）→ `human`。
+      **答云昔 10-10 的疑问**：此前待办只记 `source_path`（笔记文件路径），
+      不记「谁建的」；AI 建的与人建的分不清，回滚时不好定位。现在分得清了。
     """
-    if is_mcp_call(request):
+    origin = "ai" if is_mcp_call(request) else "human"
+    if origin == "ai":
         # 结构化 tags 优先；只给 raw 语法糖时从文本里取 #标签
         tags = body.tags or (_tags_from_raw(body.raw) if body.raw else [])
         if not tags:
@@ -152,7 +158,7 @@ def create_item(
                 "现有标签可用 todo_tag_read 查看，建议沿用既有层级标签。"
             )
     # 事件在 service 层发布（todo.item.created）
-    return TodoService(db).create(body)
+    return TodoService(db).create(body, origin=origin)
 
 
 @router.get("/items/{item_id}", response_model=TodoItemOut)

@@ -168,6 +168,14 @@ export default function ItemRow({ item }: Props) {
         )}
 
         <div className="todo-row__meta">
+          {/* ★ 2026-10-10（待办来源标记）：AI / MCP 建的在条目上标出来 ——
+              人建的（默认）不显示，不给主界面添噪音。回滚/排查时一眼分得清谁建的。
+              精确到哪个 agent 见 audit_log（actor=mcp:...）。 */}
+          {item.origin === "ai" ? (
+            <span className="todo-pill todo-pill--ai" data-testid="todo-origin-ai" title="由 AI（MCP）创建">
+              🤖 AI
+            </span>
+          ) : null}
           {item.priority ? (
             <span className={`todo-pill todo-pill--${item.priority}`}>
               {PRIORITY_LABEL[item.priority]}

@@ -33,6 +33,7 @@ const sample: TodoItem = {
   tags: ["学业", "学业/高数"],
   source_path: null,
   source_line: null,
+  origin: "human",
   sort: 0,
   series_id: "t1",
   instance_no: 0,
