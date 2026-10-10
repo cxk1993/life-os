@@ -4,7 +4,7 @@
   python tools/accept_probe/retest_13.py --base-url https://life.example.com:8443
   python tools/accept_probe/retest_13.py --base-url http://127.0.0.1:8000 --token $TOKEN
 
-输出 JSON 表，直接贴交接区 / 喂豆包对照表「实测」列。
+输出 JSON 表，直接贴/ 喂豆包对照表「实测」列。
 ★ 只 GET；不写生产。
 """
 from __future__ import annotations
@@ -85,7 +85,7 @@ def main() -> int:
         ):
             rec(tag, f"js has {key}", key in js, "yes" if key in js else "no")
         # ⑤KaTeX/⑧自定义：懒加载独立 chunk（主 js 不含=正常）。
-        # ★ 双前缀修复（令1 P0-1）：Vite 引用形如 assets/foo.js | ./foo.js | foo.js，
+        # ★ 双前缀修复（P0-1）：Vite 引用形如 assets/foo.js | ./foo.js | foo.js，
         #   一律归一 basename 再打 /assets/<basename>，杜绝 /assets/assets/ 与漏抓。
         chunk_hits = {
             "katex": False,

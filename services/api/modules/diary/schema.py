@@ -19,7 +19,7 @@ class DiaryEntryOut(BaseModel):
 
 
 class DiaryEntryUpdateIn(BaseModel):
-    """日记编辑请求（总监令60 CRUD 补全）。
+    """日记编辑请求（CRUD 补全）。
 
     - title：日记标题（= docs 节点 name）
     - date：目标日期 YYYY-MM-DD（变更 → 移动节点到新日期目录，幂等 get-or-create）
@@ -40,7 +40,7 @@ class DiaryTodayOut(BaseModel):
 
 
 class DiaryTodaySummaryOut(BaseModel):
-    """今日日记摘要（U2 小日历聚合 · 总监令62 + 协调令63）。
+    """今日日记摘要（U2 小日历聚合 · + 协调令63）。
 
     规范 v1 形状：{title, items:[{text,state}], link}
     BFF 透传 data（R-1 内核零业务），本模块只返回当日摘要数据。

@@ -320,7 +320,7 @@ def test_full_lifecycle_install_enable_disable_uninstall(
 def test_third_party_without_state_row_is_not_enabled(
     client: TestClient, demo_plugin_dir: Path
 ) -> None:
-    """口径统一（2026-09-27 · 主人令件①）：third-party 无状态行 = 未启用。
+    """口径统一（2026-09-27 · 主人件①）：third-party 无状态行 = 未启用。
 
     防回归 countdown 404：插件放进 plugins/ 但从未 enable 时——
     清单可见（发现）但 enabled=False；slots 贡献不标启用；MCP 不暴露
@@ -375,7 +375,7 @@ def test_enable_runs_migrations_when_table_missing(
     engine = get_engine()
 
     # ── ① 装一个"从未安装过"的第三方插件：只建状态行 + 建目录，不调 install ──
-    #     （模拟 countdown 场景：插件在 plugins/ 里，plugin_state 有行且 enabled=1）
+    #（模拟 countdown 场景：插件在 plugins/ 里，plugin_state 有行且 enabled=1）
     from db.models.system import PluginState
     from core.plugins import discover as discover_mod
     from core.deps import db_session
@@ -385,7 +385,7 @@ def test_enable_runs_migrations_when_table_missing(
     assert info is not None, "测试插件应被发现"
 
     # ★ 前置：确保"未跑迁移"的状态 —— 主动 DROP 表 + 清台账
-    #   （不能假设表不存在：同模块别的用例可能已装过同 id 插件，表会残留）
+    #（不能假设表不存在：同模块别的用例可能已装过同 id 插件，表会残留）
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS demo3p_thing"))
         conn.execute(text("DELETE FROM app_setting WHERE key LIKE :p"), {"p": f"migration.{DEMO_ID}.%"})

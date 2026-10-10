@@ -17,7 +17,7 @@ function errText(e: unknown): string {
 
 /**
  * 插件管理（主人⑫：并入「系统」窗多页）。
- * 列表 / 启停——安装卸载不在此页（危险操作走命令行/总监）。
+ * 列表 / 启停——安装卸载不在此页（危险操作走命令行）。
  */
 export default function PluginsApp() {
   const qc = useQueryClient();

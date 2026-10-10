@@ -10,7 +10,7 @@ import type { TodaySummary } from "../api";
  * U3 · 桌面右栏 dock 卡（`desktop.dock-right` 扩展点，dock 数据规范 v1 首例）。
  *
  * 数据：`/api/v1/todo/today-summary`（规范 v1：{title, items≤5:[{text,state,count}], link} + done）。
- * 三态语义（★ 副总监铁律：「没装」≠「没数据」必须可区分）：
+ * 三态语义（★ 铁律：「没装」≠「没数据」必须可区分）：
  *   404 → 「未安装 · 去安装」占位（不消失）
  *   200 空 → 「今日暂无待办」
  *   200 有 → 列表（逾期 alert 红色点 / 今日到期 due 蓝点）

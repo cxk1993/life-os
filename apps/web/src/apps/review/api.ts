@@ -157,7 +157,7 @@ export const reviewApi = {
   weekly: (date?: string) =>
     api.get<WeeklyOut>(`${BASE}/weekly${date ? `?date=${encodeURIComponent(date)}` : ""}`),
   raw: (date: string) => api.get<RawOut>(`${BASE}/raw?date=${encodeURIComponent(date)}`),
-  // ★ 全量同步历史日报（astrbot 下场 · 主人令「同步理应同步历史所有日报」）
+  // ★ 全量同步历史日报（astrbot 下场 · 主人「同步理应同步历史所有日报」）
   ingestAll: () =>
     api.post<{ total: number; ok: number; skipped: number; failed: number; errors: string[] }>(
       `${BASE}/ingest-all`,

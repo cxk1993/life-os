@@ -1,4 +1,4 @@
-"""pi-agent 生命周期钩子 · ★ 第②刀：真启停（带懒启动）。
+"""pi-agent 生命周期钩子 · ★ 真启停（带懒启动）。
 
 内核约定（core/plugins/lifecycle.py）：
     api/lifecycle.py 里可定义四个可选钩子，钩子是"尽力而为"：
@@ -23,7 +23,7 @@ _STATE: dict[str, object] = {"phase": "disabled"}
 
 
 def _sessions():
-    """延迟导入会话池（第④刀）。"""
+    """延迟导入会话池。"""
     import importlib.util
     import sys
     from pathlib import Path
@@ -65,11 +65,11 @@ def on_enable(db=None) -> None:
 def on_disable(db=None) -> None:
     """插件禁用 → ★ 收干净所有子进程（禁用后系统必须完好）。"""
     try:
-        _sessions().shutdown_pool()      # ★ 会话池（第④刀）
+        _sessions().shutdown_pool()      # ★ 会话池
     except Exception as exc:  # noqa: BLE001
         log.warning("[pi-agent] on_disable 收会话池出错（已吞）：%s", exc)
     try:
-        _manager().shutdown_manager()    # 单会话管理器（第②刀）
+        _manager().shutdown_manager()    # 单会话管理器
     except Exception as exc:  # noqa: BLE001
         log.warning("[pi-agent] on_disable 收进程时出错（已吞，不拖垮内核）：%s", exc)
     _STATE["phase"] = "disabled"

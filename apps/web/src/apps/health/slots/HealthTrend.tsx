@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { healthApi } from "../api";
 import { aggregateTrend, deriveInsight, TREND_WEEKS, type TrendPoint } from "./trend";
 
-/** D1 · 健康趋势图（TX-HEALTH-01）。
+/** D1 · 健康趋势图。
  * dashboard.card 与 window.sidecar(health) 双形态共用本组件。
  * 铁律：永远能渲染空态（无记录时给引导，不崩）。
  * 迭代 2（QS 前景/背景）：图表=前景，deriveInsight 的「惊讶时刻」=背景提示。

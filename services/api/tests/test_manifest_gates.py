@@ -1,4 +1,4 @@
-"""TX-DEG-01 · 依赖声明闸门测试（#033 四条静态规则）。
+"""· 依赖声明闸门测试（#033 四条静态规则）。
 
 ★ 语义锚点：`requires` / `optionalDependencies` 里写的是**能力名**（如 web.entry.read），
   **不是模块 id** —— 判据为「该能力必须被某个模块 provides」。此语义在实装时被真实
@@ -72,7 +72,7 @@ def test_rule1_hard_dep_unknown_capability_rejected(tmp_path: Path) -> None:
 
 
 def test_rule1_soft_dep_unknown_capability_allowed(tmp_path: Path) -> None:
-    """★ 2026-09-25（TX-FRAME-01 第⑥刀）**语义修正**：软依赖找不到提供者 → **只告警，不报错**。
+    """★ 2026-09-25**语义修正**：软依赖找不到提供者 → **只告警，不报错**。
 
     原测试（`..._rejected`）要求软依赖也必须有人 provides，这与 `Manifest` 自身注释
     「软依赖（本字段）缺 = 坞位挂 degraded 角标，**功能降级但不死**」**互相矛盾** ——
@@ -159,7 +159,7 @@ def test_existing_id_vs_dirname_rule_still_holds(tmp_path: Path) -> None:
         discover_modules(tmp_path)
 
 
-# ══════════ TX-DEG-01 第二部分：软依赖缺失的运行时判定（degraded 半边）══════════
+# ══════════ 第二部分：软依赖缺失的运行时判定（degraded 半边）══════════
 # 硬依赖缺失 = 启动期 fail-fast（运行时不会出现）；运行期只判软依赖。
 
 
@@ -253,7 +253,7 @@ def test_real_modules_still_all_pass_with_new_gates() -> None:
     mods = discover_modules(api_root / "modules")
     assert len(mods) >= 18, f"真实模块数异常减少：{len(mods)}"
 
-# ── ★ 路径 a（总监令 78）：容器型模块（kind=container）分档 ──────────────
+# ── ★ 路径 a：容器型模块（kind=container）分档 ──────────────
 def _write_raw(root: Path, mid: str, manifest: dict[str, object]) -> None:
     """按给定 manifest 原文落盘（用于省略 api 等条件化场景）。"""
     d = root / mid

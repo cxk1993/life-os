@@ -5,7 +5,7 @@ import { api, ApiError } from "@/shared/api/client";
 import { useDesktopStore } from "../store";
 
 /**
- * U2 · 聚合小日历 · 视图侧（副总监拍案 1 号：U2 视图层 → Doubao）。
+ * U2 · 聚合小日历 · 视图侧（拍案 1 号：U2 视图层 → Doubao）。
  *
  * 右上角时间区 → 点击展开「今日摘要」面板，跨插件聚合：
  *   calendar 日程 / todo 待办 / diary 日记 / review 复盘
@@ -13,7 +13,7 @@ import { useDesktopStore } from "../store";
  * 数据契约（workbuddy《todaySummary 数据源规范 v1》· 前端并发调各插件自供端点）：
  *   GET /api/v1/<id>/today-summary
  *   → { title?, items:[{text, state?, count?}], link? }   items ≤5
- * 三态语义（★ 副总监铁律：「没装」≠「没数据」必须界面可区分）：
+ * 三态语义（★ 铁律：「没装」≠「没数据」必须界面可区分）：
  *   404           → 「未安装 · 去安装」（占位，不消失）
  *   200 空 items  → 「今日暂无 X」（空态）
  *   200 有        → 列表
@@ -127,7 +127,7 @@ function ProvSection({ id, moduleId, label }: { id: string; moduleId: string; la
           </div>
         )
       ) : prov?.status === "not-implemented" ? (
-        // 该源未实现：占位 + 引导（★ 副总监铁律：不消失，可操作）
+        // 该源未实现：占位 + 引导（★ 铁律：不消失，可操作）
         <div className="today-sum__na" data-testid={`today-sum-${id}-na`}>
           未安装 · 去安装
         </div>

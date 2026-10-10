@@ -95,7 +95,7 @@ def today_summary(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
-    """U2 聚合数据源（令 62）：当日事件列表 + 条数。
+    """U2 聚合数据源：当日事件列表 + 条数。
 
     ★ 形状按 docs/specs/today-summary数据源规范-v1.md；BFF（/api/v1/summary/today）
     原样透传本响应（R-1：内核不解析业务）。

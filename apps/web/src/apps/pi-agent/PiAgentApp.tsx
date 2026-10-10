@@ -2,7 +2,7 @@
  * ★ Pi 智能体 · 一窗多页容器（主人 2026-09-26 令：「AI 编排也收，并进 pi-agent 当一个 tab」）。
  *
  * 结构（照 `apps/schedule/ScheduleApp.tsx` 容器样板 · kernel/MultitabFrame 原语）：
- *   页 1「对话」= PiChatView（TX-FRAME-01 第⑤刀原件，**一字未改**）
+ *   页 1「对话」= PiChatView（原件，**一字未改**）
  *   页 2「编排」= AgentsApp（AI 编排原件，**一字未改**，lazy 引用）
  *
  * ★ 为什么这样并：Dock 显隐唯一杠杆是 DOCK_MERGE（坑谱 #15），

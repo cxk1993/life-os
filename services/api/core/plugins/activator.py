@@ -1,4 +1,4 @@
-"""声明式激活器（TX-ACT-01）：manifest `activates_on` 语义的运行时实现。
+"""声明式激活器：manifest `activates_on` 语义的运行时实现。
 
 ★ 语义（对齐 VSCode activationEvents 哲学，收益是内存与稳定性，不是启动提速）：
   - 缺省 `[]` 或含 `startup:always` → 启动即激活（向后兼容：存量模块零漂移）；
@@ -126,7 +126,7 @@ class PluginActivator:
             if info.id in self._activated or info.id in self._registry.mounted():
                 self._activated.add(info.id)
                 return
-            # 路径 a（总监令 78/95）：container 型模块 = 纯前端编排容器，无 router.py
+            # 路径 a：container 型模块 = 纯前端编排容器，无 router.py
             # 也不该挂路由——登记激活态即返回，Dock/entry 由前端 manifest 驱动。
             if info.manifest.get("kind") == "container":
                 self._activated.add(info.id)

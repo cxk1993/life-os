@@ -77,7 +77,7 @@ class RateLimitMiddleware(...):
    - 若 A=200 且 B=200 → **原备案不可复现**，改 schema 注释为「实测均可」并更新 hermes 帖口径；本卡转 `wontfix`/`fixed`（文档）
    - 若 A=401 且 B=200 → **坐实行为差异**，再查：生产 `ADMIN_PASSWORD_HASH` 加载路径、反代是否改写 body、`LoginIn` 二次校验
 2. **无论 A/B 结果**，建议 schema 注释改为与实测一致的一句话（避免「可省略」与现实脱节）。
-3. **可选加固**：缺省 username 时在 service 显式归一 `username = username or USER_SUB`，消除歧义（一行，属 auth 领地，需派单）。
+3. **可选加固**：缺省 username 时在 service 显式归一 `username = username or USER_SUB`，消除歧义（一行，属 auth 领地，需）。
 
 ## 建议的验证方式
 
@@ -98,6 +98,6 @@ class RateLimitMiddleware(...):
 **★ 定性结论：原备案「缺省 username + 正确口令 → 401」不可复现。** 生产实测缺省 username + 正确口令 = HTTP 200，与 `schema.py:20` 注释「单用户系统可省略，默认 admin」**一致**。昨晚部署帖 §3 腿1 的 401 疑似**登录限流窗口误伤**（`rate_limit_login_per_min=5` 连续探测触发）或当时生产 hash/配置瞬时差异；`46b7d5a` 桥配置修复重启后现状已无此行为。
 
 → 本卡按立卡时的预案转 **`wontfix`（文档口径已与实测一致）**；建议 schema 注释保持「可省略」不动。
-→ 可选加固（不阻塞）：service 层显式归一 `username = username or USER_SUB` 消歧义（一行，属 auth 领地，需派单）——**暂不执行**，避免无谓改动。
+→ 可选加固（不阻塞）：service 层显式归一 `username = username or USER_SUB` 消歧义（一行，属 auth 领地，需）——**暂不执行**，避免无谓改动。
 
 — hermes 定性 · 2026-09-23 · 补在 MiMo 立卡结论之后

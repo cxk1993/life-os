@@ -114,11 +114,11 @@ class PluginManager:
         out: list[dict[str, Any]] = []
         for p in result.plugins:
             st = states.get(p.id)
-            # 口径统一（2026-09-27 · 主人令件①）：无状态行的默认启用态按来源判——
+            # 口径统一（2026-09-27 · 主人件①）：无状态行的默认启用态按来源判——
             # builtin/core 随系统发布默认在用；third-party 从未动过 = 未启用
-            # （ADR-0002「可禁用」语义的权威态，与 core/app.py 启动恢复同规则）。
+            #（ADR-0002「可禁用」语义的权威态，与 core/app.py 启动恢复同规则）。
             # 旧值恒 True 会造成「MCP 工具已暴露 / 路由未挂载」的幽灵工具
-            # （countdown 404 根因之一）。
+            #（countdown 404 根因之一）。
             enabled = st.enabled if st is not None else p.source != "third-party"
             granted = (
                 json.loads(st.granted_permissions)
@@ -218,7 +218,7 @@ class PluginManager:
             db.commit()
 
     # ───────────────────────── 挂载 / 摘卸载 ─────────────────────────
-    # 挂载统一走 core.plugins.discover.mount_plugin（TX-ACT-01 前置小步：
+    # 挂载统一走 core.plugins.discover.mount_plugin（前置小步：
     # 与 create_app 启动全量挂载共用单一入口，本类不再各写一份）。
     def _unmount(self, info: PluginInfo, registry: Any) -> None:
         if info.id in registry.mounted():
@@ -261,7 +261,7 @@ class PluginManager:
             # 差分；绝不能调全量 rollback_migrations（会 drop 掉承载历史数据的表）。
             #
             # ★ 差分必须**延迟到补偿时**才计算：run_migrations 若中途失败
-            #   （如 0001 成功、0002 抛错），`after_versions` 那行根本不会执行，
+            #（如 0001 成功、0002 抛错），`after_versions` 那行根本不会执行，
             #   提前算出的差分会漏掉已执行的 0001。故 lambda 在 undo 时才取
             #   「当前台账 − before」，捕获真正落库的那些版本。
             # ★ 逆必须**先于 effect 注册**（2026-10-03 踩过）：
@@ -289,7 +289,7 @@ class PluginManager:
             self._compensate(done, info, exc)
             # 补偿已把状态恢复到调用前（含"原先无行则删行"）。此后只做目击：
             #   - 调用前本就是启用态（重调边界）→ **保持启用**，仅把错误写进 last_error
-            #     （绝不能顺手改成 disabled —— 那是一次计划外的副作用）；
+            #（绝不能顺手改成 disabled —— 那是一次计划外的副作用）；
             #   - 否则建/改成 enabled=False 并记错误，留下可诊断的行。
             #
             # ★ 注意：本分支不会因「生命周期钩子抛异常」而进 —— run_lifecycle_hook
@@ -381,7 +381,7 @@ class PluginManager:
             raise ConflictError(
                 f"插件「{plugin_id}」是 {info.kind}，{_BUILTIN_INCLUSION_NOTE}"
             )
-        # 校验权限声明合法（★ 2026-09-25 TX-FRAME-01：先归一化，兼容对象格式）
+        # 校验权限声明合法（★ 2026-09-25 先归一化，兼容对象格式）
         #
         # ★ ADR-0005（2026-10-03）：这里**只做结构校验**（拒绝非法权限串）。
         #   真正的授权决策在 uninstall 前的审批环节 —— 对应论文 §6.3 的

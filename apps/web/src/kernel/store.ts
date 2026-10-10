@@ -151,7 +151,7 @@ function clampGeo(g: WinGeo, manifest: ModuleManifest): WinGeo {
   const minH = manifest.window.minH ?? 240;
   const w = Math.max(minW, Math.round(g.w));
   const h = Math.max(minH, Math.round(g.h));
-  // ★ 主人令：仅保留顶端回弹（y>=0 防跑出屏幕顶）；左右/底部不钳制，
+  // ★ 主人：仅保留顶端回弹（y>=0 防跑出屏幕顶）；左右/底部不钳制，
   //   允许窗口移出屏幕边缘（一键桌面整理可找回，无需强制弹回）。
   const x = Math.round(g.x);
   const y = Math.max(0, Math.round(g.y));
@@ -192,7 +192,7 @@ function savePersisted(s: DesktopState): void {
     const enabled: Record<string, boolean> = {};
     for (const id in s.modules) enabled[id] = s.modules[id].enabled;
     // ★ T23：计数器已**下沉进工作区对象**，顶层不再写 topZ/topPinZ/seq
-    //   （顶层那三个字段留着只为读 v1 旧快照）
+    //（顶层那三个字段留着只为读 v1 旧快照）
     const data: PersistedShape = {
       windows: s.windows,
       workspaces: s.workspaces,

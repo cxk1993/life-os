@@ -1,4 +1,4 @@
-"""TX-SIDEBAR-02 出入参 + href 白名单。"""
+"""出入参 + href 白名单。"""
 from __future__ import annotations
 
 from datetime import datetime

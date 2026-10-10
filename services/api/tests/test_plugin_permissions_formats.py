@@ -1,6 +1,6 @@
-"""内核权限体系 · 两种格式归一化 + subprocess（2026-09-25 · TX-FRAME-01 修与补）。
+"""内核权限体系 · 两种格式归一化 + subprocess（2026-09-25 · 修与补）。
 
-背景（astrbot 第①刀时发现的两层口径不一致）：
+背景（astrbot 时发现的两层口径不一致）：
   - `contracts/plugin.schema.json` 写着「新插件请用**对象格式**」
     （{"filesystem": true, "network": true, "subprocess": true}）；
   - 而内核 `core/plugins/permissions.py` **只实现字符串格式**，

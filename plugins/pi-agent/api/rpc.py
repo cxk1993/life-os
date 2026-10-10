@@ -1,4 +1,4 @@
-"""pi-agent · RPC 适配层（★ TX-FRAME-01 第②刀核心）。
+"""pi-agent · RPC 适配层（★ 核心）。
 
 ════════════════════════════════════════════════════════════════════
 把 pi 作为一个**长驻子进程**托管，用 **JSONL over stdin/stdout** 与它对话。
@@ -52,7 +52,7 @@ DEFAULT_MODEL = "life-os"
 #   实测不加后缀时默认是 medium，故显式带上。
 DEFAULT_THINKING = "high"
 DEFAULT_MODEL_SPEC = f"{DEFAULT_MODEL}:{DEFAULT_THINKING}"
-DEFAULT_SANDBOX_IMAGE = "lifeos-pi-sandbox:0.87.1"   # ★ 第⑧刀：沙箱镜像（版本 pin 死）
+DEFAULT_SANDBOX_IMAGE = "lifeos-pi-sandbox:0.87.1"   # ★ 沙箱镜像（版本 pin 死）
 PROMPT_TIMEOUT_S = 120.0      # 单轮上限（实测 5~11s，留足余量）
 HEARTBEAT_TIMEOUT_S = 10.0    # 心跳单次超时
 HEARTBEAT_FAILS_TO_KILL = 3   # 连续失败判卡死
@@ -110,7 +110,7 @@ def mcp_pat_path() -> str:
 def load_mcp_env() -> dict[str, str]:
     """构造给 pi 子进程的额外环境（目前只有 MCP PAT）。
 
-    ★ 2026-09-25 第⑥刀实测踩到：pi 通过 `pi-mcp-adapter` 调 Life-OS 的 MCP 桥时
+    ★ 2026-09-25 实测踩到：pi 通过 `pi-mcp-adapter` 调 Life-OS 的 MCP 桥时
       报 401「缺少 Authorization: Bearer <PAT>」—— 因为 PAT 只在**我的** shell 里，
       **没传给 pi 子进程**。此处把它显式注入子进程环境。
 
@@ -169,10 +169,10 @@ class PiRpcClient:
         model: str = DEFAULT_MODEL_SPEC,
         extra_args: list[str] | None = None,
         env: dict[str, str] | None = None,
-        # ★ 第⑧刀：沙箱模式 —— pi 跑在 Docker 容器里（Plain Docker 隔离）
+        # ★ 沙箱模式 —— pi 跑在 Docker 容器里（Plain Docker 隔离）
         sandbox: bool = False,
         sandbox_image: str = DEFAULT_SANDBOX_IMAGE,
-        # ★ 第⑨刀：持久会话（落盘）—— 会话共享（pi-web-ui / 外部工具）的前提。
+        # ★ 持久会话（落盘）—— 会话共享（pi-web-ui / 外部工具）的前提。
         #   默认 False（= `--no-session`，无状态）；会话池应传 True。
         persist: bool = False,
     ) -> None:
@@ -199,7 +199,7 @@ class PiRpcClient:
         env = {**os.environ, **load_mcp_env(), **(self.env or {})}
 
         if self.sandbox:
-            # ★ 第⑧刀：容器模式（Plain Docker）。
+            # ★ 容器模式（Plain Docker）。
             #   - `-i` 保 stdin（RPC 的协议通道就是它，缺了 pi 会立刻退出）；
             #   - `--network host` 让容器内 127.0.0.1 指向宿主（访问 Life-OS MCP 桥）；
             #   - `-v <cwd>:/workspace` **只暴露这一个目录**（最小暴露面）；
@@ -224,7 +224,7 @@ class PiRpcClient:
                 "docker", "run", "--rm", "-i",
                 "--network", "host",
                 # ★ 以**宿主 uid** 跑容器 —— 挂进来的目录读写无障碍
-                #   （镜像里另建了 pi 用户，这里覆盖它）
+                #（镜像里另建了 pi 用户，这里覆盖它）
                 "--user", f"{os.getuid()}:{os.getgid()}",
                 "-v", f"{self.cwd}:/workspace",
                 "-w", "/workspace",

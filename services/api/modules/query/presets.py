@@ -1,4 +1,4 @@
-"""TX-QUERY-01 Q1 · 五条预置查询（只读聚合，零新表）。"""
+"""Q1 · 五条预置查询（只读聚合，零新表）。"""
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta

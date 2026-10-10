@@ -1,5 +1,5 @@
 /**
- * TX-TODO-NL-01 · 待办自然语言解析（离线词典版）。
+ * · 待办自然语言解析（离线词典版）。
  *
  * 设计要点（与后端对齐，不重复造轮子）：
  * - 后端 parse_natural_date 已支持 今天/明天/后天/周X(nearest future)/10-01 且只到「日期」粒度；
@@ -327,7 +327,7 @@ export function parseTodoNL(input: string): TodoNLResult {
   const { slot } = found;
   const head = text.slice(0, slot.start).trim();
   const tail = text.slice(slot.end).trim();
-  // 中文标点后不加空格（，。！？、；：）
+  // 中文标点后不加空格（。！？、；：）
   const needSpace = head && tail && !/[，。！？、；：,.:]/.test(head.slice(-1));
   const cleaned = `${head}${head && tail ? (needSpace ? " " : "") : ""}${tail}`.trim();
 

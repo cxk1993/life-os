@@ -114,7 +114,7 @@ def today_summary(
     db: DbDep = Depends(get_db),
     user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """今日日记摘要（U2 小日历聚合 · 总监令62 + 协调令63）。
+    """今日日记摘要（U2 小日历聚合 · + 协调令63）。
 
     规范 v1 形状：{title, items:[{text,state}], link}
     BFF 透传 data（R-1 内核零业务），本模块只返回当日摘要数据。
@@ -122,12 +122,12 @@ def today_summary(
     """
     svc = _svc(request, user)
     d = svc.today()
-    # ★ 门禁复核修复二（总监实跑）：不用 get_or_create_entry——GET 摘要端点
+    # ★ 门禁复核修复二（实跑）：不用 get_or_create_entry——GET 摘要端点
     #   不得有写副作用（会把"今日无日记"的库凭空建出节点）。只读判定当日存在性。
     exists = d.isoformat() in svc.month_days(d.year, d.month)
     return {
         "title": f"今日日记 {1 if exists else 0} 项",
-        # ★ 门禁复核修复（总监实跑 500）：get_or_create_entry 无 name 键，
+        # ★ 门禁复核修复（实跑 500）：get_or_create_entry 无 name 键，
         #   旧代码 entry.get("name") → None 压 text: str 必炸。日期即日记节点名。
         "items": [{"text": d.isoformat(), "state": "info"}] if exists else [],
         "link": "/diary",

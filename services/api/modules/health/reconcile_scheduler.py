@@ -11,7 +11,7 @@ from contextlib import suppress
 from typing import Any
 
 from core.config import read_setting
-from core.deps import db_session  # ★ 令7 §2：非 Depends 场景必须 db_session（get_db 已生成器化）
+from core.deps import db_session  # ★ 非 Depends 场景必须 db_session（get_db 已生成器化）
 
 log = logging.getLogger("health.reconcile_scheduler")
 
@@ -39,7 +39,7 @@ def _interval_minutes() -> int:
 def _run_once() -> None:
     from .reconcile import reconcile_followups
 
-    # ★ 令7 §2 补刀：get_db 已生成器化，非 Depends 场景必须 db_session()。
+    # ★ 补刀：get_db 已生成器化，非 Depends 场景必须 db_session()。
     try:
         with db_session() as db:
             reconcile_followups(db)

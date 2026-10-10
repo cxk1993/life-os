@@ -1,4 +1,4 @@
-"""侧栏自定义容器路由（TX-SIDEBAR-02）。"""
+"""侧栏自定义容器路由。"""
 import json
 from pathlib import Path
 from typing import Annotated, Any

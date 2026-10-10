@@ -1,4 +1,4 @@
-"""通用外部 MCP 源桥（TX-MCP-EXT · 零业务词）。
+"""通用外部 MCP 源桥（零业务词）。
 
 任何 Streamable HTTP MCP 服务都可经环境变量挂进 tools/list：
   EXTERNAL_MCP_URL          端点（如自有云的 /api/v1/mcp）

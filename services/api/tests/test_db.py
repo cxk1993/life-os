@@ -259,7 +259,7 @@ def test_utc_roundtrip_cross_day(engine) -> None:
     with Session(engine) as s:
         row = s.exec(select(AuditLog).where(AuditLog.action == "crossday")).one()
         assert row.at == src  # ★ 往返仍是**同一瞬间**（跨时区相等）—— 这是真正的不变量
-        # ★ 2026-09-28（主人令「统一为本地时区」）：读出不再补 UTC，而是转主人本地时区。
+        # ★ 2026-09-28（主人「统一为本地时区」）：读出不再补 UTC，而是转主人本地时区。
         #   库里**仍然存 UTC**（写入侧未动），只是进程内表示改为本地 —— 同一瞬间，换个表示。
         assert row.at.tzinfo == ZoneInfo(get_settings().tz)
     assert utcnow().tzinfo is not None

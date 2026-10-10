@@ -1,7 +1,7 @@
 /**
- * ★ DOCK_MERGE 防回潮判据（workbuddy 2026-09-25 收尾 · 依总监令 9 §2）。
+ * ★ DOCK_MERGE 防回潮判据（workbuddy 2026-09-25 收尾 · 依）。
  *
- * 背景：令 9 §2 确立「**Dock 显隐的唯一杠杆是 `DOCK_MERGE`，不是 `manifest.slots`**」——
+ * 背景：确立「**Dock 显隐的唯一杠杆是 `DOCK_MERGE`，不是 `manifest.slots`**」——
  *   MiMo 曾用「摘 `desktop.dock` 槽」想隐藏按钮，**无效**，因为 Dock 是
  *   `Object.values(modules).map(...)`（遍历 store 全部模块），**从不读 slots**。
  *
@@ -45,7 +45,7 @@ afterEach(() => {
   useDesktopStore.setState({ modules: {}, windows: [] });
 });
 
-describe("Dock · DOCK_MERGE 归口机制（令 9 §2 判据）", () => {
+describe("Dock · DOCK_MERGE 归口机制（判据）", () => {
   it("① 机制事实：**没有** desktop.dock 槽的模块仍会出现（所以'摘槽隐藏'永远无效）", () => {
     setModules([{ id: "somemod", name: "某模块" }]); // ← 故意不给 slots
     render(<Dock />);
@@ -78,8 +78,8 @@ describe("Dock · DOCK_MERGE 归口机制（令 9 §2 判据）", () => {
 
   it("④ 覆盖面：DOCK_MERGE 关键成员一处齐（新增归口请同步此表，防漏收）", () => {
     // 与 Dock.tsx 的 DOCK_MERGE 保持同源期望：主人点名的并入面
-    // ★ 2026-09-25 批 J（Qoder CN·令10）：+calendar/todo → schedule 容器
-    //   （主人令 todo×日程合并）——按本表「新增归口请同步」纪律补入。
+    // ★ 2026-09-25 批 J（Qoder CN）：+calendar/todo → schedule 容器
+    //（主人todo×日程合并）——按本表「新增归口请同步」纪律补入。
     const expected = [
       "catalog",
       "mcp",

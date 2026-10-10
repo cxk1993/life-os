@@ -1,7 +1,7 @@
 /**
  * 成长罗盘 · V6 容器化（主人⑧⑪：习惯/人格/健康并入罗盘多页展示）。
  *
- * 原 24 行占位组件替换为 MultitabFrame 三页容器（副总监指路帖 §1 页签源）：
+ * 原 24 行占位组件替换为 MultitabFrame 三页容器（指路帖 §1 页签源）：
  * - 页视图源 = 现有模块 App 组件直接复用，不重写；
  * - React.lazy 动态 import 保持模块懒加载分包（不把三模块打进 dashboard chunk）；
  * - growth prop 保留（DashboardApp 调用签名不变；overview.growth 数据源仍是

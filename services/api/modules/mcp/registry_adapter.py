@@ -33,7 +33,7 @@ _METHOD_BY_VERB: dict[str, str] = {
     "write": "POST",
     "create": "POST",
     "update": "PUT",
-    # ★ 2026-09-27（主人令「把挂路径参数的整类端点修通」）：
+    # ★ 2026-09-27（主人「把挂路径参数的整类端点修通」）：
     #   此前**没有任何动词映射 PATCH** ⇒ 满地的 PATCH 端点（改待办 / 改文档 /
     #   改课 / 改日程…）在工具面上天然不可达。补一条 `patch`。
     "patch": "PATCH",
@@ -45,7 +45,7 @@ _METHOD_BY_VERB: dict[str, str] = {
 WRITE_VERBS: frozenset[str] = frozenset(
     {"write", "create", "update", "patch", "delete", "remove"}
 )
-# （ISSUE-008 方案 A，2026-09-20）不规则/语义命名路由的显式映射不在本文件——
+#（ISSUE-008 方案 A，2026-09-20）不规则/语义命名路由的显式映射不在本文件——
 # 在各插件 manifest 的 api.tools（resource → 路由段，声明则优先，未声明走机械
 # 推导）。显式数据归插件声明、机制归本文件，源码保持零业务词；上一版的
 # _PATH_OVERRIDES 例外表已迁入 dashboard/finance/web/review/calendar 的 manifest。
@@ -98,7 +98,7 @@ def derive_tool(
     if explicit is None:
         path = f"{base}/{resource}s"
     elif explicit.startswith(base):
-        path = explicit  # 完整路径（令 35 §3：脚本与实现兼容两种形态）
+        path = explicit  # 完整路径（脚本与实现兼容两种形态）
     else:
         path = f"{base}{explicit}"  # 相对 router 段（规范形态，如 /entries）
     description = (
@@ -127,7 +127,7 @@ def build_tool_map() -> list[ToolMapping]:
     out: list[ToolMapping] = []
     for info in manager.discover().plugins:
         st = states.get(info.id)
-        # 口径统一（2026-09-27 · 主人令件①）：无状态行 = 非 third-party 默认启用；
+        # 口径统一（2026-09-27 · 主人件①）：无状态行 = 非 third-party 默认启用；
         # third-party 从未动过 = 未启用，不暴露工具——防「工具看得见、路由 404」
         # 的幽灵工具（countdown 404 根因之一）。与 PluginManager.list_plugins 及
         # core/app.py 启动恢复三方同一规则（原注释「与 PluginManager 口径一致」

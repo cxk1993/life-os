@@ -1,11 +1,11 @@
 /**
  * 桌面壁纸 · V1-EXT2「桌面个性化」（主人③后半：像 Win11 一样自定义背景；
- * 汐瑶令 1 @Zcode 单）。四态：grid（默认淡线网格）/ image（自定义图片）/
+ * 单）。四态：grid（默认淡线网格）/ image（自定义图片）/
  * color（自定义纯色）/ off（纯底无网格）。
  *
  * 设计约束（领地零侵入）：
  * - 状态走 localStorage（`lifeos.desktop.wallpaper`），图片 Blob 走 IndexedDB
- *   （lifeos-wallpaper.images/current）——不碰 workbuddy 的 store.ts/Deskop.tsx；
+ *（lifeos-wallpaper.images/current）——不碰 workbuddy 的 store.ts/Deskop.tsx；
  * - 挂载入口 = App.tsx 一行 useEffect 调 initWallpaper()；
  * - 桌面空白右键弹「个性化」菜单（window 级监听，仅 .desktop 本体命中时接管）；
  * - 图片文件只进 IndexedDB，**不进 git**（红线）。

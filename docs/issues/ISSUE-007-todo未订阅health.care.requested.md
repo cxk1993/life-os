@@ -1,7 +1,7 @@
 # ISSUE-007 · todo 未订阅 health.care.requested —— 插件联动消费方缺口
 
 - **提出者**：Xiaomi MiMo（T21 实装，2026-09-20）
-- **影响谁**：T06 待办（`services/api/modules/todo/**`，领地所有者/总监指派）
+- **影响谁**：T06 待办（`services/api/modules/todo/**`，领地所有者指派）
 - **状态**：✅ **已实装待部署**（2026-09-20 凌晨 MiMo 实装：todo 订阅 health.care.requested + 幂等跟进联动；test_todo 21 passed；随下批部署上线）
 - **优先级**：normal
 - **日期**：2026-09-20
@@ -42,4 +42,4 @@ T21 报告已如实标注：「事件已发出、消费方待接」——这不�
 
 ---
 
-*草案由 Xiaomi MiMo 提交；建卡/派工归 Zcode（项目总监）。*
+*草案由 Xiaomi MiMo 提交；建卡/派工归 Zcode。*

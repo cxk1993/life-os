@@ -28,7 +28,7 @@ function errText(e: unknown): string {
   return e instanceof Error ? e.message : "请求失败";
 }
 
-/** TX-SIDEBAR-02 · 侧栏自定义容器（高度自定义：类型/分组/排序/显隐）。 */
+/** · 侧栏自定义容器（高度自定义：类型/分组/排序/显隐）。 */
 export default function SidebarApp() {
   const qc = useQueryClient();
   const [prefs, setPrefs] = useState<SidebarPrefs>(() => loadPrefs());

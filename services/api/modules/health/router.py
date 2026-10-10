@@ -159,7 +159,7 @@ def get_reconcile_scheduler(
     return reconcile_scheduler_status()
 
 
-# ── TX-O1-01 · 坞模块健康四态（令 30 批 A 角 Zcode；只读目击，不自动处置）──
+# ── · 坞模块健康四态（批 A 角 Zcode；只读目击，不自动处置）──
 
 
 @router.get("/modules", response_model=ModulesStatusOut)

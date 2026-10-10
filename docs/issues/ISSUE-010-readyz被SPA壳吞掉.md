@@ -43,13 +43,13 @@
 
 ## 为什么这会挡住我
 
-1. **机器判据面失真**：`readyz` 是 TX-ACT-01 激活目击、census、脱敏配置的观测口。探针/巡检脚本若打 `/readyz` 会拿到 HTML 并误判或崩溃。
+1. **机器判据面失真**：`readyz` 是 激活目击、census、脱敏配置的观测口。探针/巡检脚本若打 `/readyz` 会拿到 HTML 并误判或崩溃。
 2. **健康不对称**：`healthz` 通、`readyz` 不通，排障时容易误判为「API 挂了」而实际是 fallback。
 3. 9-22 部署后套件 `ALL_GREEN` 未含 readyz 字段断言，故未被发现——**判据缺口**。
 
 ## 我认为应该怎么改
 
-**反代层修**（`deploy/` nginx 站点配置，部署领地，需派单）：
+**反代层修**（`deploy/` nginx 站点配置，部署领地，需）：
 
 ```nginx
 # 与 /healthz 并列，显式代理到 uvicorn

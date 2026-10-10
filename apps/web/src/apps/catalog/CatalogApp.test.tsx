@@ -86,7 +86,7 @@ function renderApp() {
   );
 }
 
-// ★ 令29：页签切换助手（名字带计数角标，用正则匹配）
+// ★ 页签切换助手（名字带计数角标，用正则匹配）
 function switchTab(name: RegExp) {
   fireEvent.click(screen.getByRole("tab", { name }));
 }
@@ -104,9 +104,9 @@ describe("CatalogApp", () => {
     });
   });
 
-  // ─────────── ★ 令29：内部分页 ───────────
+  // ─────────── ★ 内部分页 ───────────
 
-  it("令29：五个来源页签全部渲染，默认落在插件能力页", async () => {
+  it("五个来源页签全部渲染，默认落在插件能力页", async () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
     for (const name of [/^插件能力/, /^内核基础/, /^网页入口/, /^手动导入/, /^AI 工具/]) {
@@ -121,7 +121,7 @@ describe("CatalogApp", () => {
     expect(screen.queryByText("我的 API")).toBeFalsy();
   });
 
-  it("令29：页签计数角标正确（插件1/内核0/网页0/手动1/MCP2）", async () => {
+  it("页签计数角标正确（插件1/内核0/网页0/手动1/MCP2）", async () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
     expect(screen.getByRole("tab", { name: /^插件能力/ }).textContent).toContain("1");
@@ -131,7 +131,7 @@ describe("CatalogApp", () => {
     expect(screen.getByRole("tab", { name: /^AI 工具/ }).textContent).toContain("2");
   });
 
-  it("令29：切到手动导入页签才显示手动条目", async () => {
+  it("切到手动导入页签才显示手动条目", async () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
     switchTab(/^手动导入/);
@@ -140,7 +140,7 @@ describe("CatalogApp", () => {
     expect(screen.queryByText("日程表")).toBeFalsy();
   });
 
-  it("令29：空源页签显示暂无占位且页签不隐藏", async () => {
+  it("空源页签显示暂无占位且页签不隐藏", async () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
     switchTab(/^内核基础/);
@@ -149,7 +149,7 @@ describe("CatalogApp", () => {
     expect(await screen.findByText(/暂无（这类能力还没有条目）/)).toBeTruthy();
   });
 
-  it("令29：空的手动导入页签给出引导文案", async () => {
+  it("空的手动导入页签给出引导文案", async () => {
     apiMock.getCatalog.mockResolvedValue({
       entries: [sampleCatalog.entries[0]],
       generatedAt: "2026-09-20T00:00:00Z",
@@ -161,7 +161,7 @@ describe("CatalogApp", () => {
     expect(await screen.findByText(/暂无手动导入的能力/)).toBeTruthy();
   });
 
-  it("令29：点头部「+ 手动导入」自动切到手动页签并展开表单", async () => {
+  it("点头部「+ 手动导入」自动切到手动页签并展开表单", async () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "+ 手动导入" }));
@@ -174,7 +174,7 @@ describe("CatalogApp", () => {
     expect(screen.queryByPlaceholderText("名称 *")).toBeFalsy();
   });
 
-  it("令29：搜索只过滤当前条目页签", async () => {
+  it("搜索只过滤当前条目页签", async () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
     const input = screen.getByPlaceholderText(/搜索能力/);
@@ -191,7 +191,7 @@ describe("CatalogApp", () => {
     expect(await screen.findByText("日程表")).toBeTruthy();
   });
 
-  it("令29：MCP 页签内搜索过滤工具", async () => {
+  it("MCP 页签内搜索过滤工具", async () => {
     renderApp();
     await waitFor(() => expect(screen.getByText("日程表")).toBeTruthy());
     switchTab(/^AI 工具/);
@@ -273,7 +273,7 @@ describe("CatalogApp", () => {
     expect(await screen.findByText(/当前没有插件声明 provides/)).toBeTruthy();
   });
 
-  // ─────────── ★ E2 权限徽标（令21 五个用例，plugin 默认页可见） ───────────
+  // ─────────── ★ E2 权限徽标（五个用例，plugin 默认页可见） ───────────
 
   it("E2：旧数组 token 推出核心徽标，db:own 计入明细 1 且本机网络常显", async () => {
     apiMock.plugins.mockResolvedValue({

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""令106 · MiMo 部署后真机回测：O1 四态 / sidebar 增删 / habits 增减 / N2 + retest13。
+"""· MiMo 部署后真机回测：O1 四态 / sidebar 增删 / habits 增减 / N2 + retest13。
 
 用法（部署完成后）：
   python tools/accept_probe/postdeploy_mimo.py --base-url https://life.example.com:8443 [--token JWT]

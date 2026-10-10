@@ -30,7 +30,7 @@ def _parse(version: str) -> tuple[int, int, int]:
 def meets_min_kernel(min_kernel: str, kernel_version: str = KERNEL_API_VERSION) -> bool:
     """★ 判断内核版本是否 **≥** 插件声明的 `minKernel`（最低版本语义）。
 
-    ★ 2026-09-25（TX-FRAME-01 第④刀发现）：此前 `discover.py` 把 `minKernel`
+    ★ 2026-09-25（发现）：此前 `discover.py` 把 `minKernel`
       交给 `satisfies()` 判断，而 `satisfies` 是 **caret/精确** 语义 ——
       于是 `minKernel="0.1.0"` 在 1.0.0 内核上被判**不满足**（且 `f"={...}"`
       的 `=` 前缀还会让 `_parse` 抛异常），**所有声明 0.1.0 的第三方插件

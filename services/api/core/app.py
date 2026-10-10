@@ -60,7 +60,7 @@ async def _fetch_one(
     """转发一家插件的 today-summary（模块级，便于用 httpx.MockTransport 单测注入）。
 
     状态语义：404 = not-implemented（合法）· 5xx/网络错 = unavailable · 200 = ok（data 原样透传）。
-    ★ R-1（令 57）：这里**不解析** data 的业务字段，只包装状态 —— 内核只许转发，不许解释。
+    ★ R-1：这里**不解析** data 的业务字段，只包装状态 —— 内核只许转发，不许解释。
     """
     try:
         r = await client.get(url, headers=headers, timeout=timeout)
@@ -101,9 +101,9 @@ def create_app(
         raise  # manifest 校验失败：明确抛出，启动即失败（不许静默跳过）
 
     # ── 注册表与激活器（先于 app 构造：lifespan 钩子要引用激活器）──
-    # TX-ACT-01 注册/激活二分：app.state.modules 是「注册表」（全量清单，
+    # 注册/激活二分：app.state.modules 是「注册表」（全量清单，
     # /api/v1/modules 由此而来，语义零漂移）；registry.mounted() 是「激活表」
-    # （路由真正在跑的）。startup:always（或缺省）启动即激活，event: 型等命中。
+    #（路由真正在跑的）。startup:always（或缺省）启动即激活，event: 型等命中。
     reg = registry or ModuleRegistry()
     activator = PluginActivator(reg)
     # ★ ADR-0005（2026-10-03）：把「激活失败目击」接进 plugin_state.last_error。
@@ -131,7 +131,7 @@ def create_app(
         # ISSUE-006：服务真正开始服务前，按台账对账补跑各插件迁移。
         # 测试均不进入 lifespan（TestClient 非 context manager 用法），
         # 故全组测试零感知，生产新库首启即自动建表。
-        # TX-ACT-01：对账完成后挂激活器的事件监听、退出时摘除——
+        # 对账完成后挂激活器的事件监听、退出时摘除——
         # 迁移对账时点不动（硬约束 3），激活器只搭 lifespan 的顺风车。
         lifespan=make_startup_lifespan(
             [(m.id, d) for m, d in discovered],
@@ -171,11 +171,11 @@ def create_app(
 
     @app.get("/readyz", tags=["_kernel"])
     def readyz() -> dict[str, Any]:
-        # TX-ACT-01：modules 仍是「已挂载」（生产口径不变，存量插件零漂移）；
+        # modules 仍是「已挂载」（生产口径不变，存量插件零漂移）；
         # 新增 registered/activated/activation_errors 三键暴露注册-激活二分
         # 与激活失败目击（卡档缓行纪律：只报目击，不自动处置）。
         # ★ ADR-0005：再补 recovery_backoff —— 启动恢复连续失败的退避状态
-        #   （同样只报目击：这些插件状态原样保留、未被自动禁用或摘路由）。
+        #（同样只报目击：这些插件状态原样保留、未被自动禁用或摘路由）。
         from core.plugins.manager import recovery_backoff_snapshot as _backoff_snapshot
 
         return {
@@ -189,8 +189,8 @@ def create_app(
         }
 
     # ── 模块清单（前端 / AI 都靠它发现能力）──
-    # ISSUE-011 案 C（总监令52 裁1）：裸调只回「能点亮图标」的最小字段
-    # （id/name/icon/version），持有效 token 才回全量能力地图；
+    # ISSUE-011 案 C（裁1）：裸调只回「能点亮图标」的最小字段
+    #（id/name/icon/version），持有效 token 才回全量能力地图；
     # 令牌无效/过期仍 401（与 /api/v1/plugins 口径对齐，避免假 token 反而少信息）。
     _PUBLIC_MODULE_FIELDS = ("id", "name", "icon", "version")
 
@@ -212,7 +212,7 @@ def create_app(
         return {"modules": public, "count": len(public), "visibility": "public"}
 
     # ── 聚合 OpenAPI（验收要求出现在 /api/docs）──
-    # ★ 乙案（总监令 92/95 · 2026-09-25）：内核挂载模块时统一提供 openapi 端点
+    # ★ 乙案（2026-09-25）：内核挂载模块时统一提供 openapi 端点
     #   —— 23 模块 manifest 均声明 api.openapi 但零实现、零消费（模板惯例字段）；
     #   内核兜底让声明成真，未来新模块自动受益。
     @app.get("/api/docs", tags=["_kernel"], include_in_schema=False)
@@ -275,8 +275,8 @@ def create_app(
         patterns = [t.strip() for t in (topics or "").split(",") if t.strip()]
         return event_bus.sse_response(request, patterns)
 
-    # ── U2 聚合端点（TX-AGG-01 端点层 · BFF 代理，2026-09-24）────────────
-    # ★ 红线 R-1（总监令 57 采纳 astrbot 安全审查）：内核**只许转发，不许解释** ——
+    # ── U2 聚合端点（端点层 · BFF 代理，2026-09-24）────────────
+    # ★ 红线 R-1（采纳 astrbot 安全审查）：内核**只许转发，不许解释** ——
     #   本端点不解析 / 不合并任何插件业务语义，只做「带调用者凭证的 HTTP 转发」+ 状态包装。
     # 判据：S-1 转发目标由内核注册表决定（防 SSRF，不得由请求参数决定）
     #       S-2 token 只透传给插件自有端点、不落日志不进 URL + 单家超时（防 hang 放大）
@@ -335,7 +335,7 @@ def create_app(
     app.include_router(events_router, prefix="/api/v1")
 
     # ── 注册 + 按声明激活 ──
-    # TX-ACT-01：注册（app.state.modules 全量登记）与激活（load_router+mount）
+    # 注册（app.state.modules 全量登记）与激活（load_router+mount）
     # 二分。缺省 / startup:always 启动即激活（存量 17 插件全走这条，零漂移）；
     # event:<topic> 型只注册登记 pending，事件命中后由激活器延后挂载。
     # 挂载动作统一走 mount_plugin()（前置小步确立的单一入口）。
@@ -348,7 +348,7 @@ def create_app(
             directory=module_dir,
         )
         app.state.modules[manifest.id] = manifest.as_dict()  # 先注册（全量，零漂移）
-        # 路径 a（令 78/95）：container 型无 api——日志行安全取值，防 NoneType.base
+        # 路径 a：container 型无 api——日志行安全取值，防 NoneType.base
         manifest_base = manifest.api.base if manifest.api is not None else None
         if activator.activate_on_startup(info):
             log.info("模块已注册并激活", extra={"module": manifest.id, "base": manifest_base})
@@ -358,9 +358,9 @@ def create_app(
                 extra={"module": manifest.id, "base": manifest_base},
             )
 
-    # ── ★ 第三方插件：启动恢复（2026-09-25 · TX-FRAME-01 第④刀补）─────────
+    # ── ★ 第三方插件：启动恢复（2026-09-25补）─────────
     # 背景（实测踩到）：本函数此前**只遍历 modules/（内置）**，第三方插件
-    #   （plugins/<id>/）**不参与启动** —— 它们只能靠运行期 enable API 手动挂载。
+    #（plugins/<id>/）**不参与启动** —— 它们只能靠运行期 enable API 手动挂载。
     #   后果：countdown（09-23 交付）与 pi-agent（09-25）**从未被挂载**，路由恒 404；
     #   且每次重启都要人工 enable 一次。
     #
@@ -398,7 +398,7 @@ def create_app(
                         _prev_error = _st.last_error if _st is not None else None
                 except Exception:
                     # ★ 表不存在（如测试用的临时库）→ 视为"未启用"，**静默跳过**
-                    #   （不刷 warning 噪音；这是"没记录"的正常情形之一）
+                    #（不刷 warning 噪音；这是"没记录"的正常情形之一）
                     continue
                 if not _enabled:
                     log.info(
@@ -440,7 +440,7 @@ def create_app(
                     "第三方插件恢复失败（已记录，不阻断启动）",
                     extra={"module": _info.id, "error": f"{type(_exc).__name__}: {_exc}"},
                 )
-        # 启动对账摘要（2026-09-27 · 主人令件①）：「放进去但未启用」不再只是一条
+        # 启动对账摘要（2026-09-27 · 主人件①）：「放进去但未启用」不再只是一条
         # 易漏的 INFO——摘要里点名，一眼可见（countdown 404 勘察教训）。
         if _skipped:
             log.info(

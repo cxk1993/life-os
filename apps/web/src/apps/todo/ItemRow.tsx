@@ -23,7 +23,7 @@ function formatDue(dueAt: string | null): string | null {
 }
 
 /**
- * 打钩日期（★ 2026-10-02 · 主人令「打钩日期要能看见」）。
+ * 打钩日期（★ 2026-10-02 · 主人「打钩日期要能看见」）。
  *
  * 主人原话：「我发现打钩日期不会在待办里面显示，所以我就开始担心了一下。」
  * —— 她说得对。归档规则是「打钩满 N 天自动收走」，可打钩日期不显示，
@@ -51,7 +51,7 @@ export default function ItemRow({ item }: Props) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.text);
-  // ★ 2026-09-28（主人令「最好能给每个事项加标签 tag」）：
+  // ★ 2026-09-28（主人「最好能给每个事项加标签 tag」）：
   //   此前 `#标签` 语法糖只在**新建**时生效 —— 已存在的事项改不了标签。
   //   这里补一个行内标签编辑（点「＋标签」），空格/逗号分隔，可删可加。
   const [tagEditing, setTagEditing] = useState(false);
@@ -104,7 +104,7 @@ export default function ItemRow({ item }: Props) {
   const due = formatDue(item.due_at);
   const now = Date.now();
   const overdue = !item.done && item.due_at != null && new Date(item.due_at).getTime() < now;
-  // ★ 2026-10-02（主人令「打钩日期要能看见」）：让归档规则变成看得见的东西。
+  // ★ 2026-10-02（主人「打钩日期要能看见」）：让归档规则变成看得见的东西。
   //   已完成的条目显示「X-XX 完成」，并给出「N 天后归档」倒计时；
   //   已归档的（只在归档栏出现）不再报倒计时 —— 它已经被收走了。
   const doneLabel = item.done ? formatDone(item.done_at) : null;
@@ -214,7 +214,7 @@ export default function ItemRow({ item }: Props) {
           {due ? (
             <span className={`todo-pill${overdue ? " todo-pill--overdue" : ""}`}>🕘 {due}</span>
           ) : null}
-          {/* ★ 2026-10-02（主人令「打钩日期要能看见」）：打钩日期 + 归档倒计时。
+          {/* ★ 2026-10-02（主人「打钩日期要能看见」）：打钩日期 + 归档倒计时。
               主人看不到这条信息就只能靠信任 —— 显示出来，规则才可自证。 */}
           {doneLabel ? (
             <span className="todo-pill todo-pill--done" data-testid="todo-done-at">

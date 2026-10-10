@@ -45,7 +45,7 @@ _DISPATCHABLE = {"draft", "queued", "failed"}
 
 
 def _spawn_pi_execution(task_id: str, dispatch_id: str, pi_client: Any, prompt: str) -> None:
-    """★ 第⑦刀：后台线程真跑 Pi，完成后写回任务块。
+    """★ 后台线程真跑 Pi，完成后写回任务块。
 
     ★ 为什么用独立 session：线程不能复用请求线程的 Session（SQLAlchemy Session 非线程安全）。
     ★ daemon=True：进程退出时不阻塞（半途任务会丢，可接受 —— 编排台看得到 running 未收敛）。
@@ -443,11 +443,11 @@ class AgentsService:
         self.db.refresh(d)
         self.db.refresh(t)
 
-        # ★ 2026-09-25 TX-FRAME-01 第⑥/⑦刀：mode="pi" —— **真执行**（不再只记账）。
+        # ★ 2026-09-25 mode="pi" —— **真执行**（不再只记账）。
         #   经 pi.chat.write 能力调 /api/v1/pi-agent/chat（跨插件只走 API，不 import，ADR-0002）。
         #   会话名用任务块 id：一个任务块一个独立会话（互不干扰，也便于追溯）。
         #
-        #   ★ 第⑦刀：**异步化**。Pi 调工具实测 10~180s —— 同步等会把 HTTP 请求挂死，
+        #   ★ **异步化**。Pi 调工具实测 10~180s —— 同步等会把 HTTP 请求挂死，
         #     且不符合"派发"语义。故：**立即返回 running**，真执行放**后台线程**，
         #     完成后由线程写回 result + 推进状态 + 发事件。编排台可随时 GET 看进度。
         if body.mode == "pi":

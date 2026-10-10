@@ -274,7 +274,7 @@ def create_bridge_app(
             raise NotFound(str(exc)) from exc
         return note
 
-    # ── ★ Work-Review 代理（astrbot 下场 · 主人令「修数据链路」）───────────
+    # ── ★ Work-Review 代理（astrbot 下场 · 主人「修数据链路」）───────────
     # 背景：Work-Review 跑在主人本机 127.0.0.1:49996，**服务器上的 127.0.0.1 不是它**
     #       → 复盘「手动同步」必然失败（`WORK_REVIEW_BRIDGE` 是半成品开关，只改错误映射不改 URL）。
     # 本代理：把服务器的请求经桥（frp 隧道）转发到主人本机 Work-Review。

@@ -1,4 +1,4 @@
-"""pi-agent · 会话池（★ TX-FRAME-01 第④刀 · 主人第③问的落地）。
+"""pi-agent · 会话池（★ 主人第③问的落地）。
 
 ════════════════════════════════════════════════════════════════════
 主人原话：
@@ -86,7 +86,7 @@ class PiSessionPool:
         provider: str = "life-os",
         model: str = "life-os:high",
         max_sessions: int = DEFAULT_MAX_SESSIONS,
-        # ★ 第⑧刀：沙箱模式（pi 跑在 Docker 容器里）
+        # ★ 沙箱模式（pi 跑在 Docker 容器里）
         sandbox: bool = False,
         sandbox_image: str | None = None,
     ) -> None:
@@ -150,7 +150,7 @@ class PiSessionPool:
             cwd=self._cwd, binary=self._binary,
             provider=self._provider, model=self._model,
             extra_args=["--session-dir", self._session_dir],
-            # ★ 第⑨刀：池用**持久会话** —— 会话落盘后，pi-web-ui（同 agent-dir + 同 cwd）
+            # ★ 池用**持久会话** —— 会话落盘后，pi-web-ui（同 agent-dir + 同 cwd）
             #   与外部工具才能看到/续接同一个会话。
             persist=True,
             sandbox=self._sandbox,
@@ -280,7 +280,7 @@ class PiSessionPool:
                 "names": list(self._sessions.keys()),
                 "ever_started": self._ever_started,   # ★ 09-28：供 _level() 区分 L0/L2
                 "last_error": self._last_error,
-                "sandbox": self._sandbox,          # ★ 第⑧刀：是否容器隔离
+                "sandbox": self._sandbox,          # ★ 是否容器隔离
                 "sandbox_image": self._sandbox_image if self._sandbox else None,
             }
 

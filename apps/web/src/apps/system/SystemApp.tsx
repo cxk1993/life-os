@@ -4,7 +4,7 @@
  * 形态：真实模块（manifest entry=@/apps/system）→ Dock 自动出「系统」按钮，
  * 零 Dock.tsx 改动（模块注册表驱动，一切皆插件口径）。
  *
- * ★ tabs 配置面（令 78 指点·候容器型模块 schema）：
+ * ★ tabs 配置面（指点·候容器型模块 schema）：
  * - 本组件自读 store 注册表里自己模块的 manifest；schema 定稿后 manifest 若带
  *   `tabs: [{ key, label, entry? }]`，按声明渲染（entry 页 lazy 复用该模块 App，
  *   无 entry 页 = 薄壳「后端模块 · 仅服务」语义）；

@@ -1,4 +1,4 @@
-"""TX-TODO-REMIND-01 判据 · 待办到期提醒（workbuddy 2026-09-25 主人令「做」）。
+"""判据 · 待办到期提醒（workbuddy 2026-09-25 主人「做」）。
 
 链路：due_scheduler 扫到期 → publish("todo.item.due") → push.link → web push。
 本测试锁三件事：

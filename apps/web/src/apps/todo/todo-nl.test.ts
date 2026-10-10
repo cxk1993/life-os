@@ -14,7 +14,7 @@ function addDaysLocal(y: number, m: number, d: number, n: number) {
   return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
 }
 
-describe("TX-TODO-NL-01 · 待办自然语言解析（离线词典版）", () => {
+describe("· 待办自然语言解析（离线词典版）", () => {
   it("明天下午3点交房租 → 文本剥离 + due=明天15:00", () => {
     const t = todayBase();
     const tom = addDaysLocal(t.y, t.m, t.d, 1);

@@ -255,7 +255,7 @@ def test_manifest(client):
     assert m["id"] == "diary"
     # ★ 2026-10-04：由「精确相等」改为「子集」。
     #   原写法 `== ["x.summary.today"]` 是**清单式断言** —— 模块一新增能力
-    #   （如给 AI 补上改/删日记的 provides）它就红，把「能力扩展」误判成回归。
+    #（如给 AI 补上改/删日记的 provides）它就红，把「能力扩展」误判成回归。
     #   防回退的正确语义是「原有的必须还在」，不是「不许变多」。
     assert set(m["provides"]) >= {"x.summary.today"}, m["provides"]
     assert sorted(m["requires"]) == ["docs.node.read", "docs.node.write", "docs.search"]
@@ -299,13 +299,13 @@ def test_ensure_diary_root_reconciles_dup_roots(svc):
     assert len(alive) == 1
     assert alive[0]["id"] == canonical_id
 
-# ───────────────────────── U2 四源端点：today-summary（总监令62 + 协调令63） ─────────────────────────
+# ───────────────────────── U2 四源端点：today-summary（+ 协调令63） ─────────────────────────
 
 @pytest.fixture
 def diary_client(monkeypatch):
     """TestClient + FakeDocsAdapter 注入（today-summary 不走活体 HTTP）。
 
-    ★ 活体依赖修复（总监值班轮 22:45 指派「自提自绿」）：
+    ★ 活体依赖修复（值班轮 22:45 指派「自提自绿」）：
       diary 路由经 get_plugin_client 调 docs 模块 HTTP 端点，测试环境无服务
       → ConnectError。本 fixture 把 router._svc 换成内存 FakeDocsAdapter，
       路由层形状（title/items/link 组装）照测，写副作用判定亦走真实逻辑。

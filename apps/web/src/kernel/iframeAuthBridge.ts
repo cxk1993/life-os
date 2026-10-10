@@ -12,7 +12,7 @@
  *   父页（本桥）校验通过 → `event.source.postMessage(
  *       { type: "lifeos:token", token }, { targetOrigin: event.origin })`
  *
- * 安全设计（总监令 7 采纳方案 1 的落地口径）：
+ * 安全设计（采纳方案 1 的落地口径）：
  *   1. **origin 白名单，空列表起步**：白名单为空 = 拒绝一切跨源请求（fail closed）；
  *      情形 B 的自家页面接入时，把其完整源（协议+域+端口）登记进 ALLOWED_IFRAME_ORIGINS。
  *   2. 只认 `lifeos:request-token` 协议消息，其余 message 一律忽略；
@@ -28,7 +28,7 @@ const RESPONSE_TYPE = "lifeos:token";
 /**
  * ★ 跨源内嵌白名单（origin = 协议 + 域 + 端口，完全匹配才放行）。
  *
- * 空列表起步（令 7 口径）：当前没有已登记的跨源自家页面 = 拒绝一切。
+ * 空列表起步（口径）：当前没有已登记的跨源自家页面 = 拒绝一切。
  * 示例（情形 B 页面接入时登记）：
  *   "https://app.example.local"   // 独立域部署的子应用
  *   "http://localhost:18091"      // 本机开发中的子应用

@@ -33,7 +33,7 @@ function ModulePlaceholder({
   reason?: string;
   variant?: "missing" | "backend";
 }) {
-  // ★ 令 5（总监 2026-09-25）：文案改「已接入（后端服务）」—— 主人 ⑬ 的原话是
+  // ★（2026-09-25）：文案改「已接入（后端服务）」—— 主人 ⑬ 的原话是
   //   「该模块尚未接入」误报；薄壳/后端模块应表达为「已接入」而非「未接入」。
   const title = variant === "backend" ? "已接入（后端服务）" : "该模块尚未接入";
   const fallbackText =

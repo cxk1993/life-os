@@ -1,5 +1,5 @@
 /**
- * pi-agent 模块数据请求层（★ TX-FRAME-01 第⑤刀）。
+ * pi-agent 模块数据请求层。
  *
  * 后端契约（plugins/pi-agent/api/router.py）：
  *   POST /api/v1/pi-agent/chat          {session_id, message} → {reply, level, settled, degraded, detail}

@@ -256,7 +256,7 @@ def make_startup_lifespan(
     的分层约定不破。阻塞发生在 uvicorn lifespan 阶段，此时还未对外服务，
     正是「表必须先于请求存在」的正确时机。
 
-    TX-ACT-01：on_started/on_stopping 为可选零参钩子（如事件监听的挂/摘），
+    on_started/on_stopping 为可选零参钩子（如事件监听的挂/摘），
     分别在对账完成后、服务退出时调用——保证对账时点不因激活器改变（硬约束 3）。
     """
 

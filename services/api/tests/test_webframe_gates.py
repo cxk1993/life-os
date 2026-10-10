@@ -1,12 +1,12 @@
-"""V9 WebFrame 安全判据骨架（W-1 / W-2）—— ★ 判据先行（astrbot · 总监令 81）。
+"""V9 WebFrame 安全判据骨架（W-1 / W-2）—— ★ 判据先行（astrbot）。
 
 来源：astrbot《V9 安全判据·内嵌外部网页的六条硬判据》(2026-09-25 10:59)，
-      总监令 81 §2「V9 六条硬判据全部采纳」「@astrbot 代写 W-1/W-2 单测骨架 ✅ 批准」。
+      「V9 六条硬判据全部采纳」「代写 W-1/W-2 单测骨架 ✅ 批准」。
 
-现状：**WebFrame 内核接口未定稿**（令 73 ③ 归 @知默：`web.open(url, {profile, cache, persistLogin})`）。
+现状：**WebFrame 内核接口未定稿**（归 ：`web.open(url, {profile, cache, persistLogin})`）。
       故本文件以 **skip 骨架**形式落地——接口定稿 + 实现后，去掉 skip 并补齐 `_call_web_open` 适配即可。
 
-四层防线（令 81 §2 入档）：
+四层防线（入档）：
     服务端白名单（nginx `/ext/*` 非白名单 404） + 客户端白名单（`web.open` 调用即拒）
     + 沙箱（iframe sandbox） + 分区（cookie profile）
 本文件覆盖 **客户端白名单层**（W-1/W-2）；服务端层由 hermes 执行 nginx 时验。
@@ -23,22 +23,22 @@ from __future__ import annotations
 
 import pytest
 
-# ★ 接口定稿前整体 skip（令 73 ③ / 令 81 §2）。
+# ★ 接口定稿前整体 skip。
 #   实现落地后：删除下方 pytestmark，并在 `_call_web_open` 里接真实实现。
 pytestmark = pytest.mark.skip(
-    reason="V9 WebFrame 接口未定稿（令 73 ③ @知默）；定稿+实现后启用本骨架"
+    reason="V9 WebFrame 接口未定稿；定稿+实现后启用本骨架"
 )
 
 
 def _call_web_open(url: str) -> None:
     """★ 适配点：接真实 `web.open` 实现。
 
-    预期契约（令 81 §2 采纳）：
+    预期契约（采纳）：
         web.open(url, *, profile=..., cache=..., persistLogin=...) -> handle
     白名单/协议校验应发生在**调用入口**（即本函数第一行），
     不合法则**立即抛错**（而非"打开后失败"）。
     """
-    raise NotImplementedError("待 @知默 接口定稿后接入")
+    raise NotImplementedError("待 接口定稿后接入")
 
 
 # ── W-1 · 白名单准入（调用即拒）──────────────────────────────────────────

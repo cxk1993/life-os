@@ -4,7 +4,7 @@
   第三方插件在结构上不属于内核包，**不能假设自己能享受内核测试基建**；
   本文件只用「纯函数 + 契约校验」，零 DB、零 app 启动，
   因此任何席在仓库任意位置 `pytest plugins/countdown/tests/` 都能跑。
-  ——端到端（install→迁移→端点→uninstall）在段三另写，判据见交接区。
+  ——端到端（install→迁移→端点→uninstall）在段三另写，判据见。
 
 跑法（cwd 影响 sys.path，故给两条）：
   cd services/api && python3 -m pytest ../plugins/countdown/tests -q
@@ -153,7 +153,7 @@ class TestManifestContract:
 
         原碑：`unknown == {"window","entry"}`（模型不认识这两个字段）。
         workbuddy《D′ 内核侧唯一读法与未知字段报告》落地后，`window`/`entry`
-        已补进 `Manifest` → 本席当日承诺"落地即改红为绿"，此即改后版。
+        已补进 `Manifest` → 当日承诺"落地即改红为绿"，此即改后版。
         **保留守卫意义**：manifest 若再写出模型不认识的字段，本测试立刻红。
         """
         import json
@@ -165,9 +165,9 @@ class TestManifestContract:
         assert unknown == set(), f"manifest 出现模型不认识的字段（D′ 守卫）：{unknown}"
 
     def test_契约与模型字段表完全一致_Dprime守卫(self) -> None:
-        """★ 2026-09-23 晚「收碑」：**两张字段表已完全对齐**（本席当日埋的碑全部退场）。
+        """★ 2026-09-23 晚「收碑」：**两张字段表已完全对齐**（当日埋的碑全部退场）。
 
-        历程（本席亲历，全部有实测）：
+        历程（亲历，全部有实测）：
           · 12:4x 实测：契约有 `window/entry`、模型没有；模型有 `optionalDependencies`、契约没有
           · 13:1x workbuddy D′ 落地 → `window/entry` 进模型（碑① 红）
           · 13:2x MiMo《契约补齐》→ `optionalDependencies` 进契约（碑② 红）
@@ -193,7 +193,7 @@ class TestManifestContract:
     def test_软依赖声明现已可用_正向验收(self) -> None:
         """★ 2026-09-23 晚「收碑」：软依赖（`optionalDependencies`）**已可正常声明**。
 
-        历程：本席 12:4x 实测「模型接受、契约拒收」→ 当日报告 + 最小复现 →
+        历程：12:4x 实测「模型接受、契约拒收」→ 当日报告 + 最小复现 →
         MiMo《契约补齐》把该字段补进 `contracts/plugin.schema.json` → 复现不再成立。
         本测试改为**正向验收**：声明软依赖的 manifest 必须**同时**通过模型与契约两层。
         → 若哪天又被拒（回归），本测试立刻红。

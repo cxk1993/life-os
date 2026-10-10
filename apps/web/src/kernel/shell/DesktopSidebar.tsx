@@ -7,7 +7,7 @@ import { useSlotContributions } from "../slots/contributions";
 import { useDesktopStore } from "../store";
 
 /**
- * U3 · 桌面级双侧栏（副总监拍案 1 号：U3 视图侧 → Doubao；schema 知默已会签）。
+ * U3 · 桌面级双侧栏（拍案 1 号：U3 视图侧 → Doubao；schema 知默已会签）。
  *
  * 桌面级 `desktop.dock-left` / `desktop.dock-right` —— E5 `window.sidecar` 的桌面级兄弟，
  * 同一贡献机制（useSlotContributions），两级挂载点。
@@ -36,7 +36,7 @@ function usePersistedCollapse(side: "left" | "right"): [boolean, () => void] {
       return false;
     }
   });
-  // ★ 令 96/97：罗盘（Desktop）经 CustomEvent 统一操控侧栏 —— 本组件同步响应。
+  // ★ 罗盘（Desktop）经 CustomEvent 统一操控侧栏 —— 本组件同步响应。
   useEffect(() => {
     const onCompass = (e: Event) => {
       const d = (e as CustomEvent<{ side: "left" | "right"; collapsed: boolean }>).detail;

@@ -69,11 +69,11 @@ def _iso(dt: datetime) -> str:
 
 
 def _today_within(hours_ahead: int = 2):
-    """★ 2026-09-25 修（TX-FRAME-01 第⑦刀顺带）：造一个**保证落在今天**的未来时刻。
+    """★ 2026-09-25 修（顺带）：造一个**保证落在今天**的未来时刻。
 
     背景（实测）：原写法 `datetime.now(TZ) + timedelta(hours=2)` 在 **22:00 之后**跑
     会落到**次日** —— 于是 today-summary 自然查不到它，测试变成
-    「每晚 22 点后必失败」的时间 flaky（本席 22:47 跑全量时撞上）。
+    「每晚 22 点后必失败」的时间 flaky（22:47 跑全量时撞上）。
 
     语义保持：仍是"今天之内的未来时刻"（若 now+hours 跨天，则钳到当天 23:59）。
     """
@@ -143,7 +143,7 @@ def test_update_returns_clamped_children(client, auth):
     tree = ru.json()
     kid = next(c for c in tree["children"] if c["id"] == cid)
     # 子块跟随 +2h：9:30->11:30, 10:30->12:30（本地），且仍在父块 [11:00,14:00] 内。
-    # ★ 2026-09-28（主人令）：出参改为**主人本地时区**（原为 UTC）——
+    # ★ 2026-09-28（主人）：出参改为**主人本地时区**（原为 UTC）——
     #   于是断言恢复"本地串"的原意（早期版本正是这么写的，当时因出参是 UTC 才改成 Z）。
     assert kid["start_at"].endswith("11:30:00+08:00"), kid["start_at"]
     assert kid["end_at"].endswith("12:30:00+08:00"), kid["end_at"]
@@ -346,7 +346,7 @@ def test_child_cannot_exceed_parent(client, auth):
     assert kid["end_at"].endswith("12:00:00+08:00"), kid["end_at"]
 
 
-# ── U2 聚合数据源（令 62）：/today-summary ──────────────────────────
+# ── U2 聚合数据源：/today-summary ──────────────────────────
 
 
 def test_today_summary_200_empty_when_no_events_today(client, auth):
@@ -379,13 +379,13 @@ def test_today_summary_includes_todays_event(client, auth):
 
 
 def test_today_summary_401_without_token(client):
-    """★ 令 62 §2-3：绝不裸奔 —— 无 token 一律 401。"""
+    """★ -3：绝不裸奔 —— 无 token 一律 401。"""
     r = client.get("/api/v1/calendar/today-summary")
     assert r.status_code == 401
 
 
 def test_today_summary_shows_local_hhmm(client, auth):
-    """★ 2026-09-28（主人令「改回本地时区」）：today-summary 的 items[].text 前 5 字
+    """★ 2026-09-28（主人「改回本地时区」）：today-summary 的 items[].text 前 5 字
     必须是**本地 HH:MM**。
 
     修前：路由按字符串切片取小时（`str(start)[11:16]`），而出参是 UTC ⇒

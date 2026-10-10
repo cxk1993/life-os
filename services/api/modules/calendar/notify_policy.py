@@ -1,4 +1,4 @@
-"""TX-REMIND-01 V1 · 提醒策略闸（N2）：静默时段 + 频控 + lead 择时。
+"""V1 · 提醒策略闸（N2）：静默时段 + 频控 + lead 择时。
 
 ★ 2026-09-26：静默时段/频控/提前量均已 env 可配；`CALENDAR_QUIET_ENABLED=false` 可整体关闭静默。
 
@@ -31,7 +31,7 @@ class Timing:
     lead_minutes: int = 10
 
 
-# ★ 2026-09-26 新增（astrbot · 主人令「全修」）：
+# ★ 2026-09-26 新增（astrbot · 主人「全修」）：
 #   原先静默时段/频控/提前量**写死在代码里**（23:00–07:30 等），无法按需调整 ——
 #   主人夜间事件收不到提醒正是被 quiet_hours 拦的（日志 reason=n2_suppress:quiet_hours）。
 #   现改为「**env 可配，代码默认值不变**」：用 read_setting（os.environ 优先 → .env 回退），
@@ -51,7 +51,7 @@ def _parse_int(raw: str | None, default: int, *, minimum: int = 0) -> int:
         return default
 
 
-# ★ 2026-09-26 新增（主人令「深夜静默可以关掉」）：
+# ★ 2026-09-26 新增（主人「深夜静默可以关掉」）：
 #   `CALENDAR_QUIET_ENABLED=false` → 静默时段整体失效（24 小时都可推）。
 #   默认 true（保持既有行为）。实现方式：让 start == end，则 `start <= t < end` 恒假。
 def _quiet_enabled() -> bool:
@@ -104,11 +104,11 @@ class Decision:
     suppress_reason: str | None
 
 
-# ★ 2026-09-26 修（astrbot · 主人令「全修」）：**时区误判**（本文件最隐蔽的一枚）
+# ★ 2026-09-26 修（astrbot · 主人「全修」）：**时区误判**（本文件最隐蔽的一枚）
 #   原实现直接取 `now.time()` 与 QuietHours 比较 —— 但调用方传入的 now/fire 是
 #   **UTC**（datetime.now(UTC)），而静默时段 23:00–07:30 是**本地（Asia/Shanghai）**
 #   语义。于是 13:27 CST（= 05:27 UTC）被判成"深夜静默" → **白天提醒全被抑制**
-#   （生产 31 条 calendar_reminder_log 里 ok=0 的绝大多数是这条）。
+#（生产 31 条 calendar_reminder_log 里 ok=0 的绝大多数是这条）。
 #   修法：统一换算到本地时区再比时段；naive 值按 UTC 解释（与调用方一致）。
 QUIET_TZ = ZoneInfo("Asia/Shanghai")
 

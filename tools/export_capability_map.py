@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """能力依赖图导出（提案 C 的数据侧）—— 给 catalog 依赖图视图 / 任何可视化消费。
 
-★ 来源：TX-DEG-01 的依赖闸门（`core/manifest.py::_gate_dependency_declarations`）
+★ 来源：的依赖闸门（`core/manifest.py::_gate_dependency_declarations`）
   内部已经建立了「能力名 → 提供者模块」的完整映射 —— 那份数据**现在只用来拦错**，
   用完就丢。本工具把它**导出来**，让"谁依赖谁"可以被看见。
 
@@ -110,7 +110,7 @@ def build(modules_dir: Path) -> dict:
         e["to"] == m.id for e in edges
     ))
 
-    # ★ U2（2026-09-24 · 副总监拍案 1 号）：today-summary 提供者审计
+    # ★ U2（2026-09-24 · 拍案 1 号）：today-summary 提供者审计
     #   约定：插件在 manifest `provides` 里声明 `x.summary.today` = 本插件提供
     #   `GET /api/v1/<id>/today-summary`（规范见 docs/specs/today-summary数据源规范-v1.md）。
     #   声明走 provides（已知字段，D′ 后模型可见；能力名非顶层字段，不触 extra 分档）。
@@ -135,7 +135,7 @@ def build(modules_dir: Path) -> dict:
             "isolated": isolated,
             "degraded": soft_missing_all,
             "summary_providers": summary_providers,
-            # ★ 门禁审计条（workbuddy 提议 · 总监令 71 采纳）：todaySummary 源清单 ↔
+            # ★ 门禁审计条（workbuddy 提议 · 采纳）：todaySummary 源清单 ↔
             #   manifest 声明对账。四源任一未声明 → BFF 动态发现聚合源缺失（静默空窗，
             #   正是 09-25 知默紧急报告的根因）。**缺谁一查便知**，杜绝"属性在 ≠ 生效"。
             "summary_missing": sorted(

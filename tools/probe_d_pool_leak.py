@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""★ 根因 D 部署后验收探针（令 6 §6 / 令 7 §2 判据）—— workbuddy。
+"""★ 根因部署后验收探针（/ 判据）—— workbuddy。
 
-判据（总监定）：
+判据（定）：
   1. 连续 50 次打 `/api/v1/plugins` **不再 500**（裸打 401 = 鉴权墙正常，也算通过；
      判据看的是**不出现 5xx**）；
   2. 日志 **QueuePool 新增计数 = 0**（基线：2026-09-25 17:5x 实测 236，泄漏计数不再增长即修复）；
@@ -44,14 +44,14 @@ def hit(path: str, token: str | None = None) -> tuple[int, str]:
 
 def main() -> int:
     token = os.environ.get("LIFEOS_TOKEN")
-    print(f"# 根因 D 验收探针 · {BASE} · {N} 连打")
+    print(f"# 根因验收探针 · {BASE} · {N} 连打")
     codes: dict[int, int] = {}
     t0 = time.time()
     for i in range(1, N + 1):
         code, _ = hit("/api/v1/plugins")
         codes[code] = codes.get(code, 0) + 1
         if code >= 500:  # 5xx 立刻报（不等跑完）
-            print(f"  [{i}/{N}] ✗ 5xx={code} —— 根因 D 未修复（池耗尽）")
+            print(f"  [{i}/{N}] ✗ 5xx={code} —— 根因未修复（池耗尽）")
             return 1
     elapsed = time.time() - t0
     print(f"  连打完成：{elapsed:.1f}s · 状态码分布 {codes}")

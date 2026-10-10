@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/shared/api/client";
 
 /**
- * C′ 里程碑侧栏卡（令54 #6「landmark 第二例」的今天就可见版本，astrbot 提议）。
+ * C′ 里程碑侧栏卡（#6「landmark 第二例」的今天就可见版本，astrbot 提议）。
  *
  * 宿主：成长罗盘窗侧栏（`window.sidecar` 扩展点，attachTo: "dashboard"）。
  * 数据：消费 astrbot 的 `/api/v1/countdown/landmarks?window=365`（服务端已算完日期，

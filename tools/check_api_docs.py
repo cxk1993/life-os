@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""API/MCP 注释覆盖率自检（★ 2026-09-28 · 云昔 · 主人令）。
+"""API/MCP 注释覆盖率自检（★ 2026-09-28 · 云昔 · 主人）。
 
 为什么有它：
-    主人令「确保所有的 MCP 工具、API 接口，都带上注释和解释，**以防 AI 调用的时候
+    主人「确保所有的 MCP 工具、API 接口，都带上注释和解释，**以防 AI 调用的时候
     所有东西的参数全部都一样而抓瞎**」。
     但"有没有注释"不能靠感觉 —— 本脚本把它变成一个**可测量、可追踪**的指标：
       · 端点解释：route 函数的 docstring（FastAPI 暴露为 description；`summary` 单独
@@ -73,7 +73,7 @@ def scan(base: str) -> dict:
                     continue
                 m_ops += 1
                 # 只认 docstring 派生：`description`，或**含中文**的 summary
-                # （FastAPI 无 docstring 时会用函数名生成英文标题，那不是解释）
+                #（FastAPI 无 docstring 时会用函数名生成英文标题，那不是解释）
                 _doc = (op.get("description") or "").strip()
                 if not _doc:
                     _s = (op.get("summary") or "").strip()
@@ -128,9 +128,9 @@ def main() -> int:
         print()
     ops_pct = 100 * (r["total_ops"] - r["ops_nodoc"]) / max(r["total_ops"], 1)
     prm_pct = 100 * (r["total_prm"] - r["prm_nodesc"]) / max(r["total_prm"], 1)
-    print(f"端点解释覆盖率 : {ops_pct:5.1f}%  （{r['total_ops'] - r['ops_nodoc']}/{r['total_ops']}）"
+    print(f"端点解释覆盖率 : {ops_pct:5.1f}%（{r['total_ops'] - r['ops_nodoc']}/{r['total_ops']}）"
           "   ← 会作为 MCP 工具描述")
-    print(f"参数解释覆盖率 : {prm_pct:5.1f}%  （{r['total_prm'] - r['prm_nodesc']}/{r['total_prm']}）"
+    print(f"参数解释覆盖率 : {prm_pct:5.1f}%（{r['total_prm'] - r['prm_nodesc']}/{r['total_prm']}）"
           "   ← 会进 inputSchema")
     print()
     print("各模块缺口（模块 | 端点数/无解释 | 参数数/无解释）:")

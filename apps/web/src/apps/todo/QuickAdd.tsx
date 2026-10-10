@@ -7,7 +7,7 @@ import { TODO_KEY_ROOT } from "./keys";
 /**
  * 一句话快速添加。
  * - 支持语法糖 @自然语言日期 / !高|中|低 / #标签（服务端解析，原文透传）；
- * - TX-TODO-NL-01 增量：前端离线解析「更自然的表达」（明天下午3点/下周一/月底…），
+ * - 增量：前端离线解析「更自然的表达」（明天下午3点/下周一/月底…），
  *   命中则结构化提交（带时刻 due_at），未命中原文走服务端语法糖兜底；
  * - 纯本地规则、零网络（隐私边界：不上云）。
  * - V2-02：纯日期短语（无正文）按钮不再无声禁用——点击聚焦输入框并提示补正文，
@@ -67,7 +67,7 @@ export default function QuickAdd() {
   const hasText = !!text.trim();
   const canSubmit = hasText && !mut.isPending;
 
-  // H4（令56）：离线/失败不再静默——错误可见、输入保留、可重试。
+  // H4：离线/失败不再静默——错误可见、输入保留、可重试。
   const submitError = mut.isError
     ? mut.error instanceof Error
       ? mut.error.message

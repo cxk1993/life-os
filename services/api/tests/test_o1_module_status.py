@@ -1,4 +1,4 @@
-"""TX-O1-01 · 坞模块健康四态测试。
+"""· 坞模块健康四态测试。
 
 纯函数四态穷举 + dock 组装容错 + API 层（与内核注册表对表自洽 + 鉴权）。
 隔离库走 conftest 模块级隔离；不造探针模块、不碰内核路由。
@@ -102,7 +102,7 @@ def test_dock_tolerates_missing_registry_and_activator() -> None:
 
 
 def test_dock_dep_state_soft_missing_degraded() -> None:
-    """软依赖缺失 → dep_state=degraded + reason_code（TX-DEG-01 消费半边）。"""
+    """软依赖缺失 → dep_state=degraded + reason_code（消费半边）。"""
     engine = create_engine("sqlite://")
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:

@@ -18,7 +18,7 @@
        SQLAlchemy 只有一张 Table，不会出现「同名表重复定义」；
     3) 出入参模型与服务逻辑就近写在本文件里：第三方插件目前
        **没有"共享工具模块"的合法位置**（拆成 schema.py/service.py 反而
-       要各自再写一遍路径加载）。这条已作为架构观察回报交接区。
+       要各自再写一遍路径加载）。这条已作为架构观察回报。
 ════════════════════════════════════════════════════════════════════
 
 HTTP 契约（全项目统一，不许自创）：
@@ -342,11 +342,11 @@ def landmarks(
 def example_cross_plugin(request: Request) -> dict[str, Any]:
     """跨插件调用示例（ISSUE-005 A 案的可运行版本）。
 
-    ★★ 关键纠正（2026-09-23 本席实跑发现，别照 `create_plugin.py --with-example` 抄）：
+    ★★ 关键纠正（2026-09-23 实跑发现，别照 `create_plugin.py --with-example` 抄）：
       `core.deps.get_plugin_client(request, target_capabilities)` 的第二个参数
       **没有默认值**，它的设计是【路由内函数直调】，**不是 FastAPI 依赖**。
       写成 `Depends(get_plugin_client)` 时，FastAPI 会把 `list[str]` 当请求体，
-      GET 端点必然 **422 body Field required** —— 本席的首单模板 TX-AST-01 就踩了这个。
+      GET 端点必然 **422 body Field required** —— 的首单模板 就踩了这个。
       正确姿势如下（target 必须 ⊆ manifest.requires，否则 403）：
     """
     client = get_plugin_client(request, ["catalog.read"])

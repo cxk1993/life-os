@@ -23,9 +23,9 @@ def _load_models() -> Any:
       `api/router.py`，而 router 也会加载同一份 models.py。
       若此处无条件 `exec_module`，SQLModel 类会被定义两次 →
       `sqlalchemy.exc.InvalidRequestError: Table 'xxx_item' is already defined
-      for this MetaData instance`（本席 2026-09-23 段三 e2e 实跑到）。
+      for this MetaData instance`（2026-09-23 段三 e2e 实跑到）。
       —— 生成器 `create_plugin.py` 的迁移模板缺这道判空，属模板缺陷，
-      已在交接区《AST-D 段二·续一》报备。
+      已在《AST-D 段二·续一》报备。
     """
     cached = sys.modules.get(_MODEL_MODULE)
     if cached is not None:

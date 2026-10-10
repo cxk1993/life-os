@@ -32,7 +32,7 @@ class Lib:
 class BridgeConfig:
     psk: str
     libs: list[Lib]
-    # ★ astrbot 下场 · 主人令「修数据链路」：
+    # ★ astrbot 下场 · 主人「修数据链路」：
     #   Work-Review 上游地址（跑在主人本机）—— 桥的 /bridge/work-review/* 代理转发目标。
     work_review_base_url: str = ""
 

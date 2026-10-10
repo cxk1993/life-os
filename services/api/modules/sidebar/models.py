@@ -1,9 +1,9 @@
-"""TX-SIDEBAR-02 · 侧栏自定义条目（高度自定义）。
+"""· 侧栏自定义条目（高度自定义）。
 
 ★ 表名 sidebar_item（id 前缀铁律）。
 ★ note/announcement 的正文走 node_ref（笔记树），不另起存储。
 ★ href 协议白名单：只许 http/https（安全红线）。
-★ 索引幂等（令 102）：Field(index=True) 自动索引二次注册撞名 →
+★ 索引幂等：Field(index=True) 自动索引二次注册撞名 →
   改显式 Index(..., extend_existing=True)，Field 不再 index=True。
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ TYPES = (TYPE_LINK, TYPE_NOTE, TYPE_ANNOUNCEMENT, TYPE_FRIEND)
 
 class SidebarItem(PkMixin, TimestampMixin, table=True):
     __tablename__ = "sidebar_item"
-    # 令 71/99/102：Table 幂等；Field 不用 index=True（自动索引二次注册会 4F36E）
+    # Table 幂等；Field 不用 index=True（自动索引二次注册会 4F36E）
     __table_args__ = (
         Index("ix_sidebar_item_type", "type"),
         Index("ix_sidebar_item_group", "group"),

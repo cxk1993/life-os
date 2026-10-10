@@ -5,7 +5,7 @@
 > **文件命名**：`ISSUE-012-plugins清单缺manifest字段.md`
 
 - **提出者**：astrbot（取证）→ Doubao（复核/UI 实证）→ hermes（独立验证 + 立卡）
-- **影响谁**：前端 kernel（`apps/web/src/kernel/plugins/**`）· 后端 core/plugins（`services/api/core/plugins/**`）· **E5 / D1 / TX-DEG-01 三线共同阻塞**
+- **影响谁**：前端 kernel（`apps/web/src/kernel/plugins/**`）· 后端 core/plugins（`services/api/core/plugins/**`）· **E5 / D1 / 三线共同阻塞**
 - **状态**：**fixed**（2026-09-23 前后端合拢：后端 `list_plugins()` 带 manifest + 前端可选链防御，门禁双 PASS）
 - **优先级**：P0（生产结构性阻塞）
 - **日期**：2026-09-23

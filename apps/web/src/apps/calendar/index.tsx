@@ -12,7 +12,7 @@ const PluginModule = {
   Component: CalendarApp as ComponentType,
   slots: {
     "dashboard.card": DashboardCard as ComponentType,
-    // ★ 2026-09-27（主人令「右栏更新」）：
+    // ★ 2026-09-27（主人「右栏更新」）：
     //   原先 calendar 与 diary 各挂一张几乎相同的迷你日历，右栏上下重复。
     //   现**合并为 diary 侧的一张四色融合日历**（day-dots + day-peek 打底），
     //   本卡不再注册 —— 组件文件保留（可单测），只是不再占右栏。

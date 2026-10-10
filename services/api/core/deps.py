@@ -51,7 +51,7 @@ def set_engine(factory: Any) -> None:
 def get_db() -> Iterator[Session]:
     """依赖注入：返回数据库会话。
 
-    ★ 根因 D 修复（2026-09-25 · 总监令 6 · workbuddy 执行）：
+    ★ 根因修复（2026-09-25 · workbuddy 执行）：
       此前为**普通函数** `return _engine_factory()` —— FastAPI 对**非生成器依赖永不
       close**，139 处 `Depends(get_db)` 全部裸漏连接（QueuePool exhausted → 500，
       75 次存量泄漏实测）。
@@ -77,7 +77,7 @@ def get_db() -> Iterator[Session]:
 def db_session() -> Iterator[Session]:
     """**非依赖注入场景**用（如插件 lifecycle hook、迁移脚本）。
 
-    ★ 为什么需要它（2026-09-25 根因 D 修复的配套）：
+    ★ 为什么需要它（2026-09-25 根因修复的配套）：
       `get_db` 现在是**生成器函数**（供 `Depends(get_db)`，FastAPI 会自动 close）——
       **生成器对象不是上下文管理器**，故原 `with db_session() as db` 写法必须改为
       `with db_session() as db:`（本文件同批把 16 处调用点迁过来）。
@@ -188,7 +188,7 @@ def get_plugin_client(
     modules: dict[str, dict[str, Any]] = getattr(request.app.state, "modules", {})
     manifest = modules.get(caller) or {}
     requires: list[str] = manifest.get("requires", []) or []
-    # ★ 2026-09-25（TX-FRAME-01 第⑥刀）：**软依赖也算已授权**。
+    # ★ 2026-09-25：**软依赖也算已授权**。
     #   语义：optionalDependencies 是"缺了降级不死"的可选能力 ——
     #   **能力在时就应该能用**（否则声明软依赖毫无意义：既要调又永远 403）。
     optional: list[str] = manifest.get("optionalDependencies", []) or []

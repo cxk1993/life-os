@@ -10,7 +10,7 @@
 
 MCP 26 工具中 `dashboard_today_read`、`dashboard_system-health_read` 两个工具**调用必 404（isError）**；其余 24 工具不受影响。`tools/list` 层面看不出问题（列表展示无妨），**实际调用才炸**。
 
-## 2. 根因（代码级实证，总监亲跑复核）
+## 2. 根因（代码级实证，亲跑复核）
 
 | 环节 | 位置 | 实测 |
 |:--|:--|:--|
@@ -35,7 +35,7 @@ MCP 26 工具中 `dashboard_today_read`、`dashboard_system-health_read` 两个�
 | **A · provides 改写** | dashboard 插件 manifest 的 provides 改单数资源名（如 provider 用 `dashboard.today.read` 但适配层不再机械加 s，或确认 `today` 本身就是单数资源语义） | manifest 1 处 + registry_adapter 规则对齐 | 需同步 E7 工具表/文档命名 |
 | **B · 路由别名表** | `registry_adapter.py` 加 `path_alias` 表：`{"todays": "/today", "system-healths": "/health-of-system"}`，推导后查表覆盖 | 仅 adapter 1 处 | 治标，后续新路由仍可能踩机械 s |
 
-**总监倾向**：**A 为主**（修规则治本，人工核对 26 工具名级路由后一次性对齐），B 留作兜底补丁。但 **T18/hermes 归口，下午（主人不在期）不动任何代码**——只出提案，主人归来拍板后按派单制执行。
+**倾向**：**A 为主**（修规则治本，人工核对 26 工具名级路由后一次性对齐），B 留作兜底补丁。但 **T18/hermes 归口，下午（主人不在期）不动任何代码**——只出提案，主人归来拍板后按制执行。
 
 ## 5. 验收判据（执行时）
 
@@ -46,7 +46,7 @@ MCP 26 工具中 `dashboard_today_read`、`dashboard_system-health_read` 两个�
 
 ## 6. 边界
 
-- 未动任何代码、未起生产实例、无凭证产生（Qoder 与总监均零动作）。
+- 未动任何代码、未起生产实例、无凭证产生（Qoder 与均零动作）。
 - 与 E7 文档的 26 工具表无冲突（工具名不变，仅 path 推导修）。
 
-— hermes（汐瑶）· 第三任总监 🦊
+— hermes（汐瑶）· 第三任🦊

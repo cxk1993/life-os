@@ -133,9 +133,9 @@ export function Desktop() {
   // ★ 主人④（2026-09-24）：一键最小化所有未固定窗口
   const minimizeAllUnpinned = useDesktopStore((s) => s.minimizeAllUnpinned);
 
-  // ═══ ★ 收放罗盘（令 96/97 · 主人三板拍板）═══
+  // ═══ ★ 收放罗盘（主人三板拍板）═══
   // 顶/底栏状态走 store（U1 既有）；左右栏状态在 DesktopSidebar 内部 localStorage
-  // （键 `lifeos.dock-{left,right}.collapsed`）→ 罗盘经 CustomEvent 通知其同步。
+  //（键 `lifeos.dock-{left,right}.collapsed`）→ 罗盘经 CustomEvent 通知其同步。
   const [compassOpen, setCompassOpen] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(() => readSideCollapsed("left"));
   const [rightCollapsed, setRightCollapsed] = useState(() => readSideCollapsed("right"));
@@ -161,7 +161,7 @@ export function Desktop() {
     setSideCollapsed("right", target);
   };
 
-  // ★ 令 3（主人现场令，2026-09-25）：**罗盘按钮可随意拖动** ——
+  // ★（主人现场令，2026-09-25）：**罗盘按钮可随意拖动** ——
   //   位置入 localStorage（`lifeos.compass.pos`），刷新保持；null = 默认右上角。
   //   拖拽与点击区分：位移超 4px 视为拖动（不触发开关）。
   const [compassPos, setCompassPos] = useState<{ x: number; y: number } | null>(() => {
@@ -228,7 +228,7 @@ export function Desktop() {
           }
         >
         {topbarCollapsed ? (
-          // ★ U1-4 + 令 97：顶栏收起后时钟仍可达（悬浮胶囊，全收态幸存物之一）
+          // ★ U1-4 + 顶栏收起后时钟仍可达（悬浮胶囊，全收态幸存物之一）
           <div className="desktop__clock-pill">
             <TimeWidget />
           </div>
@@ -241,8 +241,8 @@ export function Desktop() {
             onMinimizeAll={minimizeAllUnpinned}
           />
         )}
-        {/* ★ 收放罗盘（令 96/97 · 主人三板）：右上角常驻「罗盘」按钮；
-            全收态它是唯一入口，其余三栏把手已撤（主人令：只留罗盘）。 */}
+        {/* ★ 收放罗盘（主人三板）：右上角常驻「罗盘」按钮；
+            全收态它是唯一入口，其余三栏把手已撤（主人：只留罗盘）。 */}
         <button
           type="button"
           className="desktop__compass-btn"

@@ -1,4 +1,4 @@
-"""pi-agent 骨架自检（第①刀）。
+"""pi-agent 骨架自检。
 
 跑法：
     cd services/api && python -m pytest ../../plugins/pi-agent/tests -q
@@ -45,7 +45,7 @@ def test_kind_is_third_party(manifest):
 def test_provides_declared(manifest):
     """本插件对外提供的能力（★ 经 ADR-0003 MCP 桥暴露给外部 AI agent）。
 
-    第④刀后为三条（会话池 + 对话）：
+    后为三条（会话池 + 对话）：
       pi.chat.write    → pi_chat_write
       pi.session.read  → pi_session_read
       pi.session.write → pi_session_write
@@ -64,7 +64,7 @@ def test_permissions_are_string_format(manifest):
     """★ 权限用字符串格式（内核 permissions.py 只认这个；对象格式内核未实现）。"""
     perms = manifest["permissions"]
     assert isinstance(perms, list) and all(isinstance(p, str) for p in perms)
-    # 收口校验（总监令 10 红线③）
+    # 收口校验（红线③）
     assert "fs:plugin" in perms
     assert "net:out:localhost" in perms
     # 不许出现通配外网
@@ -107,7 +107,7 @@ def test_router_manifest_and_status():
     mod = _load(PLUGIN_DIR / "api" / "router.py", "pi_agent_router_test2")
     assert mod.manifest()["id"] == "pi-agent"
     st = mod.status()
-    assert st["stage"] == "rpc+sessions"   # ★ 第④刀：rpc → rpc+sessions
+    assert st["stage"] == "rpc+sessions"   # ★ rpc → rpc+sessions
     assert st["level"] in ("L0", "L1", "L2", "L3")  # ★ 四层降级口径（09-28 加 L0 待命）
     assert "level_text" in st
 

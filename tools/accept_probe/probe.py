@@ -13,14 +13,14 @@
 
 退出码：0=全绿；1=有判据未过；2=用法/输入错误。
 
-判据来源（总监令8 §3.2 约束3：来源可溯）：
+判据来源（约束3：来源可溯）：
     gate      = ACCEPT-T30 A6 三快腿（02:23 全验判定帖 §1；02:53 延迟探针；11:4x 路线A 对表复绿）
-    hash      = 生产入口 hash 基线链（02:36 判定帖 §5 追记 → 令8 §4 12:00 快照未漂移）
-    modules   = modules 17 口径（令8 §4 12:00 实测；11:4x 本席逐数 id 复验）
-    docsprobe = BUG-T16-1 销账 + T17 幂等线上判据（MiMo 09:15 盘点 + hermes 10:26 三合一眼验 + 本席 API 对表）
+    hash      = 生产入口 hash 基线链（02:36 判定帖 §5 追记 → 12:00 快照未漂移）
+    modules   = modules 17 口径（12:00 实测；11:4x 逐数 id 复验）
+    docsprobe = BUG-T16-1 销账 + T17 幂等线上判据（MiMo 09:15 盘点 + hermes 10:26 三合一眼验 + API 对表）
     deploycheck = 上述四件套的部署后四合一复核（healthz+modules+gate+hash）
 
-🖥 腿边界（令8 §3.3）：本套件只做 API 级 census + hash 对表；
+🖥 腿边界：本套件只做 API 级 census + hash 对表；
     浏览器 DOM 级断言（开窗/渲染/console 零错）归 hermes 真机腿，不 jsdom 化。
 """
 from __future__ import annotations
@@ -37,7 +37,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Windows 控制台默认 GBK，中文/emoji 会炸（同 create_plugin.py pyfiglet 坑，总监令8 §2.3）
+# Windows 控制台默认 GBK，中文/emoji 会炸（同 create_plugin.py pyfiglet 坑）
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -49,7 +49,7 @@ EXPECTED_PATH = Path(__file__).resolve().parent / "expected.json"
 
 
 class Row:
-    # RFC-001（总监令13 采纳）：rows 全局收集，供 verdict 事件机读输出；
+    # RFC-001（采纳）：rows 全局收集，供 verdict 事件机读输出；
     # 只含判据名/期望/实测/判定——绝不含 token/cookie/口令（#006 红灯纪律）。
     collected: list[dict[str, Any]] = []
 
@@ -83,7 +83,7 @@ def contract_sha256() -> str:
 def emit_verdict(target: str, suite: str) -> dict[str, Any]:
     """RFC-001 机读 verdict 事件（--emit-verdict 显式开启；人读表格与退出码语义不变）。
 
-    schema 版本号只进本事件的 `schema` 字段（总监令13 精化），不动 expected.json 结构。
+    schema 版本号只进本事件的 `schema` 字段（精化），不动 expected.json 结构。
     """
     rows = Row.collected
     passed = sum(1 for r in rows if r["ok"])
@@ -253,7 +253,7 @@ def suite_docsprobe(client: Client, exp: dict[str, Any], user: str, pwd: str) ->
 
 
 def _check_o1(body: Any, e: dict[str, Any], modules_ids: list[str]) -> Row:
-    """O1 契约对表纯函数（判据先行：契约源=MiMo《TX-O1-01 字段契约卡》17:55）。
+    """O1 契约对表纯函数（判据先行：契约源=MiMo《字段契约卡》17:55）。
     判据：ok=true / count=len(modules)=契约值 / id 集合与 modules 段一致（契约卡 §2.4-3）/
     status∈四态枚举 / summary 四态和=count / reconcile.scheduler_enabled=契约默认值。"""
     row = Row()
@@ -283,7 +283,7 @@ def _check_o1(body: Any, e: dict[str, Any], modules_ids: list[str]) -> Row:
 
 
 def suite_o1status(client: Client, exp: dict[str, Any], user: str, pwd: str) -> bool:
-    """O1 模块健康四态（TX-O1-01）：/api/v1/health/modules 契约对表。
+    """O1 模块健康四态：/api/v1/health/modules 契约对表。
     判据先行态：O1 未部署→404→输出 SKIP 行（不判红不冒充绿）；部署后自动转实验。"""
     e = exp["suites"]["o1_status"]
     row = Row()
@@ -297,11 +297,11 @@ def suite_o1status(client: Client, exp: dict[str, Any], user: str, pwd: str) -> 
         return ok
     modules_ids = exp["suites"]["modules"]["ids"]
     row = _check_o1(body, e, modules_ids)
-    return row.render("o1status · O1 模块健康四态（TX-O1-01 契约）")
+    return row.render("o1status · O1 模块健康四态（契约）")
 
 
 def _check_bff(body: Any, e: dict[str, Any]) -> Row:
-    """BFF 聚合源健康度对表纯函数（令94 派单·判据先行：契约源=hermes 复现帖+本席根因侦察）。
+    """BFF 聚合源健康度对表纯函数（判据先行：契约源=hermes 复现帖+根因侦察）。
 
     判据：响应 dict + providers 数组 / id 集合≡契约登记聚合源（缺多皆红，防静默丢源）/
     每源 status ∈ 白名单（ok|not-implemented）——**unavailable=红**并点名哪几家（缺陷态警报器）。
@@ -329,7 +329,7 @@ def _check_bff(body: Any, e: dict[str, Any]) -> Row:
 
 
 def suite_bffsummary(client: Client, exp: dict[str, Any], user: str, pwd: str) -> bool:
-    """BFF `/api/v1/summary/today` 聚合源健康度（令94 机读判据卡·还 09-20 O 项欠账）。
+    """BFF `/api/v1/summary/today` 聚合源健康度（机读判据卡·还 09-20 O 项欠账）。
 
     判据先行态：expected.json `suites.bff_summary.enabled=false`（当前生产=缺陷态，
     未立基线）→ 输出 SKIP 行（非绿非红不粉饰）；workbuddy 修复上线后翻 enabled=true 转实验。
@@ -339,7 +339,7 @@ def suite_bffsummary(client: Client, exp: dict[str, Any], user: str, pwd: str) -
     if not e.get("enabled", False):
         row.add("⏭SKIP BFF 聚合", "修复后实验", "enabled=false（判据先行态：缺陷未修不立基线）", True)
         ok = row.render("bffsummary · BFF 聚合源健康度（SKIP：判据先行态）")
-        print("  说明：令94 派单预写； workbuddy 修复上线后 expected.json 翻 enabled=true 转实验。")
+        print("  说明：预写； workbuddy 修复上线后 expected.json 翻 enabled=true 转实验。")
         return ok
     if not client.access:
         client.login(user, pwd)
@@ -350,7 +350,7 @@ def suite_bffsummary(client: Client, exp: dict[str, Any], user: str, pwd: str) -
     row.add("http", "200", str(status), status == 200)
     if status == 200:
         row = _check_bff(body, e)
-    return row.render("bffsummary · BFF 聚合源健康度（令94 判据卡）")
+    return row.render("bffsummary · BFF 聚合源健康度（判据卡）")
 
 
 def suite_deploycheck(client: Client, exp: dict[str, Any], user: str, pwd: str) -> bool:

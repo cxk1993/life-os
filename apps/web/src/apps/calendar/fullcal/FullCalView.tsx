@@ -1,7 +1,7 @@
 /**
  * V8 · FullCalendar 6.1.21 原型视图（对照表 v1 实证件）。
  *
- * ★ 总监 22:45 拍板：FullCalendar 6.1.21 全家桶（core/interaction/daygrid/timegrid 同版本混装禁令）
+ * ★ 22:45 拍板：FullCalendar 6.1.21 全家桶（core/interaction/daygrid/timegrid 同版本混装禁令）
  *   为日程重构内核主选。本组件为「替换层」原型：
  *   - 保留 useCalendarEvents 数据层 + api.ts 写请求（Idempotency-Key 不动）；
  *   - 用 FullCalendar 替换自研 MonthGrid/TimeGrid 的渲染与拖拽/缩放交互；
@@ -104,7 +104,7 @@ export default function FullCalView({
   const calendarRef = useRef<FullCalendar>(null);
   const mountedRef = useRef(false);
 
-  // ★ initialView 只在挂载时生效；view prop 变化时用 API 切换视图（令4 主人报"年月日一样"根因）
+  // ★ initialView 只在挂载时生效；view prop 变化时用 API 切换视图（主人报"年月日一样"根因）
   useEffect(() => {
     const api = calendarRef.current?.getApi();
     if (api && api.view?.type !== toFullCalView(view)) {

@@ -10,7 +10,7 @@ function errText(e: unknown): string {
   return e instanceof Error ? e.message : "导出预览失败";
 }
 
-/** TX-EXPORT-01 · 搬家包中心（V1 只读预览，zip 落盘候派）。 */
+/** · 搬家包中心（V1 只读预览，zip 落盘候派）。 */
 export default function ExportApp() {
   const [profile, setProfile] = useState<string | null>(() => loadPrefs().lastProfile);
   const [preview, setPreview] = useState<PreviewOut | null>(null);

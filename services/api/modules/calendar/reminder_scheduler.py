@@ -284,7 +284,7 @@ def run_reminder_tick(
                     log.warning("write n2 suppress log failed: %s", log_exc)
             results.append(row)
             continue
-        # ★ 2026-09-26 修（astrbot · 主人令「全修」）：
+        # ★ 2026-09-26 修（astrbot · 主人「全修」）：
         #   原先 `publish("calendar.reminder.fired")` **嵌在 `if ok:` 里** ——
         #   即「本机桥（桌面通知）成功」才发事件 → web push 只是桥的副本。
         #   生产实况：桥报 "Show 拒绝访问 (HRESULT 0x800…)" → ok=False →
@@ -350,7 +350,7 @@ def start_scheduler() -> bool:
     )
 
     def _job() -> None:
-        # ★ 令7 §2 补刀：get_db 已生成器化，非 Depends 场景必须 db_session()。
+        # ★ 补刀：get_db 已生成器化，非 Depends 场景必须 db_session()。
         from core.deps import db_session
 
         try:

@@ -1,4 +1,4 @@
-"""TX-FRAME-01 补刀判据 · pi 会话历史读取（workbuddy 2026-09-27）。
+"""补刀判据 · pi 会话历史读取（workbuddy 2026-09-27）。
 
 背景：主人报障「找不到历史」→ 实测后端 8 端点无读消息接口 → 补 `history.py` + `GET /sessions/history`。
 本测试用**自造 JSONL**（不依赖真实 runtime）锁住归一化语义：

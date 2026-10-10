@@ -68,7 +68,7 @@ def _fallback_schema() -> dict[str, Any]:
 
 
 def _tool_description(tool: Any = None) -> str:
-    """工具描述：**端点的作者注释优先**（★ 2026-09-28 · 主人令）。
+    """工具描述：**端点的作者注释优先**（★ 2026-09-28 · 主人）。
 
     旧描述是机械句「MCP 工具：调用 /api/v1/x 的 y write 能力（域 y…）」——
     AI 由此**看不出这工具干什么、参数什么意思**，44 个工具描述长得几乎一样，
@@ -92,7 +92,7 @@ def _tool_description(tool: Any = None) -> str:
 
 
 def _tool_schema(tool: Any = None) -> dict[str, Any]:
-    """★ 2026-09-26 改进（astrbot · 主人令）：**按工具给出精确 inputSchema**。
+    """★ 2026-09-26 改进（astrbot · 主人）：**按工具给出精确 inputSchema**。
 
     原先所有工具共用"一个通用 payload" → AI 不知道能传什么字段，只能猜
     （实证：pi 查倒计时时"试了三种方式"）。
@@ -224,7 +224,7 @@ def _handle_tools_call(msg: dict[str, Any], msg_id: Any, pat: PatContext) -> dic
     payload = arguments.get("payload") if isinstance(arguments, dict) else None
     if not isinstance(payload, dict):
         payload = None
-    # ★ 2026-09-28（主人令「每一个工具都实际测验过」，实测抓到的真 bug）：
+    # ★ 2026-09-28（主人「每一个工具都实际测验过」，实测抓到的真 bug）：
     #   工具 schema 里声明的是**具名参数**（from / to / tag / limit …），但本函数历史上
     #   **只读 `payload`** ⇒ AI 照 schema 把字段传在顶层时，会被**静默丢弃**：
     #   实测 `calendar_event_read` 传 {"from":…, "to":…} → 422「query from Field required」。

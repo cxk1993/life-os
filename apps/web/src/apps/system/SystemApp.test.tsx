@@ -53,7 +53,7 @@ describe("SystemApp（V6 系统窗四合一）", () => {
     expect(screen.getByTestId("mtab-panel-auth").hidden).toBe(true);
   });
 
-  it("tabs 配置面（令 78）：manifest 带 tabs 声明时按配置渲染，无 entry 页落薄壳语义", () => {
+  it("tabs 配置面：manifest 带 tabs 声明时按配置渲染，无 entry 页落薄壳语义", () => {
     useDesktopStore.setState({
       modules: {
         system: {

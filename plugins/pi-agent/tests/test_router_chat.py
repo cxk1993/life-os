@@ -1,4 +1,4 @@
-"""pi-agent router 对话端点测试（★ 第②刀）。
+"""pi-agent router 对话端点测试。
 
 ★ 全部**离线**：不真起 pi，验证的是「降级行为正确」——
    熔断/起不来时必须**优雅降级**（返回 degraded=True + 原因），
@@ -66,7 +66,7 @@ def test_status_shape(router_mod):
     for k in ("id", "stage", "level", "level_text", "alive", "model", "provider"):
         assert k in st, f"status 缺字段 {k}"
     assert st["id"] == "pi-agent"
-    assert st["stage"] == "rpc+sessions"   # ★ 第④刀
+    assert st["stage"] == "rpc+sessions"   # ★ 
     assert "pool" in st                     # ★ 会话池状态
 
 
@@ -88,7 +88,7 @@ def test_chat_degrades_when_pi_unavailable(router_mod):
 
     做法：把**单例**的 binary 改成不存在的路径（router 用的就是这个单例）。
     """
-    # ★ 第④刀后 /chat 走**会话池**：把池的 binary 钉死为不存在
+    # ★ 后 /chat 走**会话池**：把池的 binary 钉死为不存在
     pool = router_mod._pool()
     pool.stop_all()
     pool._binary = "/nonexistent/pi-xyz"
@@ -133,7 +133,7 @@ def test_chat_input_validation(router_mod):
         router_mod.ChatIn(message="")
 
 
-# ── ★ 第④刀：会话端点 ──────────────────────────────────────────
+# ── ★ 会话端点 ──────────────────────────────────────────
 
 def test_sessions_list_shape(router_mod):
     d = router_mod.list_sessions()

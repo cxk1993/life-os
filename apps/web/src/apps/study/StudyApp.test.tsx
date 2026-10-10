@@ -45,7 +45,7 @@ vi.mock("../todo/api", () => ({
     // 下面在 beforeEach 里按"**有状态的假服务器**"实现 ——
     // ★ 关键：toggle 之后，list 必须返回**已翻转**的状态。
     //   否则 onSettled 的失效重取会用旧值把乐观翻转盖回去，
-    //   测试就会因为"mock 不像真服务器"而误红（本席第一版就是这么红的）。
+    //   测试就会因为"mock 不像真服务器"而误红（第一版就是这么红的）。
     list: vi.fn(),
     toggle: vi.fn(),
     update: vi.fn().mockResolvedValue({}),
@@ -185,7 +185,7 @@ describe("StudyApp（学业页）", () => {
 
     // ⚠️ 断言要**按栏位作用域**，不能用全局 queryByText 否定：
     //    归档栏是个 <details>，折叠着但**内容仍在 DOM 里**，
-    //    所以「页面上找不到旧作业」这种全局否定必然失败（证书：本席第一版即如此）。
+    //    所以「页面上找不到旧作业」这种全局否定必然失败（证书：第一版即如此）。
     //    要看的是「它在哪一栏里」，这才是主人要的观感。
     const doneBox = await screen.findByTestId("study-done");
     expect(doneBox.textContent).toContain("已完成（1）");

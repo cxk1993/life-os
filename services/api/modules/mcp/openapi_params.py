@@ -1,14 +1,14 @@
-"""★ 从模块 OpenAPI 提取"精确工具参数"（astrbot 2026-09-26 · 主人令「改进可改进点」）
+"""★ 从模块 OpenAPI 提取"精确工具参数"（astrbot 2026-09-26 · 主人「改进可改进点」）
 
 **为什么**：原先 `tools/list` 的 `inputSchema` 只有个通用 `payload` 对象
 （`additionalProperties: true`）—— AI **不知道能传什么字段**，只能"猜"
 （实证：pi 查倒计时时"试了三种方式"）。
 
 **怎么做**：内核已提供**模块级 openapi**（`/api/{module_id}/openapi.json`，
-见 core/app.py 乙案·总监令 92/95）。本模块据此提取每个端点的参数，
+见 core/app.py 乙案）。本模块据此提取每个端点的参数，
 生成**具名属性**的 inputSchema；**拉不到则降级回通用 payload**（绝不报错）。
 
-★ 2026-09-27 补刀（云昔 · 主人令「一口气做到最好」）：
+★ 2026-09-27 补刀（云昔 · 主人「一口气做到最好」）：
   上一版只解决了**一半** —— 查询参数（`parameters`）正常，**请求体全部退化**。
   根因：FastAPI 生成的 `requestBody.schema` 不是内联对象，而是
   `{"$ref": "#/components/schemas/X"}`（Pydantic 继承会再套 `allOf`，
@@ -26,7 +26,7 @@
 - **不 import 业务插件**（与 registry_adapter 同纪律，只走 HTTP）；
 - **schema 解析绝不外联**：只解析 `#/` 文档内引用，外部文件/URL 引用一律不追。
 
-★ 2026-09-27 二次补刀（主人令「把挂路径参数的整类端点修通」）：
+★ 2026-09-27 二次补刀（主人「把挂路径参数的整类端点修通」）：
   **路径参数改为暴露且标必填**。旧版遇 `in: path` 直接 `continue` 跳过 —— 因为
   当时桥接层不做替换，暴露了也没用。现在 `forward._substitute_path_params()`
   会把它代入 URL，于是这里必须让 AI 看得见这个坑（否则调用必然 422）。
@@ -186,7 +186,7 @@ def _props_from_operation(spec: dict[str, Any], op: dict[str, Any]) -> dict[str,
         if prm.get("in") == "path":
             # ★ 2026-09-27：路径参数**要暴露**。旧版直接跳过（当时桥接层不做替换），
             #   结果 AI 压根不知道 {id} 这个坑拿什么填。现在桥接层会把它代入 URL
-            #   （见 forward._substitute_path_params），于是带进 schema 并标必填 ——
+            #（见 forward._substitute_path_params），于是带进 schema 并标必填 ——
             #   两半合起来，路径参数型端点才真正可达。
             frag["description"] = (
                 (frag.get("description") or "") + "（路径参数，会代入 URL）"
@@ -207,13 +207,13 @@ def _props_from_operation(spec: dict[str, Any], op: dict[str, Any]) -> dict[str,
     entry: dict[str, Any] = {"properties": props}
     if props and required:
         entry["required"] = sorted(set(required))
-    # ★ 2026-09-28（主人令「所有 MCP 工具 / API 接口都带上注释和解释，防 AI 抓瞎」）：
+    # ★ 2026-09-28（主人「所有 MCP 工具 / API 接口都带上注释和解释，防 AI 抓瞎」）：
     #   把该端点的**作者注释**一并带出。来源就是 route 函数的 docstring ——
     #   FastAPI 把它暴露成 `summary`（首行）与 `description`（全文）。
     #   实测：全平台 **250/250 个端点都有**中文 docstring，但工具面**从来没读过**它。
     #   `description` 通常已包含首行，故优先取它，避免重复。
     # ⚠️ 别信 `summary`：FastAPI 在**没有 docstring** 时会用函数名自动生成英文标题
-    #   （`def update_item` → "Update Item"）—— 那不是解释，是标题。
+    #（`def update_item` → "Update Item"）—— 那不是解释，是标题。
     #   实测踩过：内核首版优先 summary，于是 todo_item_patch 的工具描述变成了
     #   "Update Item"，比原来的机械句**更误导**。
     #   故：只认 `description`（docstring 派生）；退一步只认**含中文**的 summary；

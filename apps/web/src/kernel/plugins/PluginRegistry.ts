@@ -25,7 +25,7 @@ export function manifestToModule(p: PluginInfo): ModuleManifest {
     // 使模块仍可注册（Dock 可见）但无任何 UI 贡献，绝不抛错。
     entry: p.manifest?.entry ?? "",
     window: p.manifest?.window ?? { ...FALLBACK_WINDOW },
-    // ★ 根因 E 修复（2026-09-25 · 总监令 · 主人真机报「plugins 模块清单缺少 entry 字段」）：
+    // ★ 根因修复（2026-09-25 · 令 · 主人真机报「plugins 模块清单缺少 entry 字段」）：
     //   必须透传 api —— WindowFrame 用 `manifest.api.base` 判定「后端模块（合法无 UI）」
     //   与「真缺失」。此前三容器（system/knowledge/growth）走 modules.json 静态注册带着
     //   api 才显示正常；而后端同步的 core/builtin 插件（plugins/summary/query/export/auth）

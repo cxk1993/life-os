@@ -141,7 +141,7 @@ def next_occurrence(rule: str, after: datetime) -> datetime | None:
 
 
 def tag_hit(item_tags: list[str], query: str) -> bool:
-    """★ 2026-09-26（astrbot · 主人令「学业页」）：标签匹配支持**层级**。
+    """★ 2026-09-26（astrbot · 主人「学业页」）：标签匹配支持**层级**。
 
     语义：`query="学业"` 命中 `学业` 与 `学业/高数`、`学业/大物`；
     精确查询行为不变（只是**多匹配了子级**）。与 rename_tag 的层级约定一致。
@@ -155,10 +155,10 @@ def tag_hit(item_tags: list[str], query: str) -> bool:
 
 #: 已完成待办的**归档阈值**（天）—— 打勾满这么多天后自动归入「归档」。
 #:
-#: ★ 2026-10-02（主人令：「已完成的任务，打勾日期过了 7 天就自动归档、自动隐藏；
+#: ★ 2026-10-02（主人：「已完成的任务，打勾日期过了 7 天就自动归档、自动隐藏；
 #:   展开已完成的小列表不再显示它，而是出现第三栏『归档』」）：
 #:   判据用 done_at 老化，**不加 DB 列** —— done_at 本来就在每次打勾时动态写入
-#:   （含周期任务每次完成），信息已经在了，再加一列只会多一处不一致的风险。
+#:（含周期任务每次完成），信息已经在了，再加一列只会多一处不一致的风险。
 #:   改这个数字即改归档节奏；将来若要「可配置」，从 settingsSchema 注入即可。
 ARCHIVE_AFTER_DAYS = 7
 
@@ -204,12 +204,12 @@ class TodoService:
     def tag_summary(self) -> list[dict[str, Any]]:
         """标签汇总：每个标签的「未完成 / 已完成 / 归档 / 总数」。
 
-        ★ 2026-09-28（主人令「AI 调用的时候看的更清楚，一目了然的分类」）：
+        ★ 2026-09-28（主人「AI 调用的时候看的更清楚，一目了然的分类」）：
           此前 AI 想知道"有哪些标签"只能拿 `GET /items?tag=x` 一个个试 —— 等于猜。
           本方法给出**标签词表 + 计数**，一次调用看清全局分类。
         ★ 层级标签各记各的：`学业` 与 `学业/高数` 分别成条（与 tag_hit 的匹配语义
           解耦 —— 汇总要的是"库里实际存了什么"，不是"匹配到什么"）。
-        ★ 2026-10-02（主人令「已完成满 7 天自动归档」）：新增 `archived` 计数，
+        ★ 2026-10-02（主人「已完成满 7 天自动归档」）：新增 `archived` 计数，
           且 `done` **改为不含归档** —— 与界面上「✅ 已完成」栏看到的条数同口径。
           此前 done 把归档项也算进去，标签条悬停会说"已完成 4"而列表只有 2 条。
           `total` 仍是**全部**（含归档）：它是这一分类的总量，不该随归档而缩水。
@@ -221,7 +221,7 @@ class TodoService:
             archived = self._is_archived(row, threshold)
             for t in tags_from_json(row.tags):
                 # 显式给出计数骨架，别让 setdefault 从字面量推 dict[str, str|int]
-                # （实测 Pyright 会因 "tag" 是 str 而拒绝把它当 dict[str, int]）。
+                #（实测 Pyright 会因 "tag" 是 str 而拒绝把它当 dict[str, int]）。
                 a = agg.setdefault(
                     t, {"tag": t, "todo": 0, "done": 0, "archived": 0, "total": 0}
                 )

@@ -56,7 +56,7 @@ class EventBus:
             "payload": payload,
         }
         self._history.append(event)
-        # 进程内回调监听（TX-ACT-01 激活器挂点）：同步调用，单回调异常不影响广播。
+        # 进程内回调监听（激活器挂点）：同步调用，单回调异常不影响广播。
         # publish 可能来自任意线程，回调必须自行保证线程安全。
         for listener in list(self._listeners):
             try:

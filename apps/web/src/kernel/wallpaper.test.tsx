@@ -1,5 +1,5 @@
 /**
- * 桌面壁纸四态判据（V1-EXT2 · 主人③后半 · 汐瑶令 1 @Zcode 单）。
+ * 桌面壁纸四态判据（V1-EXT2 · 主人③后半 · 单）。
  * jsdom 无真实 IndexedDB/布局，这里用 fake-indexeddb 不引入（零新依赖红线）——
  * IndexedDB 分支走 try/catch 静默降级路径，测试聚焦：四态 CSS 变量应用 / 配置
  * 持久化 / 脏值退回 / data-wp 标记。

@@ -3,7 +3,7 @@
 """MiMo 授权部署 · 后端增量上传与验证（只读/可选执行，需显式 --apply）。
 
 默认 dry-run：列出将上传的本地文件与远端路径，不改服务器。
---apply 时按总监 runbook：备份远端 → scp → （不自动重启，打印重启命令）→ 可选 --verify。
+--apply 时按runbook：备份远端 → scp →（不自动重启，打印重启命令）→ 可选 --verify。
 
 用法（PowerShell）：
   $env:SSH_KEY = "$env:TEMP\\deploy-key.pem"

@@ -463,7 +463,7 @@ def test_zero_business_columns(client, auth):
     assert r.json()["meta_json"]["mood"] == "平静"
 
 
-# ---------- 按路径写正文（AI 友好 · 2026-09-27 主人令）----------
+# ---------- 按路径写正文（AI 友好 · 2026-09-27 主人）----------
 def _by_path(client, auth, **kw):
     return client.post("/api/v1/docs/content", json=kw, headers=auth)
 

@@ -111,7 +111,7 @@ def list_items(
     - `due_before` / `due_after`：按截止时间过滤，带时区 ISO8601
     - `source`：按来源文件路径过滤（从 Obsidian 导入的条目才有）
 
-    ★ 2026-10-02（主人令）：`done` 与 `archived` 以「打勾满 7 天」为界互斥 ——
+    ★ 2026-10-02（主人）：`done` 与 `archived` 以「打勾满 7 天」为界互斥 ——
       即已完成项满 7 天后**自动从「已完成」移到「归档」**，不需要人工干预，
       也没有单独的归档动作/接口（归档是时间的函数，不是一种状态字段）。
     """
@@ -134,7 +134,7 @@ def create_item(
     - `raw`：一行 markdown，服务端解析语法糖（`@明天` / `!高` / `#标签`）
     - 结构化字段：显式给 `text` / `due_at` / `priority` / `recur_rule` / `tags`
 
-    ★ 2026-10-02（主人令「mcp 里创建待办的时候强制加上标签，防止忘加」）：
+    ★ 2026-10-02（主人「mcp 里创建待办的时候强制加上标签，防止忘加」）：
       **MCP / AI 来路**（内部请求头 `X-LifeOS-Client: mcp`）创建时，
       `tags` **必填且不得为空** —— AI 忘了带标签会收到一条写明怎么补的 422，
       而不是静默建出一条无分类的待办。
@@ -274,7 +274,7 @@ def today_summary(
     return TodoService(db).today_summary()
 
 
-# ═══════ ★ TX-TODO-REMIND-01（主人 2026-09-25「做」）：待办到期提醒 ═══════
+# ═══════ ★（主人 2026-09-25「做」）：待办到期提醒 ═══════
 # 链路：due_scheduler 扫到期 → publish("todo.item.due") → push.link → web push
 @router.post("/due/tick")
 def post_due_tick(

@@ -1,4 +1,4 @@
-"""TX-VER-01 U-1..U-2 只读探针：卸载无痕迹核验（不写生产）。
+"""U-1..U-2 只读探针：卸载无痕迹核验（不写生产）。
 
 用法：
   python tools/accept_probe/unload_trace_probe.py --module habits --base-url http://127.0.0.1:8000

@@ -5,9 +5,9 @@ import { chatStream, piAgentApi } from "./api";
 import type { AgentStatus, SessionInfo } from "./api";
 
 /**
- * ★ TX-FRAME-01 第⑤刀 · Pi 智能体**对话页**。
+ * ★ Pi 智能体**对话页**。
  *
- * ★ 2026-09-26（主人令「AI 编排也收，并进 pi-agent 当一个 tab」）：
+ * ★ 2026-09-26（主人「AI 编排也收，并进 pi-agent 当一个 tab」）：
  *   本组件由 `PiAgentApp` 更名为 `PiChatView` —— **对话逻辑一字未改**，
  *   只是被新的容器 `PiAgentApp`（MultitabFrame 两页：对话 / 编排）承载。
  *   改法照 `apps/schedule/ScheduleApp.tsx` 容器样板（原 App 不动，仅被 lazy 引用）。

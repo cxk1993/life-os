@@ -1,10 +1,10 @@
-"""create_plugin.py 脚手架生成器测试（TX-AST-01）。
+"""create_plugin.py 脚手架生成器测试。
 
 覆盖验收判据：
   - 脚手架能生成 third-party / builtin 骨架（文件齐全）
   - 非法 id 拒错（exit 2）
   - manifest 必填字段校验：缺字段/格式错 → 精确报错
-  - permissions 声明式权限：数组格式校验（TX-PERM-01 A 路径回退）
+  - permissions 声明式权限：数组格式校验（A 路径回退）
   - --with-example：router 含跨插件调用示例（ISSUE-005 C 案参考）
 
 不依赖 DB；输出目录全部重定向到 tmp_path，不污染仓库。
@@ -99,7 +99,7 @@ def test_manifest_bad_kind_rejected(cp):
     assert any("kind" in e for e in cp._validate_manifest(mf))
 
 
-# ── 4. permissions 声明式权限（TX-PERM-01 A 路径数组格式）──
+# ── 4. permissions 声明式权限（A 路径数组格式）──
 
 def test_permissions_is_list_of_str(cp, tmp_path):
     cp.main(["hello-bot", "你好机器人"])

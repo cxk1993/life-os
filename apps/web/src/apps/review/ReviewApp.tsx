@@ -130,7 +130,7 @@ export default function ReviewApp() {
     },
   });
 
-  // ★ 全量同步历史日报（astrbot 下场 · 主人令「同步理应同步历史所有日报」）
+  // ★ 全量同步历史日报（astrbot 下场 · 主人「同步理应同步历史所有日报」）
   const [ingestAllMsg, setIngestAllMsg] = useState<string | null>(null);
   const ingestAllMut = useMutation({
     mutationFn: () => reviewApi.ingestAll(),
@@ -203,7 +203,7 @@ export default function ReviewApp() {
         >
           {ingestMut.isPending ? "同步中…" : offline ? "同步（桥离线）" : "手动同步"}
         </button>
-        {/* ★ 全量同步（astrbot 下场 · 主人令「同步理应同步历史所有日报」） */}
+        {/* ★ 全量同步（astrbot 下场 · 主人「同步理应同步历史所有日报」） */}
         <button
           type="button"
           className="btn"
@@ -228,7 +228,7 @@ export default function ReviewApp() {
 
       <div className="review-body">
         <aside className="review-days" aria-label="日报日期列表">
-          {/* ★ 日历视图（astrbot 下场 · 主人令「用日历的形式展示，想看哪天看哪天」） */}
+          {/* ★ 日历视图（astrbot 下场 · 主人「用日历的形式展示，想看哪天看哪天」） */}
           <ReviewCalendar
             dates={days.map((d) => d.date)}
             activeDate={activeDate}

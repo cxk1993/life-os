@@ -72,7 +72,7 @@ class WeekGridOut(BaseModel):
     """周网格视图（前端直接渲染）。
 
     days 长度恒为 7（周一…周日），每格该天要上的课按节次（无节次按时间）升序。
-    sections 为网格纵轴的完整节次列表（主人令「节次做成纵轴」）。
+    sections 为网格纵轴的完整节次列表（主人「节次做成纵轴」）。
     """
 
     days: list["DayColumn"] = []

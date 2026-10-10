@@ -1,4 +1,4 @@
-"""pi-agent 插件路由 · ★ 第②刀：RPC 适配层接通（对话可用）。
+"""pi-agent 插件路由 · ★ RPC 适配层接通（对话可用）。
 
 ════════════════════════════════════════════════════════════════════
 ★ 第三方插件结构约束（照 plugins/countdown 的先例，务必遵守）：
@@ -18,7 +18,7 @@ HTTP 契约（全项目统一，不许自创）：
   L2 重启中 → **快速失败**（不排队）
   L3 熔断 → 明确告知「AI 工具能力暂不可用」，**由前端保底轻量对话**
 
-★ 第④刀（会话池）：**一个 session = 一个 pi 子进程**。
+★（会话池）：**一个 session = 一个 pi 子进程**。
   - 外部 agent 用 `session="alpha"` / `"beta"` → **各自独立进程**（互不干扰）
   - `provides` 里三条能力经 **ADR-0003 MCP 桥**自动变成外部可调工具：
       pi_chat_write / pi_session_read / pi_session_write
@@ -124,7 +124,7 @@ def _runtime_options() -> dict[str, Any]:
 
 
 def _manager():
-    """取单会话进程管理器（第②刀形态；health/status 用）。
+    """取单会话进程管理器（形态；health/status 用）。
 
     ★ 设置变更（provider/model/binary）时自动重建，否则新配置不生效。
     """
@@ -146,7 +146,7 @@ def _manager():
 
 
 def _pool():
-    """取会话池（第④刀；对话与会话管理走这里）。
+    """取会话池（对话与会话管理走这里）。
 
     ★ 设置变更时自动重建 —— 否则 PATCH settings 改了 provider/model 仍走旧值。
     """
@@ -173,8 +173,8 @@ def _level() -> str:
     """降级层级（给 UI 顶栏状态点用）。
 
     ★ 2026-09-28 方案 A 重写（主人候办③「状态点恒显启动中」）：
-      修复前只看**单会话管理器**（`_manager()`，第②刀）—— 而**真实对话走的是会话池**
-      （`_pool()`，第④刀）。两条路各管各的：从没聊过天时单管理器 `_client` 恒为 None
+      修复前只看**单会话管理器**（`_manager()`）—— 而**真实对话走的是会话池**
+      （`_pool()`）。两条路各管各的：从没聊过天时单管理器 `_client` 恒为 None
       ⇒ 恒报 L2「启动中」，**pi 明明健康可用也一直显示"启动中"**。
 
       修后口径（按"哪个更活"取最高态）：
@@ -217,7 +217,7 @@ class ChatIn(BaseModel):
     message: str = Field(
         min_length=1, max_length=8000, description="发给 Pi 的消息（纯文本，≤8000 字）"
     )
-    # ★ 第④刀：session 名 = 会话锁（同名同进程，异名异进程）
+    # ★ session 名 = 会话锁（同名同进程，异名异进程）
     session_id: str = Field(
         default="default", max_length=64,
         description="会话名（一个 session = 一个 Pi 子进程）；不传用 default，可锁定/切换",
@@ -334,7 +334,7 @@ def chat(body: ChatIn) -> ChatOut:
     )
 
 
-# ── 会话管理（★ 第④刀：外部 agent 锁定/切换会话）────────────────
+# ── 会话管理（★ 外部 agent 锁定/切换会话）────────────────
 
 
 @router.get("/sessions/history")
@@ -345,7 +345,7 @@ def get_session_history(
         default=False, description="是否**含 toolResult 条目**（默认否 —— 前端只展示对话流）"
     ),
 ) -> dict[str, Any]:
-    """★ TX-FRAME-01 补刀（2026-09-27）：**读取会话历史消息**。
+    """★ 补刀（2026-09-27）：**读取会话历史消息**。
 
     主人报障「找不到历史」—— 实测此前 8 个端点**无任何读消息接口**（下游不存在，
     不是"读路径不统一"）。本端点补齐：读 runtime/sessions/*.jsonl（pi 原生 JSONL）

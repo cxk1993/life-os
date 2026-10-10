@@ -67,7 +67,7 @@ export interface ExportResult {
 /**
  * 待办状态筛选（与后端 `GET /items?status=` 对齐）。
  *
- * ★ 2026-10-02（主人令「已完成满 7 天自动归档」）：
+ * ★ 2026-10-02（主人「已完成满 7 天自动归档」）：
  *   新增 `active` / `archived`。归档是 **done_at 老化** 的函数 ——
  *   `done` = 打勾在归档期内，`archived` = 打勾已过归档期，两者**互斥**；
  *   `active` 是 `archived` 的补集（未完成 + 打勾未满期）。
@@ -104,7 +104,7 @@ export const todoApi = {
   // raw：一行 Obsidian 语法（含 @日期/!优先级/#标签 语法糖），服务端解析
   create: (raw: string) => api.post<TodoItem>(`${BASE}/items`, { raw }),
 
-  // ★ 归一化（总监令2 防御补丁）：后端 TodoCreate 只认 raw|text，不认 title。
+  // ★ 归一化（防御补丁）：后端 TodoCreate 只认 raw|text，不认 title。
   // 历史调用方若误传 title 或空 text → pydantic 忽略 extra → 422 "text 不能为空"。
   // 请求出口做一次清洗：title→text、空 text 回退 raw、剥离只读字段（id/done/...）。
   createStructured: (

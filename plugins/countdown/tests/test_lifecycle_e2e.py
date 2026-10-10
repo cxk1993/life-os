@@ -3,7 +3,7 @@
 ★ 为什么这份测试存在：全仓此前从未有过一个真实的第三方插件，
   `manager.install()` 与 `manager.uninstall()` 这两个"只对 third-party 开放"的入口
   没有过真样本可跑（2026-09-23 取证：全仓 `third` 在测试里仅 9 处命中，
-  `test_plugins.py` 用的是合成 fixture 目录）。本席首单 TX-AST-01 增强了生成器，
+  `test_plugins.py` 用的是合成 fixture 目录）。首单 增强了生成器，
   这一单就把生成器造出来的东西**从头装一遍再从头卸一遍**。
 
 ★★ 安全红线（先读这段再改这个文件）：
@@ -109,10 +109,10 @@ class TestThirdPartyLifecycle:
         assert one.status_code == 200, one.text
         # ★ 真实形状：清单项是【平铺】的（id/name/version/kind/source/enabled/permissions/
         #   slots/provides/requires/last_error/valid），**不含 manifest 键**。
-        #   —— 本席最初按前端 types.ts 的 PluginInfo.manifest 假设了形状，才在首跑吃这条红。
+        #   —— 最初按前端 types.ts 的 PluginInfo.manifest 假设了形状，才在首跑吃这条红。
         assert one.json()["kind"] == "third-party"
         assert one.json()["source"] == "third-party"
-        # ★ 原件也在（本席真插件），顺带确认它能被发现——dock 可见性问题的前半段
+        # ★ 原件也在（真插件），顺带确认它能被发现——dock 可见性问题的前半段
         assert "countdown" in names
 
         # ── ② install（全仓第一次对真实第三方插件走这个入口）────────────────
@@ -156,7 +156,7 @@ class TestThirdPartyLifecycle:
         assert bad.status_code in (400, 422), bad.text
 
         # ★ 远期倒数日（>1 年）也要能进 landmarks —— 段三抓出的设计缺陷回归
-        #   （段二初版本地校验写了 le=365，"毕业还有 800 天"这类永远查不到）
+        #（段二初版本地校验写了 le=365，"毕业还有 800 天"这类永远查不到）
         from datetime import date as _d
         from datetime import timedelta as _td
 
@@ -185,9 +185,9 @@ class TestThirdPartyLifecycle:
         assert [r["days_until"] for r in rows] == sorted(r["days_until"] for r in rows)
 
         # ── ⑥ 跨插件调用（ISSUE-005 A 案）· ★ 实测：第三方插件【用不了】────────
-        # 根因（本席 2026-09-23 实证）：core/deps.py::_caller_plugin_id 靠
+        # 根因（2026-09-23 实证）：core/deps.py::_caller_plugin_id 靠
         #   request.app.state.modules 反查 caller，而该注册表在 create_app 里
-        #   只登记内置模块 —— 本席探针实测 18 条全为 builtin/core，
+        #   只登记内置模块 —— 探针实测 18 条全为 builtin/core，
         #   新装的第三方（含本插件副本）【不在其中】→ 永远识别不出 caller → 403。
         # 所以这里断言的是【平台现状】而不是【本插件失败】：
         #   一旦注册表纳入第三方，本断言会红，那时改成 200 并撤帖内"提醒碑"。
@@ -225,16 +225,16 @@ class TestThirdPartyLifecycle:
 class TestDockVisibility:
     """段三附带问题：entry="" 的纯 API 插件，会不会在 dock 里留一个点不开的图标？
 
-    本席只能证明后端侧的形状（有没有 entry / enabled 字段可让前端判断），
-    真正的渲染结论要 @workbuddy 或 @Doubao 在前端看一眼（见完工帖提问）。
+    只能证明后端侧的形状（有没有 entry / enabled 字段可让前端判断），
+    真正的渲染结论要 或 在前端看一眼（见完工帖提问）。
     """
 
     def test_清单已含manifest_ISSUE012验收断言(
         self, client: TestClient, e2e: tuple[str, Path]
     ) -> None:
-        """★ 2026-09-23 晚间改红为绿（原「提醒碑」）：本席 12:48《取证帖》指出的
+        """★ 2026-09-23 晚间改红为绿（原「提醒碑」）：12:48《取证帖》指出的
         「清单项缺 manifest → 前端 `p.manifest.entry` 必崩 → 插件扩展点贡献无法挂载」
-        已由 **令 55 / ISSUE-012** 修复（后端 `list_plugins()` 补 manifest 键 + 前端防御）。
+        已由 **/ ISSUE-012** 修复（后端 `list_plugins()` 补 manifest 键 + 前端防御）。
 
         本测试现在**正面验收 ISSUE-012**：清单项必须含 `manifest`，
         且前端真正要用的三个键（`entry` / `window` / `slots`）都能从响应里读到。

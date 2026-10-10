@@ -76,7 +76,7 @@ class DocsContentIn(BaseModel):
 
 
 class DocsContentByPathIn(BaseModel):
-    """按路径写正文（AI 友好 · 2026-09-27 · 主人令「补 docs.content.write」）。
+    """按路径写正文（AI 友好 · 2026-09-27 · 主人「补 docs.content.write」）。
 
     为什么需要它：MCP 工具面只暴露**无路径参数**的端点 ——
     `PUT /nodes/{id}/content` 带 `{id}`，而桥接层**不做路径参数替换**，

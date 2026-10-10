@@ -19,7 +19,7 @@ import re
 # ★ 必须在 import 任何内核/模块之前设置临时库，init_engine 只认一次。
 os.environ["DB_PATH"] = "./data/tmp_t18mcp.db"
 
-import ast  # noqa: E402  （模块级：_is_docstring 也要用）
+import ast  # noqa: E402（模块级：_is_docstring 也要用）
 import hashlib  # noqa: E402
 import json  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -43,7 +43,7 @@ AUTH = {"Authorization": f"Bearer {create_access_token('admin')}"}
 def client():
     init_engine()
     engine = get_engine()
-    # ★ 测试隔离加固（2026-09-25 · astrbot · 总监令 77 §2）：
+    # ★ 测试隔离加固（2026-09-25 · astrbot）：
     #   `SQLModel.metadata.create_all()` 只建**已 import** 的模型类；
     #   若本模块运行时 `modules.mcp.models` 尚未被 import，`mcp_pat` 表不会创建
     #   → `test_pat_*` 在 setup 阶段报 `no such table: mcp_pat`（首跑偶发；复跑因
@@ -129,7 +129,7 @@ def test_derive_tool_skips_invalid(bad):
         # 未声明的 resource 走机械推导（显式映射不误伤别的 resource）
         ("finance.snapshot.read", "/api/v1/finance", {"entry": "/entries"},
          "/api/v1/finance/snapshots"),
-        # route 值完整路径形态（令 35 §3：脚本与实现兼容两种形态）
+        # route 值完整路径形态（脚本与实现兼容两种形态）
         ("finance.entry.read", "/api/v1/finance",
          {"entry": "/api/v1/finance/entries"}, "/api/v1/finance/entries"),
         # 未传 tools → 纯机械推导（常规 REST 插件零声明兼容，T18 哲学）
@@ -483,7 +483,7 @@ def test_forward_mock_transport(monkeypatch):
 
 
 def test_forward_marks_mcp_origin(monkeypatch):
-    """★ 2026-10-02（主人令「mcp 创建待办强制加标签」）：转发必须打来路标记。
+    """★ 2026-10-02（主人「mcp 创建待办强制加标签」）：转发必须打来路标记。
 
     这是那条硬约束的**另一半** —— 插件侧（todo router）靠 `X-LifeOS-Client: mcp`
     区分「AI 来路」与「人的来路」。少打这个头，插件的强制校验永远不会触发，
@@ -593,7 +593,7 @@ def _is_docstring(node: ast.Constant, tree: ast.AST) -> bool:
     return body[0] is owner
 
 
-# ───── 路径参数型端点（2026-09-27 主人令「把挂路径参数的整类端点修通」）─────
+# ───── 路径参数型端点（2026-09-27 主人「把挂路径参数的整类端点修通」）─────
 def test_derive_tool_patch_verb_and_fine_grained_key():
     """patch → PATCH（此前无动词映射 PATCH）；路由键先查 resource.verb 再回落。"""
     routes = {"item": "/items", "item.patch": "/items/{item_id}"}

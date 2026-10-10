@@ -1,4 +1,4 @@
-"""TX-SIDEBAR-02 · href 白名单 + CRUD + 导出。"""
+"""· href 白名单 + CRUD + 导出。"""
 from __future__ import annotations
 
 import os

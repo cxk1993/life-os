@@ -31,7 +31,7 @@ def _run_sync_job() -> None:
     global _last_run
     import time
 
-    from core.deps import db_session  # ★ 令7 §2：非 Depends 场景必须 db_session
+    from core.deps import db_session  # ★ 非 Depends 场景必须 db_session
 
     from .beecount_sync import sync_snapshot
 

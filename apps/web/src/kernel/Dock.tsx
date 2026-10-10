@@ -7,7 +7,7 @@ import { useDesktopStore } from "./store";
  *
  * ★ 主人 ⑤/⑫（2026-09-25）：**合并入口** —— 底端栏不再每个模块一个按钮：
  *   被合并的模块（见 DOCK_MERGE）不单独出按钮，统一由**容器模块**承载
- *   （点容器 → 窗口内多页/页签展示，这正是主人要的「一个按钮打开，窗口内分页」）。
+ *（点容器 → 窗口内多页/页签展示，这正是主人要的「一个按钮打开，窗口内分页」）。
  *   **fail-safe**：容器模块不存在或未启用时，**保留原按钮**（绝不因合并丢入口）。
  */
 
@@ -36,20 +36,20 @@ const DOCK_MERGE: Record<string, string> = {
   // ⑪ 人格 / 健康 → 成长罗盘
   persona: "growth",
   health: "growth",
-  // ★ 主人 2026-09-25 令「todo（待办）也该与日程表合并」· 总监令 10 §2：
+  // ★ 主人 2026-09-25 令「todo（待办）也该与日程表合并」· 
   //   日程表 / 待办 → schedule 容器（两页合一）。Dock 显隐唯一杠杆=DOCK_MERGE
-  //   （坑谱 #15：manifest.slots 不产生隐藏效果，MiMo 4c8aace 前车之鉴）。
+  //（坑谱 #15：manifest.slots 不产生隐藏效果，MiMo 4c8aace 前车之鉴）。
   calendar: "schedule",
   todo: "schedule",
   // ★ 主人 2026-09-27 令「日程待办里加一个分页课程表」：
   //   course（课程表）作为 schedule 容器的**第 4 页**（[日程表][待办][学业][课程表]）。
   //   必须在 DOCK_MERGE 收口 —— Dock 渲染遍历 store 全部模块、**从不读 manifest.slots**
-  //   （坑谱 #15）。fail-safe：schedule 未启用时自动保留 course 原按钮。
+  //（坑谱 #15）。fail-safe：schedule 未启用时自动保留 course 原按钮。
   course: "schedule",
   // ★ 主人 2026-09-26 令「替换了吧，宁缺毋滥」：
   //   ai-chat（AI 对话）已由 pi-agent 接管 —— **必须在 DOCK_MERGE 收口**，
   //   因为 Dock 渲染遍历 store 全部模块、**从不读 manifest.slots**
-  //   （坑谱 #15：摘 desktop.dock 槽永远无效）。fail-safe：pi-agent 未启用时自动保留原按钮。
+  //（坑谱 #15：摘 desktop.dock 槽永远无效）。fail-safe：pi-agent 未启用时自动保留原按钮。
   "ai-chat": "pi-agent",
   // ★ 主人 2026-09-26 追加令「AI 编排也收，并进 pi-agent 当一个 tab」：
   //   agents（AI 编排）归口到 pi-agent —— 底端栏 AI 类入口**收敛为一个**，

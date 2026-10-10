@@ -1,12 +1,12 @@
 /**
- * ★ 学业专页（astrbot 2026-09-26 · 主人令「学业页」）
+ * ★ 学业专页（astrbot 2026-09-26 · 主人「学业页」）
  *
  * 需求：大学的课多且杂，每节课有自己的作业与 deadline，与日常待办混在一起很乱
  *       → 分一个**专门的学业页**：**作业清单，按 deadline 排序，最急的在最上**。
  *
  * 设计：
  *   - 数据源：`todoApi.list({ status: "todo", tag: "学业" })` —— 复用**后端层级标签**
- *     （tag=学业 命中 `学业` 与 `学业/高数`、`学业/大物` …，见 todo/service.py tag_hit）；
+ *（tag=学业 命中 `学业` 与 `学业/高数`、`学业/大物` …，见 todo/service.py tag_hit）；
  *   - 排序：`due_at` 升序（最急最上）；无 due_at 的置底；
  *   - 分组：**进行中**（有 deadline）/ **未排期**（无 deadline）/ **已完成**（折叠）；
  *   - 课程标签：取标签里 `学业/xxx` 的第二段显示为课程徽标（如「高数」）。
@@ -68,7 +68,7 @@ export default function StudyApp() {
     const u: TodoItem[] = [];
     const d: TodoItem[] = [];
     const a: TodoItem[] = [];
-    // ★ 2026-10-02（主人令）：已完成满 N 天的摘到「归档」，**不再出现在这里**。
+    // ★ 2026-10-02（主人）：已完成满 N 天的摘到「归档」，**不再出现在这里**。
     //   判据同后端（见 todo/archive.ts 的说明）—— 否则展开已完成还是老样子。
     for (const it of all) {
       if (!it.done) {
@@ -141,7 +141,7 @@ export default function StudyApp() {
           {done.map(renderRow)}
         </details>
       )}
-      {/* ★ 2026-10-02（主人令）：第三栏「归档」—— 打勾满 N 天的已完成项。
+      {/* ★ 2026-10-02（主人）：第三栏「归档」—— 打勾满 N 天的已完成项。
           与「已完成」严格互斥（归档的不在这里，这里的没归档），
           故两处的条数不会重复计算。 */}
       {archived.length > 0 && (

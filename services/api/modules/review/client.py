@@ -57,7 +57,7 @@ class BridgeOfflineError(ReviewUpstreamError):
 
 def _env(name: str, default: str = "") -> str:
     # 走 core.config.read_setting：os.environ 优先，缺失时回退项目根 .env
-    # （pydantic-settings 不会把 .env 注入 os.environ，见 finance 模块同款修复）
+    #（pydantic-settings 不会把 .env 注入 os.environ，见 finance 模块同款修复）
     val = read_setting(name, default)
     return val.strip() if isinstance(val, str) else ""
 
@@ -293,7 +293,7 @@ class ReviewClient:
         json_body: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> Any:
-        """经本机桥转发到 Work-Review（astrbot 下场 · 主人令「修数据链路」）。
+        """经本机桥转发到 Work-Review（astrbot 下场 · 主人「修数据链路」）。
 
         ★ 桥侧 `/bridge/work-review/*` 会把请求转发到主人本机的 Work-Review；
           签名算法与 bridge.protocol 逐字节一致（HMAC-SHA256）。
@@ -351,7 +351,7 @@ class ReviewClient:
             raise ReviewUpstreamError("mock 模式不应发起真实 HTTP", status=500)
         self.require_token_for_api()
         if self.bridge:
-            # ★ 走桥（astrbot 下场 · 主人令「修数据链路」）：
+            # ★ 走桥（astrbot 下场 · 主人「修数据链路」）：
             #   Work-Review 在主人本机，服务器经桥（frp）转发 —— 这是"点了没数据"的正解。
             resp = self._request_via_bridge(method, path, json_body=json_body, params=params)
         else:
@@ -387,7 +387,7 @@ class ReviewClient:
         return data
 
     def list_report_dates(self) -> list[str]:
-        """★ 列出 Work-Review 上有日报的全部日期（astrbot 下场 · 主人令「同步历史所有日报」）。
+        """★ 列出 Work-Review 上有日报的全部日期（astrbot 下场 · 主人「同步历史所有日报」）。
 
         上游：GET /v1/reports（不带日期）→ {"dates": ["2026-09-24", ...]}
         mock 模式返回内置日期集。

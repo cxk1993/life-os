@@ -50,8 +50,8 @@ def _table_prefix(plugin_id: str) -> str:
     return plugin_id.replace("-", "_")
 
 
-# 与 contracts/plugin.schema.json 的 required 清单保持一致（TX-AST-01）。
-# 注意：勿猜 TX-ACT-01 的 activates_on 等未入 schema 的新字段，候合入后再补。
+# 与 contracts/plugin.schema.json 的 required 清单保持一致。
+# 注意：勿猜 的 activates_on 等未入 schema 的新字段，候合入后再补。
 _REQUIRED_MANIFEST_FIELDS: tuple[str, ...] = (
     "id",
     "name",
@@ -67,7 +67,7 @@ _REQUIRED_MANIFEST_FIELDS: tuple[str, ...] = (
     "permissions",
 )
 
-# 常用权限值提示（TX-PERM-01 声明式权限，A 路径回退数组格式 list[str]）。
+# 常用权限值提示（声明式权限，A 路径回退数组格式 list[str]）。
 # 生成骨架默认空数组（显式授权），开发者在 README/注释指引下按需补。
 _PERMISSION_HINTS = "\n".join(
     [
@@ -352,7 +352,7 @@ def create(
     cls = "".join(part.capitalize() for part in re.split(r"[-_]", plugin_id)) + "Item"
     fmt = {"plugin_id": plugin_id, "name": name, "kind": kind, "prefix": prefix, "cls": cls}
 
-    # ── manifest：生成后自检（TX-AST-01：必填字段校验，错误精确到字段）──
+    # ── manifest：生成后自检（必填字段校验，错误精确到字段）──
     manifest = _manifest(plugin_id, name, kind)
     errs = _validate_manifest(manifest)
     if errs:
@@ -394,7 +394,7 @@ def create(
 
     print(f"✅ 已生成插件骨架：{target}")
     if with_example:
-        print("   （含跨插件调用示例，requires 记得声明目标能力）")
+        print("（含跨插件调用示例，requires 记得声明目标能力）")
     if kind != "third-party":
         print(f"   前端入口：{_BUILTIN_WEB_DIR / plugin_id / 'index.tsx'}")
     print()

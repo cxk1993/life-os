@@ -1,6 +1,6 @@
-"""TX-TODO-REMIND-01 · 待办到期提醒调度（复用 calendar 三段式范式，workbuddy 2026-09-25）。
+"""· 待办到期提醒调度（复用 calendar 三段式范式，workbuddy 2026-09-25）。
 
-★ 主人令「做」：待办此前**从未接入推送**（`grep scheduler|push` 在 todo 模块 0 命中）。
+★ 主人「做」：待办此前**从未接入推送**（`grep scheduler|push` 在 todo 模块 0 命中）。
 
 链路（与 calendar 完全同构，ADR-0002 不跨模块 import 插件本体）：
     due_scheduler 扫到期
@@ -12,7 +12,7 @@
 - **env 开关**：`TODO_REMIND_ENABLED=true` 才起（与 calendar 同款纪律，默认关）。
   ★ 2026-09-26 修：三个开关改走 `read_setting`（原先裸 os.environ **读不到 .env** → 恒关）。
 - **轮询**：默认 60s（env `TODO_REMIND_POLL_SECONDS`）。
-- **提前量**：`TODO_REMIND_LEAD_MINUTES`（默认 30）—— 到期前 30 分钟即提醒（主人令）。
+- **提前量**：`TODO_REMIND_LEAD_MINUTES`（默认 30）—— 到期前 30 分钟即提醒（主人）。
 - **窗口**：只提醒 **最近 DUE_WINDOW_SECONDS（默认 300s）内到期**的待办 ——
   这样**重启后不会补发一堆历史提醒**（内存幂等集合丢失也无害，天然规避重复）。
 - **幂等**：进程内 `_notified` 集合（配合窗口 = 不会重复、不会轰炸）。
@@ -37,7 +37,7 @@ EVENT_DUE = "todo.item.due"
 DEFAULT_POLL_SECONDS = 60
 DEFAULT_DUE_WINDOW_SECONDS = 300  # 只看 5 分钟内到期的（防重启补发历史）
 DEFAULT_LEAD_MINUTES = 30  # ★ 2026-09-26：提前 30 分钟提醒（0 = 只在到期时提醒）
-# ★ 2026-09-26（astrbot · 主人令「学业页」）：**学业类待办用独立提前量**。
+# ★ 2026-09-26（astrbot · 主人「学业页」）：**学业类待办用独立提前量**。
 #   学业作业 deadline 通常需要提前一天准备，而日常待办提前 30 分钟足矣 ——
 #   若统一改大，日常会被提前一天"吵醒"（故分开）。
 DEFAULT_STUDY_LEAD_MINUTES = 1440  # 24 小时
@@ -47,7 +47,7 @@ _lock_state: dict[str, Any] = {"scheduler": None}
 _notified: set[str] = set()
 
 
-# ★ 2026-09-26 修（astrbot · 主人令「全修」）：
+# ★ 2026-09-26 修（astrbot · 主人「全修」）：
 #   原先三个开关都读裸 `os.environ` —— 而项目的约定是 `read_setting`（os.environ 优先，
 #   缺失时回退解析项目根 .env）。生产把开关写在 .env 里，裸 os.environ **读不到** →
 #   待办提醒恒为关闭。本处统一改为 read_setting（与 calendar/reminder_scheduler 同款）。
@@ -146,7 +146,7 @@ def run_due_tick(db: Session) -> int:
     sent = 0
     for item in due:
         try:
-            # ★ 2026-09-26 修（astrbot · 主人令「全修」）：
+            # ★ 2026-09-26 修（astrbot · 主人「全修」）：
             #   原写法把 {"topic":…,"payload":…} 整个 dict 当作 topic 传入 ——
             #   而 EventBus.publish 的签名是 publish(topic, payload, source)，
             #   于是抛 TypeError("missing 1 required positional argument: 'payload'")，
@@ -184,7 +184,7 @@ def start_scheduler() -> bool:
     )
 
     def _job() -> None:
-        # ★ 根因 D/令 7 纪律：非 Depends 场景必须用 db_session()（get_db 是生成器依赖）
+        # ★ 根因/纪律：非 Depends 场景必须用 db_session()（get_db 是生成器依赖）
         from core.deps import db_session
 
         try:

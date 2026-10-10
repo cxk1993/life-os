@@ -1,5 +1,5 @@
 /**
- * ★ TX-FRAME-01 第⑤刀 · Pi 智能体对话窗 UI 测试。
+ * ★ Pi 智能体对话窗 UI 测试。
  *
  * 覆盖：初始态 / 流式逐字 / 降级提示 / 会话锁定 / 空输入禁用 / 停止。
  * ★ 流式走 `fetch` + `ReadableStream`（原生 EventSource 不能带 header），
@@ -41,7 +41,7 @@ function sseResponse(events: Array<{ event: string; data: unknown }>): Response 
 const STATUS_L1 = { level: "L1", level_text: "AI 工具能力可用", model: "life-os:high", pool: {} };
 const STATUS_L3 = { level: "L3", level_text: "AI 工具能力暂不可用（pi 熔断）", pool: {} };
 
-describe("★ TX-FRAME-01 第⑤刀 · PiAgentApp", () => {
+describe("★ PiAgentApp", () => {
   beforeEach(() => {
     vi.mocked(api.get).mockReset();
     vi.mocked(api.post).mockReset();

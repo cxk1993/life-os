@@ -1,4 +1,4 @@
-"""TX-EXPORT-01 · 搬家包导出（V1：manifest+checksum，密钥绝不落包）。"""
+"""· 搬家包导出（V1：manifest+checksum，密钥绝不落包）。"""
 from __future__ import annotations
 
 import hashlib
@@ -55,7 +55,7 @@ def summarize_payload(files: dict[str, str]) -> dict[str, Any]:
 
 
 def package_preview(profile: str, db_summary: dict[str, Any]) -> dict[str, Any]:
-    """只读预览包结构（不写盘）；真正 zip 落盘候派单。"""
+    """只读预览包结构（不写盘）；真正 zip 落盘候。"""
     if profile not in PROFILES:
         raise KeyError(profile)
     files: dict[str, str] = {

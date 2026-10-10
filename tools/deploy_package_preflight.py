@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""TX-TOOL-01 · 部署包完整性预检（M1 纯本地比对）。
+"""· 部署包完整性预检（M1 纯本地比对）。
 
 只读比对「变更文件清单」与「path→MD5 表」，输出缺口/不一致报告。
 不修改任何文件、不访问网络、不碰生产。
@@ -129,7 +129,7 @@ def render_report(
     ok: list[str],
 ) -> str:
     lines = [
-        "TX-TOOL-01 deploy package preflight (M1 local)",
+        "deploy package preflight (M1 local)",
         f"base={base}",
         f"listed={len(files)} ok={len(ok)} missing={len(missing)} md5_mismatch={len(mismatch)}",
         f"exit={code}  (0=green 1=missing 2=md5_mismatch)",
@@ -206,7 +206,7 @@ def _self_test() -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="deploy_package_preflight",
-        description="TX-TOOL-01 M1: local deploy package preflight (read-only).",
+        description="M1: local deploy package preflight (read-only).",
     )
     ap.add_argument("--files", help="change file list (.txt one path/line or .json array)")
     ap.add_argument("--hashes", help="path->md5 json table")

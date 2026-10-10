@@ -70,7 +70,7 @@ describe("TodoApp 冒烟", () => {
     expect(screen.getByText("今日")).toBeTruthy();
     expect(screen.getByText("全部")).toBeTruthy();
     expect(screen.getByText("周期")).toBeTruthy();
-    // ★ 2026-10-02（主人令）：第三栏「归档」
+    // ★ 2026-10-02（主人）：第三栏「归档」
     expect(screen.getByText(/^归档 \d+天$/)).toBeTruthy();
     expect(screen.getByLabelText("快速添加待办")).toBeTruthy();
   });
@@ -123,7 +123,7 @@ describe("ItemRow", () => {
     expect(screen.getByText(/9-20/)).toBeTruthy();
   });
 
-  it("★ 已完成的条目**必须显示打钩日期**（主人令：打钩日期要能看见）", () => {
+  it("★ 已完成的条目**必须显示打钩日期**（主人：打钩日期要能看见）", () => {
     // 主人原话：「我发现打钩日期不会在待办里面显示，所以我就开始担心了一下。」
     // 她看不到打钩日期，就无从验证「满 7 天归档」到底在不在工作 —— 本用例钉住它可见。
     const done = {

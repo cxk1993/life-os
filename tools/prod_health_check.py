@@ -10,7 +10,7 @@
     · F3 订阅源头收窄（垃圾 endpoint 被白名单拒）
     · PWA 三件套（manifest mime / SW / 图标）+ 断网壳前提
     · 线上包内容核验（文案是否真进 JS 包）+ 首屏 gzip（X01 契约 < 250KB）
-    · 旧 IP:18080 停用（主人令「IP 直连设为失效」）
+    · 旧 IP:18080 停用（主人「IP 直连设为失效」）
 
 用法：
     python tools/prod_health_check.py                     # 默认查生产
@@ -130,7 +130,7 @@ def main() -> int:
         gz_kb = len(gzip.compress(js)) / 1024
         ok(f"首屏 gzip < {GZIP_BUDGET_KB}KB（X01）", gz_kb < GZIP_BUDGET_KB, f"{gz_kb:.1f} KB")
 
-    # ── ⑦ 旧 IP 直连应已停用（主人令）───────────────────────
+    # ── ⑦ 旧 IP 直连应已停用（主人）───────────────────────
     # ★ 实测校准（2026-09-23）：18080 的现状是 **HTTP 502**（nginx 仍在监听、upstream 已摘），
     #   并非"连接失败"—— 两者都表示"直连不可用"，故判据取「连接失败 或 5xx」。
     st, _, _ = fetch(LEGACY_IP, timeout=8)

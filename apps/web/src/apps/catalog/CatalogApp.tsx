@@ -10,7 +10,7 @@ import {
 } from "./api";
 import "./catalog.css";
 
-// ★ 令29：能力目录窗口内部分页（主人需求「滚动框太挤，做窗口内部分页」）
+// ★ 能力目录窗口内部分页（主人需求「滚动框太挤，做窗口内部分页」）
 //   固定五个页签：插件 → 内核 → 网页 → 手动 → MCP；空源页签保留并显空态（不隐藏）。
 type TabId = "plugin" | "kernel" | "web_entry" | "manual" | "mcp";
 
@@ -47,7 +47,7 @@ export default function CatalogApp() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
-  // ★ 令29：默认落在「插件能力」页签；增量①：改由 localStorage 记住上次页签
+  // ★ 默认落在「插件能力」页签；增量①：改由 localStorage 记住上次页签
   const [activeTab, setActiveTabState] = useState<TabId>(initialTab);
 
   // ★ 增量①：切页签即写入 localStorage（下次打开记住）
@@ -229,7 +229,7 @@ export default function CatalogApp() {
         </button>
       </div>
 
-      {/* ★ 令29：来源页签（计数做进 label，替代原顶部汇总行） */}
+      {/* ★ 来源页签（计数做进 label，替代原顶部汇总行） */}
       <div className="catalog-tabs">
         <Tabs tabs={tabs} active={activeTab} onChange={(id) => setActiveTab(id as TabId)} />
       </div>
@@ -341,7 +341,7 @@ function EntryRow({
   );
 }
 
-// ─────────── ★ E2 权限徽标（令19 三裁 / 令21 路B：granted 数据源，纯前端） ───────────
+// ─────────── ★ E2 权限徽标（三裁 / 路B：granted 数据源，纯前端） ───────────
 
 interface NormBadge {
   key: string;

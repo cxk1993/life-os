@@ -1,9 +1,9 @@
 """L2 判据 · MCP 工具 path 全量审计（ISSUE-008 验收判据包本体）。
 
-判据（总监令27 §3 / 令28 §3，2026-09-20 口径 26→25：habits.log.write 按
+判据（/ 2026-09-20 口径 26→25：habits.log.write 按
 T18「宁可少暴露不可错转发」删除 provides）：
     全部 MCP 工具的推导 path（registry_adapter.py 规则）与各模块真实路由逐一对表，
-    差集必须为 0；tools/call 抽测属生产调用级（需 PAT 派单，另行执行）。
+    差集必须为 0；tools/call 抽测属生产调用级（需 PAT，另行执行）。
 
 规则复刻自 modules/mcp/registry_adapter.py 的 derive_tool（唯一判据载体）：
     tool name = provides.replace('.', '_')
@@ -17,7 +17,7 @@ T18「宁可少暴露不可错转发」删除 provides）：
     python tools/accept_probe/mcp_path_audit.py            # 对表+判定（path+名集合双闸门）
     python tools/accept_probe/mcp_path_audit.py --verbose   # 附每条工具明细
     python tools/accept_probe/mcp_path_audit.py --base <repo>  # 指定仓库根（负例测试沙栏用，
-                                                              #  默认本脚本所在仓库；令40 事故教训）
+                                                              #  默认本脚本所在仓库；事故教训）
 
 退出码：0=全对表（修复后应为 0）；1=存在差集（修复前应为 1，列出故障工具）。
 """
@@ -43,7 +43,7 @@ _METHOD_BY_VERB = {
     "write": "POST", "create": "POST", "update": "PUT", "delete": "DELETE", "remove": "DELETE",
 }
 # ★ 多行装饰器兼容：@router.post(\n    "/entries", ...) 是项目既有写法
-#   （finance/router.py:84），\s* 覆盖「( 后换行缩进再到路径字面量」。
+#（finance/router.py:84），\s* 覆盖「( 后换行缩进再到路径字面量」。
 _ROUTE_RE = re.compile(r'@router\.(get|post|put|patch|delete)\(\s*"([^"]+)"')
 
 
@@ -78,7 +78,7 @@ def derive(provides: str, api_base: str,
     name = "_".join(parts)
     # ISSUE-008 方案 A（2026-09-20）：与 registry_adapter.derive_tool 字面同步——
     # manifest api.tools 显式声明优先，未声明 resource 走机械「resource+s」推导。
-    # route 值兼容两种形态（总监令 35 §3）：相对 router 段（拼 api.base，规范）
+    # route 值兼容两种形态：相对 router 段（拼 api.base，规范）
     # 与完整路径（已含 api.base，原样采用）。
     explicit = (tool_routes or {}).get(resource)
     base = api_base.rstrip("/")
@@ -140,7 +140,7 @@ def main() -> int:
         print(f"  {mark} {t['tool']:<28} {t['method']:<6} {t['derived_path']}"
               + ("" if t["route_hit"] else "   ← 真实路由无此 method+path"))
 
-    # ── 名集合契约对表（总监令40 头号派单：名级 tools/list 对表闸门）──
+    # ── 名集合契约对表（头号：名级 tools/list 对表闸门）──
     # 期望名清单（expected.json mcp_tools.names，人审写死）vs 代码派生名集合：
     # 缺=有人删了 provides/声明；多=有人加了工具——都要红，逼一次契约回帖（禁静默增删）。
     name_bad: list[str] = []

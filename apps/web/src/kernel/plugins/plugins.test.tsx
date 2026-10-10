@@ -184,7 +184,7 @@ describe("前端插件框架（T14）", () => {
     expect(fakeClient.get).toHaveBeenCalledWith("/api/v1/plugins");
   });
 
-  // ── ISSUE-012 防御（令55 ③）──
+  // ── ISSUE-012 防御──
   // 后端 list_plugins() 曾漏掉 manifest 字段：前端必须「缺 manifest 不崩」，
   // 且不能把贡献注册整体打断（历史上会让 E5 sidecar / D1 卡片全部挂不上）。
 

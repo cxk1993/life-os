@@ -183,7 +183,7 @@ def dispatch_task(
 ) -> dict[str, Any]:
     """派发任务块。
 
-    ★ 2026-09-25 TX-FRAME-01 第⑥刀：
+    ★ 2026-09-25 
       - `mode="pi"` → **真执行**：经 `pi.chat.write` 能力调内嵌 Pi（任务块独立会话），
         结果写回 `task.result` 并推进状态机；
       - 其余模式（webhook/poll/mcp）**保持原语义**（只记账 + 推进状态机，不调外网）。

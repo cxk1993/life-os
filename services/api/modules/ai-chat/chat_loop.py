@@ -1,4 +1,4 @@
-"""TX-AI-CHAT-01 · 内置 AI 对话窗后端骨架（tool_call 循环）。
+"""· 内置 AI 对话窗后端骨架（tool_call 循环）。
 
 安全：token 不进日志全文；工具白名单；max_hops 防环。
 LLM 网关可插拔（默认 stub，接 model-gateway 另配）。
@@ -13,7 +13,7 @@ from typing import Any
 # ★ 2026-09-26 与 tools.py 实现严格对齐（hermes 接线）：
 #   只放行**有实现且只读**的四个工具。写工具（todo_item_write/calendar_event_write）
 #   暂不进对话窗——「查东西」是 V1 场景，误写代价不对称；notes_search 依赖本机桥
-#   （V1 不配）。删掉无实现的条目 = 第二道闸：LLM 即使幻觉出写调用也被 denied 挡下。
+#（V1 不配）。删掉无实现的条目 = 第二道闸：LLM 即使幻觉出写调用也被 denied 挡下。
 ALLOWED_TOOLS: set[str] = {
     "calendar_event_read",
     "todo_item_read",

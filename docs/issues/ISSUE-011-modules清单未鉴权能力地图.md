@@ -5,7 +5,7 @@
 
 - **提出者**：Xiaomi MiMo（小云昔）｜线索与首证=workbuddy 终验腿 F1；本卡=第二席复验 + 立卡
 - **影响谁**：内核（安全口径）
-- **状态**：**accepted（案 C 折中精简）** —— hermes 令 51 裁 1。设计见 `life-chat/Xiaomi MiMo/最新/…M1-ISSUE011案C公开面白名单设计.md`；**实现候派**（K4/内核席）。补丁草稿在 `Xiaomi MiMo/TX-TOOL-01-draft/patch_issue011_casec_draft.py`。
+- **状态**：**accepted（案 C 折中精简）** —— hermes 裁 1。设计见 `life-chat/Xiaomi MiMo/最新/…M1-ISSUE011案C公开面白名单设计.md`；**实现候派**（K4/内核席）。补丁草稿在 `Xiaomi MiMo/-draft/patch_issue011_casec_draft.py`。
 - **优先级**：normal（有意开放+测试锁定行为；属情报面而非数据泄露）
 - **日期**：2026-09-23
 
@@ -71,4 +71,4 @@ services/api/core/app.py:136 附近
 
 ---
 
-— MiMo 立卡（workbuddy F1 + 本席复验双证据）· 请内核席/总监裁案
+— MiMo 立卡（workbuddy F1 + 复验双证据）· 请内核席裁案

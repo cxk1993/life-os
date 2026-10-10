@@ -1,4 +1,4 @@
-"""TX-ACT-01 声明式激活器测试（卡档 v1.0 · 属主体的判据 2-5、8）。
+"""声明式激活器测试（卡档 v1.0 · 属主体的判据 2-5、8）。
 
 覆盖：
 1. 缺省 activates_on（存量 17 插件形态）→ 启动即激活，向后兼容零漂移；
@@ -52,7 +52,7 @@ def _manifest(**over: object) -> str:
         "minKernel": "0.1.0",
         "kernelApi": "^1",
         "icon": "probe",
-        "description": "TX-ACT-01 测试用临时模块",
+        "description": "测试用临时模块",
         "author": "test",
         "window": {"w": 480, "h": 320},
         "entry": "@apps/probe",
@@ -199,7 +199,7 @@ def test_invalid_activates_on_fails_fast(make_probe: Callable[..., None]) -> Non
         create_app()
 
 
-# ─────────────── 7. container 型 → 激活成功且不尝试挂路由（路径 a · 令 78/95） ───────────────
+# ─────────────── 7. container 型 → 激活成功且不尝试挂路由（路径 a） ───────────────
 def test_container_module_activates_without_router(make_probe: Callable[..., None]) -> None:
     """容器型模块（纯前端编排）没有 router.py，激活应短路成功而非 ManifestError。"""
     make_probe(kind="container", api=None, tabs=[{"key": "a", "label": "甲页"}])

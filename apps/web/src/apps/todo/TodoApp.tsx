@@ -17,7 +17,7 @@ const TABS: { id: TodoView; label: string }[] = [
   { id: "today", label: "今日" },
   { id: "all", label: "全部" },
   { id: "recurring", label: "周期" },
-  // ★ 2026-10-02（主人令）：第三栏「归档」—— 已完成满 N 天自动收进来。
+  // ★ 2026-10-02（主人）：第三栏「归档」—— 已完成满 N 天自动收进来。
   //   标签文案带上天数，让主人一眼知道归档规则，不必去翻设置。
   { id: "archived", label: `归档 ${ARCHIVE_AFTER_DAYS}天` },
 ];
@@ -33,15 +33,15 @@ export default function TodoApp() {
   const qc = useQueryClient();
   const view = useTodoUI((s) => s.view);
   const setView = useTodoUI((s) => s.setView);
-  // ★ 2026-09-26（astrbot · 主人令「学业页」）：**快捷筛选器**（轻入口）——
+  // ★ 2026-09-26（astrbot · 主人「学业页」）：**快捷筛选器**（轻入口）——
   //   与 schedule 容器的「学业」专页（重入口）形成一轻一重双入口，不重复。
   const filterTag = useTodoUI((s) => s.filterTag);
   const setFilterTag = useTodoUI((s) => s.setFilterTag);
   const studyOnly = filterTag === STUDY_TAG;
 
-  // ★ 2026-09-28（主人令「通过 tag 的筛选，动态的一键查看与分类」）：
+  // ★ 2026-09-28（主人「通过 tag 的筛选，动态的一键查看与分类」）：
   //   标签条由**硬编码**改为**数据驱动** —— 数据源 = GET /api/v1/todo/tags
-  //   （同一端点也是 AI 的 MCP 工具 todo_tag_read：**一份数据喂两边**）
+  //（同一端点也是 AI 的 MCP 工具 todo_tag_read：**一份数据喂两边**）
   const { data: tagCounts } = useQuery({
     queryKey: [TODO_KEY_ROOT, "tags"],
     queryFn: () => todoApi.tags(),

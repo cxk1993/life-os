@@ -120,7 +120,7 @@ cd services/api && python3 -m pytest ../../plugins/countdown/tests -q     # 20 p
 3. **`get_plugin_client` 不是 FastAPI 依赖。** 它签名是 `(request, target_capabilities)`，第二参数无默认值，
    写成 `Depends(get_plugin_client)` 会让 GET 端点 **422 body Field required**。正确写法见 `router.py` 的
    `/example-cross-plugin`（函数直调 + target 必须 ⊆ `manifest.requires`）。
-   ——**`create_plugin.py --with-example` 生成的示例就是这个错写法**，属本插件的账，已在交接区报备。
+   ——**`create_plugin.py --with-example` 生成的示例就是这个错写法**，属本插件的账，已在报备。
 4. **`optionalDependencies` 目前写进 manifest 会导致装不上**（见 §3-③）。
 5. **Tutorial 里两处与实现不符**：①「必须在 `services/api/` 下执行否则生成到 `scripts/`」——路径全部由
    `__file__` 推导（`create_plugin.py:41-43`），与 cwd 无关，且第三方落点是 `plugins/<id>/`；

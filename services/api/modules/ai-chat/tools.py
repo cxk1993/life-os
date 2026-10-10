@@ -1,4 +1,4 @@
-"""TX-AI-CHAT-01 · E7 工具桥：MCP 白名单工具 → 内部 API（声明即授权）。
+"""· E7 工具桥：MCP 白名单工具 → 内部 API（声明即授权）。
 
 ★ 2026-09-26 hermes 接线（生产实测根因驱动）：
   tools 此前恒为 []（gateway.complete(..., []) 与 loop(..., {})），

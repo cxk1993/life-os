@@ -249,7 +249,7 @@ class DocsService:
         event_bus.publish("docs.node.updated", _dump_detail(node, content), source="docs")
         return _dump_detail(node, content)
 
-    # ───────── 按路径写正文（2026-09-27 · 主人令「补 docs.content.write」）─────────
+    # ───────── 按路径写正文（2026-09-27 · 主人「补 docs.content.write」）─────────
     def _find_child(self, parent_id: str | None, name: str) -> DocsNode | None:
         """同层找同名**未删**节点；多个取第一个（按 sort, created_at）。"""
         stmt = (
@@ -359,7 +359,7 @@ class DocsService:
         if not terms:
             raise ValidationError("q 无效")
         # ★ trigram 要求每个词 ≥3 字符；对 1-2 字符的词退化为 LIKE 匹配（标题/正文）
-        #   （bigram 在标准 SQLite 不可用，见迁移 0002 说明）
+        #（bigram 在标准 SQLite 不可用，见迁移 0002 说明）
         short = [t for t in terms if len(t) < 3]
         long = [t for t in terms if len(t) >= 3]
         hit_ids: set[str] = set()

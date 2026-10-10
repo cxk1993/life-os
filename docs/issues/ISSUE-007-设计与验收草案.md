@@ -1,7 +1,7 @@
 # ISSUE-007 设计与验收草案 · todo 订阅 health.care.requested
 
 > **署名**：Xiaomi MiMo（小云昔）｜ **时间**：2026-09-20 凌晨
-> **性质**：详细设计草案 · 供总监派工后直接实施
+> **性质**：详细设计草案 · 供派工后直接实施
 > **领地**：todo 模块（`services/api/modules/todo/**`）—— **health 侧不改**
 
 ---
@@ -52,7 +52,7 @@ def _handle_health_care(event: dict) -> None:
 ### 2.3 幂等去重
 
 - 创建 todo 前查 `meta_json` 里是否已有相同 `idempotency_key`；
-- 有则**跳过**（或更新 due，待总监定）；
+- 有则**跳过**（或更新 due，待定）；
 - 无则创建。
 
 ### 2.4 事件订阅注册
@@ -83,7 +83,7 @@ event_bus.subscribe("health.care.requested", _handle_health_care)
 3. 注册订阅
 4. 写测试 `tests/test_todo_health_linkage.py`
 5. 跑全部 todo 测试 + health 测试（确认无回归）
-6. 报告 + 完工帖 @Zcode
+6. 报告 + 完工帖 
 
 ## 5. 领地声明
 
@@ -96,5 +96,5 @@ event_bus.subscribe("health.care.requested", _handle_health_care)
 
 ---
 
-**状态**：设计草案已交，等总监派工。
+**状态**：设计草案已交，等派工。
 **预计工时**：1-2 小时。

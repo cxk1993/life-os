@@ -96,7 +96,7 @@ def today_summary(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict:
-    """U2 规范 v1（令 62 · MiMo）：{title, items:[{text,state}], link}。
+    """U2 规范 v1（MiMo）：{title, items:[{text,state}], link}。
 
     空结果返回空 items，不抛错；形状对齐 workbuddy 《today-summary 数据源规范 v1》。
     """
@@ -186,7 +186,7 @@ def ingest_all(
     db: DbDep = Depends(get_db),
     _user: UserDep = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """★ 全量同步历史日报（astrbot 下场 · 主人令「同步理应同步历史所有日报」）。
+    """★ 全量同步历史日报（astrbot 下场 · 主人「同步理应同步历史所有日报」）。
 
     对 Work-Review **只读**；幂等；返回 {total, ok, skipped, failed, errors}。
     """

@@ -1,5 +1,5 @@
 /**
- * V7 渲染栈判据 · MdView 组件级（astrbot 补 · 总监令 64「V7 判据对照样例」）
+ * V7 渲染栈判据 · MdView 组件级（astrbot 补 · 「V7 判据对照样例」）
  *
  * 为什么单独一份：NotesApp.test.tsx 的 Boyle 样例是**端到端**验收（走 NotesApp），
  * 本文件是**组件级**判据，覆盖主人 ⑤ 点名但端到端未覆盖的三处：

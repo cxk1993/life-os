@@ -2,7 +2,7 @@
 
 ★ 加载器对两者一视同仁——除了 uninstall 只对 third-party 开放（见 manager）。
 本模块负责"找到 + 校验 + 标记来源"，并提供**统一挂载入口** mount_plugin()：
-幂等检查 + 统一路由加载 + 委托 ModuleRegistry 落挂。TX-ACT-01 前置小步——
+幂等检查 + 统一路由加载 + 委托 ModuleRegistry 落挂。前置小步——
 启动全量挂载（create_app）与运行时启停（enable/install）共用同一入口，
 不再各写一份。
 
@@ -92,7 +92,7 @@ def _read_manifest(manifest_path: Path, source: str) -> tuple[dict[str, Any], Pl
     if min_kernel:
         # ★ 2026-09-25 修：minKernel 是"最低版本"语义（>=），不是 caret/精确。
         #   此前误用 satisfies() → 所有 minKernel="0.1.0" 的插件在 1.0.0 内核上
-        #   一律 degraded → 跳过激活 → 路由不挂载（TX-FRAME-01 第④刀踩到）。
+        #   一律 degraded → 跳过激活 → 路由不挂载（踩到）。
         from core.plugins.version import KERNEL_API_VERSION, meets_min_kernel
         try:
             if not meets_min_kernel(min_kernel):
@@ -188,7 +188,7 @@ def load_plugin_router(info: PluginInfo) -> Any:
 
 
 def mount_plugin(info: PluginInfo, registry: Any) -> None:
-    """统一挂载入口（TX-ACT-01 前置小步）：幂等 + 统一路由加载 + 委托挂载。
+    """统一挂载入口（前置小步）：幂等 + 统一路由加载 + 委托挂载。
 
     启动全量挂载（create_app）与运行时启停（PluginManager.enable/install）
     共用本入口。已挂载时静默返回（幂等），重复调用安全。

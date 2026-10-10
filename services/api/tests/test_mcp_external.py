@@ -1,4 +1,4 @@
-"""TX-MCP-EXT · 通用外部 MCP 源桥（网络全 mock · 零业务词）。"""
+"""· 通用外部 MCP 源桥（网络全 mock · 零业务词）。"""
 from __future__ import annotations
 
 import json

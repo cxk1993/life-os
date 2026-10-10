@@ -24,7 +24,7 @@ from core.deps import get_current_user, get_db
 from core.errors import ValidationError
 from core.security import User
 
-from . import remind_scheduler as _remind  # noqa: E402,F401  （导入即装载调度）
+from . import remind_scheduler as _remind  # noqa: E402,F401（导入即装载调度）
 from .schema import CourseCreate, CourseOut, CourseUpdate, TermSettingsIn, TermSettingsOut, WeekGridOut  # noqa: E402
 from .service import CourseService  # noqa: E402
 
@@ -122,7 +122,7 @@ def week_grid(
     return CourseService(db).week_grid(day=day, term_start=term_start)
 
 
-# ═══════ ★ 学期设置（主人令「学期起始日固定」· 存 plugin_setting）═══════
+# ═══════ ★ 学期设置（主人「学期起始日固定」· 存 plugin_setting）═══════
 @router.get("/term", response_model=TermSettingsOut)
 def get_term(
     db: DbDep = Depends(get_db),

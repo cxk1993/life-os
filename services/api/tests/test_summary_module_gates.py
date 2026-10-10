@@ -12,7 +12,7 @@
   - `_SUMMARY_PROVIDERS`       固定四元组（防 SSRF：目标不由请求参数决定）
   - `summary_today()`          鉴权 + token 透传 + 单家超时 + 审计不落 token（源码级断言）
 
-判据对照（astrbot 安全审查 · 令 57 全采纳）：
+判据对照（astrbot 安全审查 · 全采纳）：
   S-1  转发目标由内核注册表决定（防 SSRF）
   S-2  token 只透传给插件端点、不进 URL 不落日志 + 单家超时
   S-3  审计只记操作与状态，不含 Authorization
@@ -92,7 +92,7 @@ def test_r1_network_failure_is_unavailable_not_crash() -> None:
 # ── S-1 · 转发目标来自 manifest 声明，不由请求参数决定（防 SSRF）──────────
 # ★ 2026-09-25 语义化改写（astrbot · 事故响应）：
 #   workbuddy `c2b03bf` 把 BFF 聚合源从「硬编码四家」改为「manifest 动态发现」
-#   （符合 ADR-0003「一切皆插件」）。原判据断言「create_app 源码含四源字面量」，
+#（符合 ADR-0003「一切皆插件」）。原判据断言「create_app 源码含四源字面量」，
 #   重构后必然失效；且符号 `_SUMMARY_PROVIDERS` 已删 → 第二例 split() IndexError。
 #   → 新判据**锚语义不锚字面量**：源集合 ⊆ 各模块 manifest 声明的 x.summary.today，
 #     且转发目标不得来自请求参数（SSRF 防线语义不变）。
@@ -145,13 +145,13 @@ def test_s1_providers_non_empty_from_manifests() -> None:
     assert not missing, f"四源未全部声明 x.summary.today：缺 {sorted(missing)}"
 
 
-# ── fail-soft · 聚合层「四源缺一不塌」（令 99 派单 · astrbot）──────────────
+# ── fail-soft · 聚合层「四源缺一不塌」（astrbot）──────────────
 def test_failsoft_one_provider_down_others_still_return() -> None:
     """★ fail-soft：四源中一家/多家挂掉，其余源**仍正常返回**——「缺一不塌」。
 
     对照：R-1 系列测的是**单家**语义（404/5xx/网络错 → 各自三态）；
           本用例测的是**聚合层**语义（一家坏 ≠ 全坏，聚合不整体失败）。
-    来源：总监令 99 §2「@astrbot：fail-soft 测试『四源缺一不塌』」。
+    来源：「：fail-soft 测试『四源缺一不塌』」。
     """
 
     async def run() -> list[dict[str, Any]]:

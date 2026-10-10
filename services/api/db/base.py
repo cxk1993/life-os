@@ -1,7 +1,7 @@
 """声明基类与通用 Mixin（T04 · 步骤 2）。
 
 所有表统一带：id（UUID 字符串）/ created_at / updated_at。
-★ 时间口径（2026-09-28 主人令统一）：**库里存 UTC，读出转主人本地时区**。
+★ 时间口径（2026-09-28 主人统一）：**库里存 UTC，读出转主人本地时区**。
   见 `TZDateTime` 的类注释。
 
 ★ 各插件建表规矩（照抄 docs/示例/calendar_event_示例.py）：
@@ -29,7 +29,7 @@ def utcnow() -> datetime:
 
 
 class TZDateTime(TypeDecorator[datetime]):
-    """时间列：**UTC 存储 + 本地时区读出**（★ 2026-09-28 · 主人令统一口径）。
+    """时间列：**UTC 存储 + 本地时区读出**（★ 2026-09-28 · 主人统一口径）。
 
     - 写入：必须带时区；统一转成 UTC 后存储（SQLite 本身无时区概念）
     - 读出：**转成主人本地时区**（settings.tz，默认 Asia/Shanghai）再交给上层
@@ -79,7 +79,7 @@ TimestampTZ = TZDateTime
 UTCDateTime = TZDateTime
 
 
-# ★ 索引创建全局幂等（令102/103）：测试中模型被反复注册（探针/lifespan reconcile/
+# ★ 索引创建全局幂等：测试中模型被反复注册（探针/lifespan reconcile/
 # 多 fixture create_all），CREATE INDEX 二次执行撞名（ix_* already exists）。
 # SQLite/PostgreSQL 均支持 CREATE INDEX IF NOT EXISTS——编译钩子统一兜底，对生产无害。
 from sqlalchemy.ext.compiler import compiles

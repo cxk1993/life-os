@@ -10,7 +10,7 @@ function errText(e: unknown): string {
   return e instanceof Error ? e.message : "查询失败";
 }
 
-/** TX-QUERY-01 · 跨模块预置查询（只读）。 */
+/** · 跨模块预置查询（只读）。 */
 export default function QueryApp() {
   const [qid, setQid] = useState<string | null>(() => loadPrefs().lastPreset);
   const [days, setDays] = useState<number>(0);
@@ -157,7 +157,7 @@ export default function QueryApp() {
             </div>
             {(() => {
               // 结果表格化（主人 09-25「功能上不太成功」主病灶：原 key:value 平铺可读性差）。
-              // CSV 导出（MiMo 参数化后留白给本席的纯前端件）：列头并集 + RFC4180 引号转义。
+              // CSV 导出（MiMo 参数化后留白给的纯前端件）：列头并集 + RFC4180 引号转义。
               // 列头 = 各行键的并集（稳定序：首行序优先，新键追加），行 = rows。
               const cols: string[] = [];
               const seen = new Set<string>();

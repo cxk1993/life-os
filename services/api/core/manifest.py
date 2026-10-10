@@ -21,8 +21,8 @@ log = logging.getLogger("kernel.manifest")
 
 _KINDS = {"core", "builtin", "third-party", "container"}
 _ID_RE = __import__("re").compile(r"^[a-z][a-z0-9-]*$")
-# TX-ACT-01：activates_on 条目只允许 startup:always 或 event:<topic>
-# （topic 点分小写、至少两段，如 event:note.created）——与 contracts/plugin.schema.json
+# activates_on 条目只允许 startup:always 或 event:<topic>
+#（topic 点分小写、至少两段，如 event:note.created）——与 contracts/plugin.schema.json
 # 的 pattern 保持字面一致，两层校验同一语义。
 _ACTIVATES_ON_RE = __import__("re").compile(
     r"^(startup:always|event:[a-z0-9-]+(\.[a-z0-9-]+)+)$"
@@ -51,17 +51,17 @@ class Manifest(BaseModel):
     icon: str | None = None
     description: str | None = None
     author: str | None = None
-    # ★ 路径 a（总监令 78 · 2026-09-25）：容器型模块（kind="container"）允许**无 api**
+    # ★ 路径 a（2026-09-25）：容器型模块（kind="container"）允许**无 api**
     #   —— 系统窗等纯前端编排容器没有后端路由，声明式注册即"一切皆插件"的正形态。
     #   非 container 型仍强制声明 api（校验见 _validate）。向后兼容：存量模块零影响。
     api: ManifestApi | None = None
-    # ★ 路径 a（总监令 78）：容器型模块的页签声明——一次定稿，形状与 Zcode
+    # ★ 路径 a：容器型模块的页签声明——一次定稿，形状与 Zcode
     #   SystemApp（70c0702）对接面一致：{key, label, entry?}，entry=模块 id
-    #   （无 entry 页 = 「后端模块 · 仅服务」薄壳语义）。非 container 型可忽略。
+    #（无 entry 页 = 「后端模块 · 仅服务」薄壳语义）。非 container 型可忽略。
     tabs: list[dict[str, Any]] = []
     provides: list[str] = []
     requires: list[str] = []
-    # ★ TX-DEG-01（#009 软依赖声明的静态半边）：缺了**不阻塞启动**的依赖。
+    # ★（#009 软依赖声明的静态半边）：缺了**不阻塞启动**的依赖。
     #   语义：硬依赖（requires）缺 = 起不来（T14 fail-fast 不变）；
     #        软依赖（本字段）缺 = 坞位挂 degraded 角标，功能降级但不死。
     #   与 requires 必须互斥（同一条目不得两处都写 —— #033 闸门规则 ④）。
@@ -69,11 +69,11 @@ class Manifest(BaseModel):
     slots: list[str] = []
     emits: list[str] = []
     consumes: list[str] = []
-    # ★ 2026-09-25（TX-FRAME-01 修与补）：schema 的 permissions 有**两种格式** ——
+    # ★ 2026-09-25（修与补）：schema 的 permissions 有**两种格式** ——
     #   字符串数组（旧，细粒度）与对象（新，filesystem/network/subprocess 粗开关）。
     #   此前模型只声明 list[str]，**对象格式会被 pydantic 直接判非法** → 与 schema 口径打架。
     #   此处放宽为联合类型；**归一化在 core/plugins/permissions.normalize_permissions**
-    #   （唯一入口），本模型只负责"看得见、不报错"。
+    #（唯一入口），本模型只负责"看得见、不报错"。
     permissions: list[str] | dict[str, bool] = Field(default_factory=list)
     activates_on: list[str] = []
     migrations: str | None = None
@@ -130,7 +130,7 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
         raise ManifestError(
             f"模块「{m.id}」kind={m.kind!r} 必须是 {sorted(_KINDS)} 之一"
         )
-    # ★ 路径 a（总监令 78）：container 型可无 api；非 container 型必须声明 api
+    # ★ 路径 a：container 型可无 api；非 container 型必须声明 api
     if m.api is None:
         if m.kind != "container":
             raise ManifestError(
@@ -142,7 +142,7 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
             raise ManifestError(
                 f"模块「{m.id}」api.base 必须是 {expected_base!r}，实际为 {m.api.base!r}"
             )
-    # ★ 路径 a（令 78）：tabs 形状校验（一次定稿）——每项必须含 key/label，entry 可选
+    # ★ 路径 a：tabs 形状校验（一次定稿）——每项必须含 key/label，entry 可选
     for idx, tab in enumerate(m.tabs):
         if not isinstance(tab, dict):
             raise ManifestError(
@@ -193,9 +193,9 @@ def _validate(module_id: str, raw: dict[str, Any], dir_name: str) -> Manifest:
     return m
 
 
-# ── TX-DEG-01 · 依赖声明闸门（#033 四条静态规则）─────────────────────────
+# ── · 依赖声明闸门（#033 四条静态规则）─────────────────────────
 # 依据：Home Assistant hassfest「Reject manifest dependencies on core integrations」
-# （PR #169425）+ 我方显式声明线（#019→#021→#020）。**依赖声明错误必须在闸门层
+#（PR #169425）+ 我方显式声明线（#019→#021→#020）。**依赖声明错误必须在闸门层
 # 拦截，不能留给运行时** —— 等加载期撞墙时模块已经挂了一半，现场很难定位。
 #
 # ★ 语义锚点（2026-09-23 实装时被真实目录打回后校准）：`requires` /
@@ -210,7 +210,7 @@ KERNEL_RESERVED_CAPABILITY_PREFIXES: tuple[str, ...] = ("core.", "kernel.", "_ke
 
 
 def _scan_third_party_provides() -> dict[str, str]:
-    """★ 2026-09-25（TX-FRAME-01 第⑥刀）：把 `plugins/` 里第三方插件的 provides 也纳入
+    """★ 2026-09-25：把 `plugins/` 里第三方插件的 provides 也纳入
     能力映射，否则内置插件**无法声明对第三方能力的依赖**（闸门会误判"没人 provides"）。
 
     ★ 边界说明：第三方插件是**可卸载**的，所以内置插件对它的依赖**只应写软依赖**
@@ -269,7 +269,7 @@ def _gate_dependency_declarations(found: dict[str, tuple[Manifest, Path]]) -> No
                     "（内核是宿主、不对外 provides —— 反向依赖禁止）"
                 )
             # ① 依赖的能力必须真的有人 provides
-            #   ★ 2026-09-25（TX-FRAME-01 第⑥刀）：**软依赖放宽** ——
+            #   ★ 2026-09-25：**软依赖放宽** ——
             #     optionalDependencies 的语义本就是「缺了降级不死」（见 Manifest 注释），
             #     故找不到提供者时**只告警**；硬依赖仍 fail-fast。
             if cap not in provider:
@@ -306,7 +306,7 @@ def _gate_dependency_declarations(found: dict[str, tuple[Manifest, Path]]) -> No
             visit(mid, [])
 
 
-# ── TX-DEG-01 · 软依赖缺失的运行时判定（#009 的 degraded 半边）────────────
+# ── · 软依赖缺失的运行时判定（#009 的 degraded 半边）────────────
 # 硬依赖缺失 = 启动期 fail-fast（T14 语义），**运行时不会出现** —— 所以运行期只判软依赖。
 # 产出 degraded + reason_code，供 O1 四态面板消费（#009：「增加 reason_code 字段即可
 # 对齐，不动 schema 主结构」）。
@@ -372,7 +372,7 @@ def discover_modules(modules_dir: str | Path) -> list[tuple[Manifest, Path]]:
         found[m.id] = (m, sub)
         results.append((m, sub))
 
-    # ★ TX-DEG-01：全部发现后统一过「依赖声明闸门」（①实存 ②禁内核 ③环 ④软硬互斥）
+    # ★ 全部发现后统一过「依赖声明闸门」（①实存 ②禁内核 ③环 ④软硬互斥）
     _gate_dependency_declarations(found)
 
     return results

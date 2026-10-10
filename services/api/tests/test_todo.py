@@ -64,11 +64,11 @@ def _create(client, auth, **kw):
 
 
 def _today_within(hours_ahead: int = 2):
-    """★ 2026-09-25 修（TX-FRAME-01 第⑦刀顺带）：造一个**保证落在今天**的未来时刻。
+    """★ 2026-09-25 修（顺带）：造一个**保证落在今天**的未来时刻。
 
     背景（实测）：原写法 `datetime.now(TZ) + timedelta(hours=2)` 在 **22:00 之后**跑
     会落到**次日** —— 于是 today-summary 自然查不到它，测试变成
-    「每晚 22 点后必失败」的时间 flaky（本席 22:47 跑全量时撞上）。
+    「每晚 22 点后必失败」的时间 flaky（22:47 跑全量时撞上）。
 
     语义保持：仍是"今天之内的未来时刻"（若 now+hours 跨天，则钳到当天 23:59）。
     """
@@ -415,7 +415,7 @@ def test_idempotency_key(client, auth):
     assert r1.json()["id"] == r2.json()["id"]
 
 
-# ─────────── 标签汇总（2026-09-28 主人令：AI 要能一目了然地分类）───────────
+# ─────────── 标签汇总（2026-09-28 主人：AI 要能一目了然地分类）───────────
 def test_manifest_declares_tag_read(client):
     r = client.get("/api/v1/todo/manifest")
     assert r.status_code == 200
@@ -491,7 +491,7 @@ def test_tag_summary_requires_auth(client):
     assert client.get("/api/v1/todo/tags").status_code == 401
 
 
-# ═══════ ★ 2026-10-02（主人令）：MCP 来路创建待办必须带标签 ═══════
+# ═══════ ★ 2026-10-02（主人）：MCP 来路创建待办必须带标签 ═══════
 # 背景：主人要求「在 mcp 这里，创建待办的时候强制加标签，防止 AI 忘加」。
 # ★ 关键约束：**只约束 AI 来路** —— 人从网页手输（有语料的既有测试）
 #   必须一个字都不受影响（本文件其它测试全部不带 X-LifeOS-Client 头，即为护栏）。
@@ -583,7 +583,7 @@ def test_unknown_client_header_is_not_treated_as_mcp(client, auth):
     assert r.status_code == 201, r.text
 
 
-# ═══════ ★ 2026-10-02（主人令）：已完成满 7 天自动归档 ═══════
+# ═══════ ★ 2026-10-02（主人）：已完成满 7 天自动归档 ═══════
 # 主人原话：「已经做完的待办 … 打钩完成的日期过了 7 天，就可以自动归档、
 #   自动隐藏；展开已完成的那小列表就不会显示了，而是自动有一个第三栏『归档』」
 # 设计要点：归档是 **done_at 老化** 的函数，不是状态字段 —— 没有 DB 列、
@@ -593,7 +593,7 @@ def test_unknown_client_header_is_not_treated_as_mcp(client, auth):
 def _make_done(client, auth, label: str, age_days: float, tags: list[str] | None = None) -> str:
     """造一条已完成待办，并把它的 done_at 伪造成 age_days 天前。
 
-    ⚠️ 三个坑（本席都踩了，记下来）：
+    ⚠️ 三个坑（都踩了，记下来）：
 
     ① 参数别叫 `text` —— 会遮蔽 sqlmodel 的 `text()`，Pyright 当场报
        "Object of type str is not callable"。
@@ -626,7 +626,7 @@ def _make_done(client, auth, label: str, age_days: float, tags: list[str] | None
 def test_archived_only_after_seven_days(client, auth):
     """6.5 天前打勾 → 仍在「已完成」；7.5 天前打勾 → 已进「归档」。
 
-    ⚠️ 为什么是 6.5 / 7.5 而不是整数 6 / 8（本席第一版是 6/8，**双向验证时
+    ⚠️ 为什么是 6.5 / 7.5 而不是整数 6 / 8（第一版是 6/8，**双向验证时
        发现它区分不出阈值 7 还是 8**，形同虚设）：2 和 10 这类值虽然「稳」，
        但它们离阈值太远，阈值在 3~9 之间怎么改都照样通过。
        取距阈值**半天**的两个点，则：

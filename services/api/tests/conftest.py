@@ -15,7 +15,7 @@
    **修法**：每个测试模块第一次 setup 前，把引擎 **reset** 到该模块
    独占的 `tmp_iso_<模块名>_<pid>.db`。模块 fixture 里再 init_engine
    即绑定到正确库；表由各模块自己 create_all/checkfirst。
-   **不改任何测试断言**，只动隔离基础设施（总监授权）。
+   **不改任何测试断言**，只动隔离基础设施（授权）。
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 # 测试专用的临时模块名（集中登记，便于一眼看出哪些是"不是真模块"的东西）
 # i006probe：test_issue006_migrations 的带迁移探针——2026-09-20 实测其 teardown
 # 删除会被平台 safe-delete 拦截而残留（挂载数 17→18 波及后续测试），故在此登记。
-# actprobe：test_activator 的激活语义探针（TX-ACT-01，2026-09-20）。
+# actprobe：test_activator 的激活语义探针（2026-09-20）。
 LEFTOVER_PROBE_MODULES = ("t03probe", "i006probe", "actprobe")
 
 # 测试专用的第三方插件目录前缀（T14 的插件测试会往 plugins/ 下造真插件，正常由
@@ -99,7 +99,7 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
     from db.engine import init_engine, reset_engine
 
     reset_engine()
-    # ★ 2026-09-20 workbuddy（TX-ACT-01 验证中发现并修复）：
+    # ★ 2026-09-20 workbuddy（验证中发现并修复）：
     # 原来只设 DB_PATH 环境变量再无参 init_engine()。但 services/api/.env
     # 里显式写了 DB_PATH=./data/lifos.db，pydantic-settings 在组合跑现场
     # 实测取 .env 值而非 environ 值（取证：make_engine 调用瞬间 environ

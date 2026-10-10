@@ -82,7 +82,7 @@ def disable_plugin(
 ) -> dict[str, Any]:
     """停用插件（摘掉它的路由与能力面；**数据与设置都保留**）。"""
     result = MGR.disable(plugin_id, _registry(request))
-    # TX-ACT-01：禁用的插件同时清掉激活器的 pending 登记，
+    # 禁用的插件同时清掉激活器的 pending 登记，
     # 防止事件命中把已禁用插件重新挂回路由（击穿 disable 语义）。
     activator = getattr(request.app.state, "activator", None)
     if activator is not None:

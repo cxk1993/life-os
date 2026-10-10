@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, col, select
 
-from core.deps import db_session  # ★ 令7 §2：非 Depends 场景必须 db_session（get_db 已生成器化）
+from core.deps import db_session  # ★ 非 Depends 场景必须 db_session（get_db 已生成器化）
 from core.events import event_bus
 
 from .models import TodoItem, tags_to_json
@@ -88,7 +88,7 @@ def handle_care_event(event: dict[str, Any]) -> None:
     payload = event.get("payload")
     if not isinstance(payload, dict):
         return
-    # ★ 根因 D 补刀（令 7 §2）：get_db 生成器化后，非依赖场景必须 db_session()。
+    # ★ 根因补刀：get_db 生成器化后，非依赖场景必须 db_session()。
     with db_session() as db:
         try:
             create_followup_todo(db, payload)

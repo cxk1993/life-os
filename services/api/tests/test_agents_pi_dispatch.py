@@ -1,4 +1,4 @@
-"""★ TX-FRAME-01 第⑥刀 · dispatch(mode="pi") 真执行测试。
+"""★ dispatch(mode="pi") 真执行测试。
 
 数据库隔离：./data/tmp_t12_pi.db（照 test_agents.py 的口径，绝不碰主库）。
 ★ 用假 pi_client（鸭子类型）注入，不真起 pi —— 这一层只验证**编排逻辑**。
@@ -68,7 +68,7 @@ def db():
 
 
 def _wait_settled(db: Session, task_id: str, timeout: float = 10.0) -> AgentTask:
-    """★ 第⑦刀：dispatch 已异步化 —— 轮询等后台线程把任务推到终态。
+    """★ dispatch 已异步化 —— 轮询等后台线程把任务推到终态。
 
     终态 = done / failed（running / queued 都算未收敛）。
     """
@@ -99,7 +99,7 @@ def test_pi_dispatch_writes_result_and_done(db: Session, task: AgentTask):
     """★ 成功：调 /api/v1/pi-agent/chat，结果写回 task.result，状态 → done。"""
     client = FakePiClient(reply="今天有 2 条待办")
     out = AgentsService(db).dispatch(task.id, DispatchIn(mode="pi"), pi_client=client)
-    # ★ 第⑦刀：立即返回 running（异步）
+    # ★ 立即返回 running（异步）
     assert out["status"] == "sent" or task.status in ("running", "queued")
 
     t = _wait_settled(db, task.id)          # 等后台线程跑完
@@ -145,7 +145,7 @@ def test_pi_dispatch_without_client_raises(db: Session, task: AgentTask):
 
 
 def test_pi_dispatch_returns_immediately(db: Session, task: AgentTask):
-    """★ 第⑦刀核心：dispatch **不等 Pi 跑完就返回**（否则 180s 会把 HTTP 挂死）。"""
+    """★ 核心：dispatch **不等 Pi 跑完就返回**（否则 180s 会把 HTTP 挂死）。"""
     import time as _t
 
     class SlowClient(FakePiClient):

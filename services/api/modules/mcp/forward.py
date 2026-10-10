@@ -23,7 +23,7 @@ from core.security import USER_SUB, create_access_token
 _DEFAULT_BASE = "http://127.0.0.1:18000"
 _TIMEOUT = 15.0
 
-# ★ 2026-09-27（主人令「把挂路径参数的整类端点修通」）：路径参数占位符。
+# ★ 2026-09-27（主人「把挂路径参数的整类端点修通」）：路径参数占位符。
 #   工具面是**机械推导**出来的，manifest 里写的是 OpenAPI 原样的 path（含 `{x}`）；
 #   不代入就只能打到字面量 `{x}` → 404。故在桥接层做替换。
 _PATH_PARAM_RE = re.compile(r"\{([^{}/]+)\}")
@@ -78,9 +78,9 @@ def forward(
             "detail": f"该工具路径需要参数 {missing}，请在 payload 里给出",
             "path_template": path,
         }
-    # ★ 2026-10-02（主人令「MCP 创建待办时强制加标签」）：
+    # ★ 2026-10-02（主人「MCP 创建待办时强制加标签」）：
     #   打来源标记 —— 插件据此判定「这是 AI 来路」，从而施加比人更严的写约束
-    #   （见 core/mcp_writes.py 的来龙去脉）。人对前端的操作**一点不受影响**。
+    #（见 core/mcp_writes.py 的来龙去脉）。人对前端的操作**一点不受影响**。
     headers = {
         "Authorization": f"Bearer {create_access_token(USER_SUB)}",
         _CLIENT_HEADER: CLIENT_MCP,
